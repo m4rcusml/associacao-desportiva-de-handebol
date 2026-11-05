@@ -1,9 +1,9 @@
 # Associação Desportiva de Handebol
 
-Projeto de uma aplicação para organizar clubes, atletas, campeonatos e jogos de handebol.
-A proposta reúne aprovação de cadastros, carteirinhas, credenciamento, arbitragem e histórico
-esportivo, apoiando o trabalho cotidiano da associação. O repositório está na etapa de
-definição de requisitos e modelagem.
+Projeto de uma aplicação para organizar clubes, atletas, campeonatos e jogos de handebol. A proposta
+reúne aprovação de cadastros, carteirinhas, credenciamento, arbitragem e histórico esportivo,
+apoiando o trabalho cotidiano da associação. O repositório está na etapa de definição de requisitos
+e modelagem.
 
 ## Documentação
 

@@ -1,188 +1,188 @@
 classDiagram
-direction TB
-%% Modelo logico v1 - 2026-11-04. Chaves, nulabilidade e restricoes: modelo-banco-dados.md.
-Usuario <|-- Atleta
-Usuario <|-- Presidente
-Usuario <|-- Tecnico
-class Usuario {
- uuid id
- string authId
- string nomeCompleto
- string perfil
- boolean ativo
- datetime criadoEm
-}
-class Atleta {
- uuid usuarioId
- string fotoChave
- string statusVerificacao
- datetime verificacaoSolicitadaEm
- uuid verificadoPorPresidenteId
- datetime verificadoEm
-}
-class Presidente {
- uuid usuarioId
- uuid criadoPorPresidenteId
-}
-class Tecnico {
- uuid usuarioId
- uuid clubeId
- string statusVerificacao
- datetime verificacaoSolicitadaEm
- uuid verificadoPorPresidenteId
- datetime verificadoEm
-}
-class Clube {
- uuid id
- string nome
- string cidade
- uuid criadoPorPresidenteId
-}
-class VinculoClube {
- uuid id
- uuid atletaId
- uuid clubeId
- datetime inicio
- datetime fim
- uuid definidoPorPresidenteId
-}
-class Carteirinha {
- uuid id
- uuid atletaId
- string codigo
- string tokenQr
- string status
- datetime emitidaEm
- uuid emitidaPorPresidenteId
- datetime statusAlteradoEm
- uuid statusAlteradoPorPresidenteId
-}
-class Campeonato {
- uuid id
- string nome
- string edicao
- string categoria
- date inicio
- date fim
- string status
- uuid criadoPorPresidenteId
-}
-class InscricaoClube {
- uuid id
- uuid campeonatoId
- uuid clubeId
- uuid incluidaPorPresidenteId
- datetime incluidaEm
-}
-class Jogo {
- uuid id
- uuid campeonatoId
- uuid inscricaoClubeAId
- uuid inscricaoClubeBId
- datetime inicioPrevistoEm
- datetime iniciadoEm
- datetime encerradoEm
- string local
- string status
- uuid criadoPorPresidenteId
-}
-class Participacao {
- uuid id
- uuid jogoId
- uuid inscricaoClubeId
- uuid vinculoClubeId
- uuid escolhidaPorTecnicoId
- datetime escolhidaEm
- uuid carteirinhaId
- datetime credenciadoEm
- int numeroCamisa
- datetime entrouEmQuadraEm
-}
-class AcessoArbitragem {
- uuid jogoId
- string senhaHash
- datetime liberadoEm
- datetime revogadoEm
-}
-class Arbitragem {
- uuid id
- uuid jogoId
- uuid usuarioId
- string nomeCompleto
- uuid designadoPorPresidenteId
- datetime designadoEm
- string visualizacao
- datetime acessouEm
-}
-class LancamentoJogo {
- uuid id
- uuid jogoId
- uuid participacaoId
- string tipo
- int valor
- datetime registradoEm
- uuid substituiLancamentoId
- boolean anulado
-}
-class EstatisticasDoJogo {
- uuid jogoId
- int temp_placarClubeA
- int temp_placarClubeB
-}
-class DesempenhoDoAtleta {
- uuid participacaoId
- int temp_gols
- int temp_cartoesAmarelos
- int temp_exclusoesDoisMinutos
- int temp_cartoesVermelhos
-}
-class RegraSuspensao {
- uuid id
- uuid campeonatoId
- string tipoPenalidade
- int quantidadePenalidades
- int quantidadeJogos
- boolean ativa
-}
-class Suspensao {
- uuid id
- uuid atletaId
- uuid campeonatoId
- uuid jogoOrigemId
- uuid regraSuspensaoId
- uuid aplicadaPorPresidenteId
- string origem
- string motivo
- int quantidadeJogos
- datetime aplicadaEm
- datetime canceladaEm
-}
-class CumprimentoSuspensao {
- uuid suspensaoId
- uuid jogoId
- datetime registradoEm
-}
-Atleta "1" -- "1..*" VinculoClube : pertence ao clube durante periodo
-Clube "1" -- "0..*" VinculoClube : recebe atleta
-Clube "0..1" -- "0..1" Tecnico : tem tecnico
-Atleta "1" -- "0..1" Carteirinha : identifica-se com
-Campeonato "1" -- "0..*" InscricaoClube : recebe inscricao
-Clube "1" -- "0..*" InscricaoClube : participa do campeonato
-Campeonato "1" -- "0..*" Jogo : inclui
-InscricaoClube "2" -- "0..*" Jogo : disputa
-Jogo "1" -- "0..*" Participacao : registra atletas
-VinculoClube "1" -- "0..*" Participacao : preserva clube representado
-Tecnico "0..1" -- "0..*" Participacao : escolhe atleta
-Jogo "1" -- "0..1" AcessoArbitragem : libera acesso temporario
-Jogo "1" -- "0..*" Arbitragem : recebe arbitros
-Usuario "0..1" -- "0..*" Arbitragem : pode atuar como arbitro
-Jogo "1" -- "0..*" LancamentoJogo : registra ocorrencias
-Participacao "0..1" -- "0..*" LancamentoJogo : recebe ocorrencia
-Jogo "1" -- "0..1" EstatisticasDoJogo : resume placar
-Participacao "1" -- "0..1" DesempenhoDoAtleta : resume desempenho
-Atleta "1" -- "0..*" Suspensao : cumpre
-Campeonato "1" -- "0..*" Suspensao : limita impedimento
-Campeonato "1" -- "0..*" RegraSuspensao : define regras
-RegraSuspensao "0..1" -- "0..*" Suspensao : gera automaticamente
-Suspensao "1" -- "0..*" CumprimentoSuspensao : registra cumprimento
-Jogo "1" -- "0..*" CumprimentoSuspensao : conta como cumprido
+    direction TB
+    %% Modelo logico v1 - 2026-11-04. Chaves, nulabilidade e restricoes: modelo-banco-dados.md.
+    Usuario <|-- Atleta
+    Usuario <|-- Presidente
+    Usuario <|-- Tecnico
+    class Usuario {
+        uuid id
+        string authId
+        string nomeCompleto
+        string perfil
+        boolean ativo
+        datetime criadoEm
+    }
+    class Atleta {
+        uuid usuarioId
+        string fotoChave
+        string statusVerificacao
+        datetime verificacaoSolicitadaEm
+        uuid verificadoPorPresidenteId
+        datetime verificadoEm
+    }
+    class Presidente {
+        uuid usuarioId
+        uuid criadoPorPresidenteId
+    }
+    class Tecnico {
+        uuid usuarioId
+        uuid clubeId
+        string statusVerificacao
+        datetime verificacaoSolicitadaEm
+        uuid verificadoPorPresidenteId
+        datetime verificadoEm
+    }
+    class Clube {
+        uuid id
+        string nome
+        string cidade
+        uuid criadoPorPresidenteId
+    }
+    class VinculoClube {
+        uuid id
+        uuid atletaId
+        uuid clubeId
+        datetime inicio
+        datetime fim
+        uuid definidoPorPresidenteId
+    }
+    class Carteirinha {
+        uuid id
+        uuid atletaId
+        string codigo
+        string tokenQr
+        string status
+        datetime emitidaEm
+        uuid emitidaPorPresidenteId
+        datetime statusAlteradoEm
+        uuid statusAlteradoPorPresidenteId
+    }
+    class Campeonato {
+        uuid id
+        string nome
+        string edicao
+        string categoria
+        date inicio
+        date fim
+        string status
+        uuid criadoPorPresidenteId
+    }
+    class InscricaoClube {
+        uuid id
+        uuid campeonatoId
+        uuid clubeId
+        uuid incluidaPorPresidenteId
+        datetime incluidaEm
+    }
+    class Jogo {
+        uuid id
+        uuid campeonatoId
+        uuid inscricaoClubeAId
+        uuid inscricaoClubeBId
+        datetime inicioPrevistoEm
+        datetime iniciadoEm
+        datetime encerradoEm
+        string local
+        string status
+        uuid criadoPorPresidenteId
+    }
+    class Participacao {
+        uuid id
+        uuid jogoId
+        uuid inscricaoClubeId
+        uuid vinculoClubeId
+        uuid escolhidaPorTecnicoId
+        datetime escolhidaEm
+        uuid carteirinhaId
+        datetime credenciadoEm
+        int numeroCamisa
+        datetime entrouEmQuadraEm
+    }
+    class AcessoArbitragem {
+        uuid jogoId
+        string senhaHash
+        datetime liberadoEm
+        datetime revogadoEm
+    }
+    class Arbitragem {
+        uuid id
+        uuid jogoId
+        uuid usuarioId
+        string nomeCompleto
+        uuid designadoPorPresidenteId
+        datetime designadoEm
+        string visualizacao
+        datetime acessouEm
+    }
+    class LancamentoJogo {
+        uuid id
+        uuid jogoId
+        uuid participacaoId
+        string tipo
+        int valor
+        datetime registradoEm
+        uuid substituiLancamentoId
+        boolean anulado
+    }
+    class EstatisticasDoJogo {
+        uuid jogoId
+        int temp_placarClubeA
+        int temp_placarClubeB
+    }
+    class DesempenhoDoAtleta {
+        uuid participacaoId
+        int temp_gols
+        int temp_cartoesAmarelos
+        int temp_exclusoesDoisMinutos
+        int temp_cartoesVermelhos
+    }
+    class RegraSuspensao {
+        uuid id
+        uuid campeonatoId
+        string tipoPenalidade
+        int quantidadePenalidades
+        int quantidadeJogos
+        boolean ativa
+    }
+    class Suspensao {
+        uuid id
+        uuid atletaId
+        uuid campeonatoId
+        uuid jogoOrigemId
+        uuid regraSuspensaoId
+        uuid aplicadaPorPresidenteId
+        string origem
+        string motivo
+        int quantidadeJogos
+        datetime aplicadaEm
+        datetime canceladaEm
+    }
+    class CumprimentoSuspensao {
+        uuid suspensaoId
+        uuid jogoId
+        datetime registradoEm
+    }
+    Atleta "1" -- "1..*" VinculoClube : pertence ao clube durante periodo
+    Clube "1" -- "0..*" VinculoClube : recebe atleta
+    Clube "0..1" -- "0..1" Tecnico : tem tecnico
+    Atleta "1" -- "0..1" Carteirinha : identifica-se com
+    Campeonato "1" -- "0..*" InscricaoClube : recebe inscricao
+    Clube "1" -- "0..*" InscricaoClube : participa do campeonato
+    Campeonato "1" -- "0..*" Jogo : inclui
+    InscricaoClube "2" -- "0..*" Jogo : disputa
+    Jogo "1" -- "0..*" Participacao : registra atletas
+    VinculoClube "1" -- "0..*" Participacao : preserva clube representado
+    Tecnico "0..1" -- "0..*" Participacao : escolhe atleta
+    Jogo "1" -- "0..1" AcessoArbitragem : libera acesso temporario
+    Jogo "1" -- "0..*" Arbitragem : recebe arbitros
+    Usuario "0..1" -- "0..*" Arbitragem : pode atuar como arbitro
+    Jogo "1" -- "0..*" LancamentoJogo : registra ocorrencias
+    Participacao "0..1" -- "0..*" LancamentoJogo : recebe ocorrencia
+    Jogo "1" -- "0..1" EstatisticasDoJogo : resume placar
+    Participacao "1" -- "0..1" DesempenhoDoAtleta : resume desempenho
+    Atleta "1" -- "0..*" Suspensao : cumpre
+    Campeonato "1" -- "0..*" Suspensao : limita impedimento
+    Campeonato "1" -- "0..*" RegraSuspensao : define regras
+    RegraSuspensao "0..1" -- "0..*" Suspensao : gera automaticamente
+    Suspensao "1" -- "0..*" CumprimentoSuspensao : registra cumprimento
+    Jogo "1" -- "0..*" CumprimentoSuspensao : conta como cumprido
