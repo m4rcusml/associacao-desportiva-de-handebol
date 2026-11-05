@@ -24,7 +24,7 @@ requisitos não funcionais e regras de negócio. Não implicam ordem de implemen
 | Pendente | Decisão em aberto; não deve ser implementada por suposição |
 
 “Confirmado” registra o alinhamento com Marcus; não significa validação direta pelo cliente.
-RNF técnicos abaixo estão explicitamente classificados como propostos.
+Os 12 RNFs foram aprovados por Marcus em 04/11/2026.
 Uma pendência não autoriza omitir os demais comportamentos já confirmados.
 
 ## 2. Atores
@@ -193,23 +193,23 @@ com os clubes. O cadastro da pessoa não elimina essa exceção.
 ## 5. Requisitos não funcionais
 
 Os requisitos abaixo derivam das necessidades levantadas e das escolhas técnicas da modelagem.
-São propostas para implementação; não foram acordadas metas numéricas de desempenho,
-disponibilidade ou capacidade.
+Os 12 RNFs foram aprovados por Marcus em 04/11/2026. Não foram acordadas metas numéricas
+de desempenho, disponibilidade ou capacidade.
 
 | ID | Requisito | Verificação esperada | Situação |
 | --- | --- | --- | --- |
-| RNF-001 | Aplicar autorização no servidor por perfil, clube e jogo, em todas as operações protegidas. | Requisições diretas sem permissão são recusadas, mesmo sem passar pela interface. | Proposto |
-| RNF-002 | Proteger senhas e credenciais temporárias; não persistir senha compartilhada em texto puro e não incluí-la em logs. | Inspeção de armazenamento e logs não revela a senha; a validação usa hash apropriado para senhas. | Proposto |
-| RNF-003 | Revalidar acesso temporário e status do jogo em operações da arbitragem. | Sessão aberta antes do encerramento não consegue continuar alterando o jogo depois dele. | Proposto |
-| RNF-004 | Impedir que o QR code da carteirinha conceda permissões administrativas ou substitua a autenticação da arbitragem. | Possuir apenas o QR não permite credenciar terceiros nem alterar dados. | Proposto |
-| RNF-005 | Preservar integridade de vínculos, inscrições e participações, inclusive em operações simultâneas. | Não se criam dois clubes atuais para o atleta, dois técnicos no clube ou camisa repetida no mesmo clube/jogo. | Proposto |
-| RNF-006 | Garantir consistência entre gol, placar e desempenho do atleta. | Uma gravação ou correção não deixa apenas parte dos totais atualizada. | Proposto |
-| RNF-007 | Evitar duplicação por repetição de QR, reenvio da mesma operação e processamento repetido do encerramento. | A mesma solicitação não duplica credenciamento, gol, suspensão automática ou jogo cumprido. | Proposto |
-| RNF-008 | Preservar histórico esportivo e rastreabilidade mínima das correções. | Corrigir lançamento permite identificar o registro anterior; transferir atleta não reescreve jogos antigos. | Proposto |
-| RNF-009 | Manter uma definição consistente das métricas por jogo e dos totais históricos. | Os totais históricos correspondem aos registros válidos dos jogos, sem contagem de lançamentos anulados. | Proposto |
-| RNF-010 | Assegurar que cadastro próprio não permita autoaprovação, emissão de carteirinha ou obtenção do perfil de presidente. | Alteração de parâmetros pelo solicitante não eleva privilégios. | Proposto |
-| RNF-011 | Permitir uso concorrente por múltiplos árbitros sem perder atualizações válidas. | Lançamentos simultâneos são preservados e conflitos de correção são tratados explicitamente. | Proposto |
-| RNF-012 | Restringir o acesso aos dados pessoais e às funções esportivas ao necessário para cada operação. | Carteirinha/QR e telas de arbitragem não expõem credenciais ou dados cadastrais sem finalidade operacional. | Proposto |
+| RNF-001 | Aplicar autorização no servidor por perfil, clube e jogo, em todas as operações protegidas. | Requisições diretas sem permissão são recusadas, mesmo sem passar pela interface. | Confirmado |
+| RNF-002 | Proteger senhas e credenciais temporárias; não persistir senha compartilhada em texto puro e não incluí-la em logs. | Inspeção de armazenamento e logs não revela a senha; a validação usa hash apropriado para senhas. | Confirmado |
+| RNF-003 | Revalidar acesso temporário e status do jogo em operações da arbitragem. | Sessão aberta antes do encerramento não consegue continuar alterando o jogo depois dele. | Confirmado |
+| RNF-004 | Impedir que o QR code da carteirinha conceda permissões administrativas ou substitua a autenticação da arbitragem. | Possuir apenas o QR não permite credenciar terceiros nem alterar dados. | Confirmado |
+| RNF-005 | Preservar integridade de vínculos, inscrições e participações, inclusive em operações simultâneas. | Não se criam dois clubes atuais para o atleta, dois técnicos no clube ou camisa repetida no mesmo clube/jogo. | Confirmado |
+| RNF-006 | Garantir consistência entre gol, placar e desempenho do atleta. | Uma gravação ou correção não deixa apenas parte dos totais atualizada. | Confirmado |
+| RNF-007 | Evitar duplicação por repetição de QR, reenvio da mesma operação e processamento repetido do encerramento. | A mesma solicitação não duplica credenciamento, gol, suspensão automática ou jogo cumprido. | Confirmado |
+| RNF-008 | Preservar histórico esportivo e rastreabilidade mínima das correções. | Corrigir lançamento permite identificar o registro anterior; transferir atleta não reescreve jogos antigos. | Confirmado |
+| RNF-009 | Manter uma definição consistente das métricas por jogo e dos totais históricos. | Os totais históricos correspondem aos registros válidos dos jogos, sem contagem de lançamentos anulados. | Confirmado |
+| RNF-010 | Assegurar que cadastro próprio não permita autoaprovação, emissão de carteirinha ou obtenção do perfil de presidente. | Alteração de parâmetros pelo solicitante não eleva privilégios. | Confirmado |
+| RNF-011 | Permitir uso concorrente por múltiplos árbitros sem perder atualizações válidas. | Lançamentos simultâneos são preservados e conflitos de correção são tratados explicitamente. | Confirmado |
+| RNF-012 | Restringir o acesso aos dados pessoais e às funções esportivas ao necessário para cada operação. | Carteirinha/QR e telas de arbitragem não expõem credenciais ou dados cadastrais sem finalidade operacional. | Confirmado |
 
 Não foram levantados requisitos de operação offline, navegadores/dispositivos suportados,
 acessibilidade mensurável, exportação, backup/restauração, retenção de dados,

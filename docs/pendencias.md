@@ -61,7 +61,7 @@ Condução sugerida: Marcus com o cliente para as regras; equipe técnica para o
 | ID | Pendência | Próxima decisão / condução sugerida |
 | --- | --- | --- |
 | PEN-007 | Auditoria completa das ações manuais e administrativas. | Definir ações auditadas, autoria, valores anteriores/novos, justificativas, consulta e retenção. Necessidade reconhecida, detalhamento adiado. Não reabrir a decisão de dispensar identificação individual de lançamentos entre árbitros. Marcus + equipe técnica. |
-| PEN-024 | Aceitação dos RNF propostos. | Revisar RNF-001 a RNF-012: autorização, proteção de credenciais, integridade, concorrência, repetição de operações e histórico. São propostas técnicas, não requisitos expressamente validados pelo cliente. Marcus + equipe técnica. |
+| PEN-024 | Aceitação dos 12 RNFs. | Resolvido: RNF-001 a RNF-012 aprovados por Marcus em 04/11/2026. As metas operacionais não definidas continuam em PEN-025/PEN-026. |
 | PEN-025 | Condições de uso e metas de qualidade. | Definir dispositivos/navegadores, necessidade de câmera, conexão disponível nos locais, eventual operação offline, acessibilidade, volume de usuários/jogos simultâneos, tempo de resposta e disponibilidade. Não há metas numéricas acordadas. Cliente + equipe técnica. |
 | PEN-026 | Dados pessoais e recuperação operacional. | Definir quem consulta cada informação, retenção/remoção de dados, tratamento do histórico após desativação e política de backup/restauração. Não há prazos ou metas de recuperação acordados. Marcus + equipe técnica. |
 
@@ -82,7 +82,7 @@ Eles não devem ser tratados como compromissos já aprovados.
 2. Fechar exceções disciplinares (PEN-006 e PEN-009 a PEN-012), principalmente impedimento após credenciamento.
 3. Definir operação de abertura do acesso, troca de senha e correção de credenciamento (PEN-019 a PEN-023).
 4. Resolver ciclo de contas e clubes (PEN-013 a PEN-018).
-5. Detalhar auditoria, validar RNF e condições operacionais (PEN-007 e PEN-024 a PEN-026).
+5. Detalhar auditoria e condições operacionais (PEN-007, PEN-025 e PEN-026); a aprovação dos RNFs está concluída.
 6. Decidir o escopo dos pedidos históricos (PEN-027 a PEN-029).
 
 As pendências bloqueiam apenas a definição completa dos comportamentos afetados;
@@ -91,6 +91,8 @@ não impedem continuar as partes já acordadas.
 ## 8. Decisões já encerradas
 
 Não são pendências:
+
+- PEN-024: os 12 RNFs foram aprovados por Marcus em 04/11/2026.
 
 - PEN-001: a página abre antes da partida para credenciamento, e a arbitragem inicia o jogo depois.
 - PEN-002: entrada por senha dispensa conferir vínculo com os clubes, inclusive para pessoa cadastrada.
