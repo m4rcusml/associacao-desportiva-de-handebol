@@ -257,3 +257,19 @@ pendentes estejam prontas para implementação completa.
 | Árbitros                    | Vários, linha/banco, usuário designado ou senha compartilhada                   | RF-024 a RF-030, RN-024 a RN-031         |
 | Resultados                  | Gol identificado, correções durante/depois do jogo e histórico                  | RF-031 a RF-037, RN-032 a RN-036         |
 | Punições                    | Manual/automática, por jogos e campeonato; transferência bloqueada              | RF-038 a RF-042, RN-006, RN-037 a RN-043 |
+
+## 9. Decisões complementares — 06/11/2026
+
+A [arquitetura aprovada](arquitetura.md) consolida as decisões estruturais. Para o produto:
+
+- Login por e-mail e senha, sem exigir confirmação de e-mail antes da aprovação esportiva.
+- Recuperação de senha por link enviado ao e-mail.
+- Múltiplos dispositivos permitidos para contas e acessos de arbitragem.
+- Atualizações imediatas entre as telas dos árbitros autorizados ao jogo.
+- Interface responsiva, priorizando navegador no celular, com leitura de QR pela câmera.
+- Internet obrigatória; funcionamento offline não faz parte desta versão.
+- Armazenamento apenas de fotos dos atletas; não haverá envio de documentos para verificação.
+- Dois ambientes, teste e produção, com implantação online de teste para demonstrações.
+
+Essas decisões complementam os requisitos existentes; a definição dos demais campos cadastrais,
+das métricas, das regras disciplinares e das metas operacionais permanece pendente.

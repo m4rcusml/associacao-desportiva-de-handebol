@@ -8,6 +8,7 @@ e modelagem.
 ## Documentação
 
 - [Requisitos funcionais, não funcionais e regras de negócio](docs/requisitos.md)
+- [Arquitetura e tecnologias aprovadas](docs/arquitetura.md)
 - [Modelagem do banco e suas regras](docs/modelo-banco-dados.md)
 - [Diagrama com atributos e relações](docs/modelo-banco-dados.mmd)
 - [Pendências e confirmações com o cliente](docs/pendencias.md)

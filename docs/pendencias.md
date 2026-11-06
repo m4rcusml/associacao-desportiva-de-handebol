@@ -1,6 +1,6 @@
 # Pendências — gestão de handebol
 
-Atualizado em 04/11/2026.
+Atualizado em 06/11/2026.
 
 Resumo das confirmações com o cliente, lacunas de requisitos e casos específicos ainda sem decisão.
 Referências: [requisitos](requisitos.md) e [modelagem](modelo-banco-dados.md).
@@ -11,12 +11,12 @@ obrigações de implementar. Os responsáveis indicados são sugestões para con
 
 ## 1. Confirmações com o cliente
 
-| ID      | Pendência e decisão necessária                                                                                                                            | Impacto / situação vigente                                                                                                                                                 |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PEN-003 | Confirmar métricas por jogo e atleta: quais dados registrar, definições e forma de cálculo.                                                               | Manter os campos provisórios com prefixo temp_. Placar, gols, cartões amarelos/vermelhos e exclusões de dois minutos são a proposta atual, não a lista definitiva. RF-037. |
-| PEN-004 | Definir regras de suspensão automática: penalidades consideradas, limites, período de acumulação, quantidade de jogos e eventual reinício da contagem.    | A funcionalidade foi solicitada, mas os critérios não podem ser inventados. Regras automáticas permanecem inativas até confirmação. RF-039 e RN-041/RN-042.                |
-| PEN-005 | Confirmar se o presidente continuará incluindo os clubes participantes dos campeonatos.                                                                   | É o procedimento provisoriamente adotado. Se houver inscrição pelo próprio clube, definir quem solicita, quem aprova e os prazos. RF-014.                                  |
-| PEN-008 | Definir ficha cadastral e dados obrigatórios de atletas, técnicos, clubes e competições; dados exibidos na carteirinha e elementos usados na verificação. | Os atributos atuais são a primeira proposta. Confirmar documentos/foto necessários, quem pode editar e se mudanças exigem nova aprovação. RF-001 a RF-005.                 |
+| ID      | Pendência e decisão necessária                                                                                                                            | Impacto / situação vigente                                                                                                                                                                     |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PEN-003 | Confirmar métricas por jogo e atleta: quais dados registrar, definições e forma de cálculo.                                                               | Manter os campos provisórios com prefixo temp_. Placar, gols, cartões amarelos/vermelhos e exclusões de dois minutos são a proposta atual, não a lista definitiva. RF-037.                     |
+| PEN-004 | Definir regras de suspensão automática: penalidades consideradas, limites, período de acumulação, quantidade de jogos e eventual reinício da contagem.    | A funcionalidade foi solicitada, mas os critérios não podem ser inventados. Regras automáticas permanecem inativas até confirmação. RF-039 e RN-041/RN-042.                                    |
+| PEN-005 | Confirmar se o presidente continuará incluindo os clubes participantes dos campeonatos.                                                                   | É o procedimento provisoriamente adotado. Se houver inscrição pelo próprio clube, definir quem solicita, quem aprova e os prazos. RF-014.                                                      |
+| PEN-008 | Definir ficha cadastral e dados obrigatórios de atletas, técnicos, clubes e competições; dados exibidos na carteirinha e elementos usados na verificação. | Os atributos atuais são a primeira proposta. Sem envio de documentos; somente fotos de atletas. Confirmar demais dados, quem pode editar e se mudanças exigem nova aprovação. RF-001 a RF-005. |
 
 ## 2. Regras disciplinares e efeitos posteriores
 
@@ -61,7 +61,7 @@ Condução sugerida: Marcus com o cliente para as regras; equipe técnica para o
 | ------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PEN-007 | Auditoria completa das ações manuais e administrativas. | Definir ações auditadas, autoria, valores anteriores/novos, justificativas, consulta e retenção. Necessidade reconhecida, detalhamento adiado. Não reabrir a decisão de dispensar identificação individual de lançamentos entre árbitros. Marcus + equipe técnica.        |
 | PEN-024 | Aceitação dos 12 RNFs.                                  | Resolvido: RNF-001 a RNF-012 aprovados por Marcus em 04/11/2026. As metas operacionais não definidas continuam em PEN-025/PEN-026.                                                                                                                                        |
-| PEN-025 | Condições de uso e metas de qualidade.                  | Definir dispositivos/navegadores, necessidade de câmera, conexão disponível nos locais, eventual operação offline, acessibilidade, volume de usuários/jogos simultâneos, tempo de resposta e disponibilidade. Não há metas numéricas acordadas. Cliente + equipe técnica. |
+| PEN-025 | Condições de uso e metas de qualidade.                  | Celular prioritário, câmera para QR, internet obrigatória e tempo real aprovados; modo offline descartado. Definir navegadores, acessibilidade, capacidade, tempo de resposta e disponibilidade. Não há metas numéricas acordadas. Cliente + equipe técnica.              |
 | PEN-026 | Dados pessoais e recuperação operacional.               | Definir quem consulta cada informação, retenção/remoção de dados, tratamento do histórico após desativação e política de backup/restauração. Não há prazos ou metas de recuperação acordados. Marcus + equipe técnica.                                                    |
 
 ## 6. Itens das anotações iniciais ainda sem escopo confirmado
@@ -103,3 +103,23 @@ Não são pendências:
 - Não haverá validação específica de idade/sexo nesta versão nem medição de tempo jogado.
 - Invalidar carteirinha afeta novos credenciamentos, sem bloquear conta ou invalidar credenciamento anterior.
 - Após encerramento, somente presidente corrige os dados, sem reabrir acesso para arbitragem.
+
+## 9. Atualizações da arquitetura — 06/11/2026
+
+Decisões registradas em [arquitetura.md](arquitetura.md):
+
+- PEN-008 parcialmente esclarecida: apenas fotos de atletas; nenhum documento será enviado
+  para verificação. Os demais campos e critérios de aprovação continuam em aberto.
+- PEN-025 parcialmente esclarecida: interface responsiva, celular prioritário, QR por câmera,
+  internet obrigatória e atualizações imediatas. Não há modo offline. Múltiplos dispositivos
+  são permitidos. Capacidade, navegadores suportados e metas operacionais ainda não foram definidos.
+- Há somente dois ambientes, teste e produção; teste terá implantação online para demonstrações.
+
+As menções anteriores a documentos e eventual modo offline são perguntas agora resolvidas,
+não opções ainda em avaliação. As decisões de infraestrutura ainda abertas são:
+
+- PEN-030: selecionar a biblioteca de autenticação e complementar as tabelas técnicas.
+- PEN-031: selecionar hospedagem, banco, envio de e-mail e armazenamento de fotos, considerando
+  teste gratuito e recursos de produção adequados, com suporte ao tempo real.
+- PEN-032: detalhar versões, comandos de desenvolvimento/build/teste e implantação.
+- PEN-033: detalhar contrato da API, eventos, conflitos, reconexão e publicação após a transação.

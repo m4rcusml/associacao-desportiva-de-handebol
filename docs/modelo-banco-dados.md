@@ -7,7 +7,9 @@ fonte publicada no Miro. Esta entrega é modelagem lógica; não aplica migraç�
 
 `UUID` identifica registros; `datetime` corresponde a `timestamptz`,
 `date` a data e `string` a texto. `Usuario` concentra identidade e
-autenticação externa por `authId` (único); não armazena senha da conta. `perfil`
+ligação à identidade da biblioteca de autenticação por `authId` (único); não armazena senha
+da conta nesta entidade. A biblioteca e suas tabelas técnicas serão definidas conforme
+[a arquitetura](arquitetura.md). Isso não exige um provedor de autenticação externo. `perfil`
 aceita atleta, tecnico ou presidente, exclusivamente. Cada `Usuario` tem exatamente uma
 extensão correspondente, com `usuarioId` como `PK` e `FK` para
 `Usuario`.`id`. A exclusividade entre as três extensões exige validação
@@ -179,3 +181,10 @@ implementar soma ou cumprimento paralelo silenciosamente.
 
 Essas pendências limitam implementação das respectivas funcionalidades; esta versão não afirma que
 regras automáticas ou auditoria completa estejam prontas para produção.
+
+## Esclarecimentos posteriores — 06/11/2026
+
+Conforme a [arquitetura](arquitetura.md), somente fotos de atletas serão enviadas.
+A verificação esportiva não terá upload de documentos. A ficha cadastral continua pendente.
+A escolha da biblioteca de autenticação exigirá complementar o esquema com suas estruturas
+de identidade, sessões e recuperação de senha, sem duplicar senhas em Usuario.
