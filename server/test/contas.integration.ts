@@ -227,3 +227,77 @@ test("último presidente com credencial nunca é desativado e checagem de conta 
 
   assert.equal(await status(`/contas/${b.id}/reativacao`, await login(a.email), {}), 200);
 });
+
+test("login concorrente não grava sessão após desativação, nem após desativação e reativação", async () => {
+  const presidente = await login(presidentes.a.email);
+  const atleta = await cadastrar("atleta");
+  const { authId } = await prisma.usuario.findUniqueOrThrow({ where: { id: atleta.id } });
+
+  // Barreira logo após a leitura da conta pelo hook de sessão do Better Auth (mesmo PrismaService da API).
+  const delegate = prisma.usuario as unknown as { findUnique: (args: { where?: { authId?: string }; select?: { versaoAtivacao?: boolean } }) => Promise<unknown> };
+  const original = delegate.findUnique;
+  async function loginRetido(entreLeituraEInsercao: () => Promise<void>) {
+    let lida!: () => void;
+    let liberar!: () => void;
+    const leitura = new Promise<void>(resolve => { lida = resolve; });
+    const liberacao = new Promise<void>(resolve => { liberar = resolve; });
+    delegate.findUnique = async function (this: unknown, args) {
+      const resultado = await original.call(this, args);
+      if (args.where?.authId === authId && args.select?.versaoAtivacao) { lida(); await liberacao; }
+      return resultado;
+    };
+    try {
+      const resposta = request("/auth/sign-in/email", "", { email: atleta.email, password });
+      await leitura;
+      await entreLeituraEInsercao();
+      liberar();
+      return await resposta;
+    } finally {
+      delegate.findUnique = original;
+    }
+  }
+
+  const somenteDesativada = await loginRetido(async () => {
+    assert.equal((await desativar(presidente, atleta.id)).status, 200);
+  });
+  // O banco recusa a gravação; o Better Auth responde erro interno (500) sem emitir sessão.
+  assert.ok(somenteDesativada.status >= 400, String(somenteDesativada.status));
+  assert.equal(await sessoes(atleta.id), 0);
+  assert.equal(await status("/auth/sign-in/email", "", { email: atleta.email, password }), 401);
+  assert.equal((await reativar(presidente, atleta.id)).status, 200);
+
+  const desativadaEReativada = await loginRetido(async () => {
+    assert.equal((await desativar(presidente, atleta.id)).status, 200);
+    assert.equal((await reativar(presidente, atleta.id)).status, 200);
+  });
+  assert.ok(desativadaEReativada.status >= 400, String(desativadaEReativada.status));
+  assert.equal(await sessoes(atleta.id), 0);
+  assert.equal(await ativo(atleta.id), true);
+
+  // Sessão gravada antes da desativação: a desativação aguarda o commit e a revoga.
+  const { versaoAtivacao } = await prisma.usuario.findUniqueOrThrow({ where: { id: atleta.id } });
+  let liberarInsercao!: () => void;
+  let inserida!: () => void;
+  const insercao = new Promise<void>(resolve => { inserida = resolve; });
+  const transacao = prisma.$transaction(async tx => {
+    await tx.authSession.create({ data: { id: randomUUID(), token: randomUUID(), userId: authId, expiresAt: new Date(Date.now() + 3_600_000), versaoAtivacao } });
+    inserida();
+    await new Promise<void>(resolve => { liberarInsercao = resolve; });
+  });
+  await insercao;
+  let concluida = false;
+  const desativacao = desativar(presidente, atleta.id).then(r => { concluida = true; return r; });
+  await esperar(300);
+  assert.equal(concluida, false, "desativação deve aguardar a sessão em gravação");
+  liberarInsercao();
+  await transacao;
+  assert.equal((await desativacao).status, 200);
+  assert.equal(await sessoes(atleta.id), 0);
+
+  // Sessão com versão desatualizada ou sem versão é recusada pelo banco mesmo com a conta ativa.
+  assert.equal((await reativar(presidente, atleta.id)).status, 200);
+  for (const versao of [versaoAtivacao, null]) {
+    await assert.rejects(prisma.authSession.create({ data: { id: randomUUID(), token: randomUUID(), userId: authId, expiresAt: new Date(Date.now() + 3_600_000), versaoAtivacao: versao } }));
+  }
+  assert.equal(await status("/protegida", await login(atleta.email)), 200);
+});

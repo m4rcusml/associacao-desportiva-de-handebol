@@ -33,13 +33,19 @@ export class AuthService {
       user: { modelName: "AuthUser" },
       account: { modelName: "AuthAccount" },
       verification: { modelName: "AuthVerification" },
-      session: { modelName: "AuthSession", cookieCache: { enabled: false }, disableSessionRefresh: true },
+      session: {
+        modelName: "AuthSession", cookieCache: { enabled: false }, disableSessionRefresh: true,
+        additionalFields: { versaoAtivacao: { type: "number", required: false, input: false, returned: false } },
+      },
       // Explícito para valer também em desenvolvimento/teste; padrão do Better Auth no sign-in: 3 a cada 10 s por IP.
       rateLimit: { enabled: true },
       databaseHooks: { session: { create: { before: async session => {
-        // Sem cadastro ativo no domínio, o sign-in responde 401 e não grava sessão.
-        const usuario = await prisma.usuario.findUnique({ where: { authId: session.userId }, select: { ativo: true } });
+        // Sem cadastro ativo no domínio, o sign-in responde 401 e não grava sessão. A versão lida aqui
+        // acompanha a sessão: o trigger do banco recusa a gravação se a conta foi desativada ou
+        // reativada entre esta leitura e a inserção (migração sessao_conta_ativa).
+        const usuario = await prisma.usuario.findUnique({ where: { authId: session.userId }, select: { ativo: true, versaoAtivacao: true } });
         if (!usuario?.ativo) return false;
+        return { data: { versaoAtivacao: usuario.versaoAtivacao } };
       } } } },
       advanced: { useSecureCookies: secure, defaultCookieAttributes: { httpOnly: true, sameSite: "lax", secure } },
     });

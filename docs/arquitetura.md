@@ -175,8 +175,11 @@ ativação, aprovação ou clube de uma conta bloqueiam essa linha com `FOR UPDA
 Ativação de contas (MAR-60): `POST /api/contas/:usuarioId/desativacao` e `/reativacao`, somente
 presidente ativo e somente para outras contas. A transação obtém um advisory lock próprio
 (serializa ativações e evita deadlock quando dois presidentes desativam um ao outro), revalida o
-presidente, bloqueia a conta alvo com `FOR UPDATE`, altera `Usuario.ativo` e apaga as `AuthSession`
-da conta alvo. Desativar o último presidente ativo com credencial responde 409; presidente sem
+presidente, bloqueia a conta alvo com `FOR UPDATE`, altera `Usuario.ativo`, incrementa
+`Usuario.versaoAtivacao` e apaga as `AuthSession` da conta alvo. O hook de sessão do Better Auth grava
+a versão lida em `AuthSession.versaoAtivacao`; o trigger da migração `sessao_conta_ativa` recusa a
+inserção se a conta estiver inativa ou a versão tiver mudado (login concorrente). Nesse caso raro o
+login responde erro interno (500) sem emitir sessão. Desativar o último presidente ativo com credencial responde 409; presidente sem
 credencial (fictício do seed) não conta. Reativar também apaga sessões: a pessoa entra novamente.
 Repetição responde 200 com `alterado: false`. Nada é excluído. `contaAtiva(tx, usuarioId)`
 (`modules/contas/contas.ts`) é a checagem que a arbitragem por designação deve reutilizar dentro

@@ -242,7 +242,11 @@ dispositivos), login recusado, histórico/vínculo/aprovação preservados, repe
 reativação com novo login; acesso indevido (sem sessão, atleta, técnico aprovado, própria conta,
 origem, corpo forjado, conta inexistente); cinco rodadas dos dois últimos presidentes desativando um
 ao outro simultaneamente, com exatamente um ativo; recusa do último presidente com credencial e
-`contaAtiva` aguardando desativação concorrente. Nenhuma migração ou dependência nova.
+`contaAtiva` aguardando desativação concorrente. Após revisão: 31 testes aprovados, com regressão de
+login concorrente (barreira entre a leitura da conta pelo hook e a gravação da sessão): desativação, ou
+desativação e reativação, no intervalo não deixa sessão gravada; sessão em gravação faz a desativação
+aguardar e é revogada; versão desatualizada ou ausente é recusada pelo banco. Migração
+`sessao_conta_ativa`; nenhuma dependência nova.
 
 ## Caminho feliz
 

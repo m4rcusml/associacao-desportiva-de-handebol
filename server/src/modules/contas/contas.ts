@@ -47,7 +47,8 @@ export async function alterarAtivacao(tx: Prisma.TransactionClient, presidenteId
   if (!ativo && alvo.perfil === "presidente" && await outrosPresidentesComAcesso(tx, alvo.id) === 0) {
     throw new ConflictException("Não é possível desativar o último presidente ativo");
   }
-  await tx.usuario.update({ where: { id: alvo.id }, data: { ativo } });
+  // Nova versão: login iniciado antes desta alteração não consegue mais gravar sessão (trigger em AuthSession).
+  await tx.usuario.update({ where: { id: alvo.id }, data: { ativo, versaoAtivacao: { increment: 1 } } });
   await tx.authSession.deleteMany({ where: { userId: alvo.authId } });
   return { usuario: { id: alvo.id, perfil: alvo.perfil, ativo }, alterado: true };
 }

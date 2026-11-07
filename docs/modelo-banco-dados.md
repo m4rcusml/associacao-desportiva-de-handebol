@@ -31,11 +31,14 @@ nunca conta como presidente ativo e não deve receber credencial. Se isso mudar,
 do último presidente ativo (MAR-60) e o procedimento `presidente:inicial` (MAR-55).
 O presidente inicial com credencial vem do procedimento restrito descrito no README; os seguintes
 são criados por presidente ativo, com `criadoPorPresidenteId` preenchido (MAR-55).
-Presidente desativa/reativa outras contas alterando somente `Usuario.ativo` e revogando as
-`AuthSession` da conta (MAR-60); extensões, vínculos, `Tecnico.clubeId`, aprovações, credencial e
-autoria são mantidos.
+Presidente desativa/reativa outras contas alterando `Usuario.ativo`, incrementando
+`Usuario.versaoAtivacao` e revogando as `AuthSession` da conta (MAR-60); extensões, vínculos,
+`Tecnico.clubeId`, aprovações, credencial e autoria são mantidos. `AuthSession.versaoAtivacao` guarda
+a versão lida no login; um trigger (`BEFORE INSERT/UPDATE`, com `FOR SHARE` na conta) recusa sessão
+de conta inativa ou com versão diferente da atual, impedindo que login concorrente grave sessão após
+a desativação ou, havendo reativação no intervalo, sessão válida sem novo login.
 Pelo menos um presidente ativo com credencial permanece, com serialização no banco. Não há
-colunas de autoria/data da desativação: auditoria continua em PEN-007, sem nova migração.
+colunas de autoria/data da desativação: auditoria continua em PEN-007.
 Testes comprovam rollback também quando a falha ocorre no commit e acesso negado para identidade
 sem domínio. Aprovações, transferências e edição não estão implementadas; revalidar suas regras
 transacionais ao introduzir essas operações.
