@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, ConflictException, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import type { Request } from "express";
@@ -7,6 +7,9 @@ import { PrismaService } from "../../infrastructure/prisma.service.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import { AuthService } from "./auth.service.js";
 import { SessionGuard } from "./session.guard.js";
+import { type Ator, exigirAcessoClube } from "../autorizacao/ator.js";
+import { AtorAtual, Requer, RequerAprovado } from "../autorizacao/autorizacao.decorators.js";
+import { AutorizacaoService } from "../autorizacao/autorizacao.service.js";
 import { z } from "zod";
 
 const camposConta = z.strictObject({
@@ -21,7 +24,7 @@ const cadastroSchema = z.discriminatedUnion("perfil", [
 
 @Controller()
 export class AuthController {
-  constructor(private readonly prisma: PrismaService, private readonly authService: AuthService) {}
+  constructor(private readonly prisma: PrismaService, private readonly authService: AuthService, private readonly autorizacao: AutorizacaoService) {}
 
   @Get("openapi.json")
   openapi() {
@@ -38,8 +41,11 @@ export class AuthController {
         } } },
         "/auth/sign-in/email": { post: { summary: "Login Better Auth; emite cookie HttpOnly", requestBody: { required: true, ...json(z.toJSONSchema(camposConta.omit({ nomeCompleto: true }))) }, responses: { "200": resposta("Sessão criada"), "401": resposta("Credenciais inválidas ou cadastro inativo"), "429": resposta("Limite de tentativas de login do Better Auth"), "403": resposta("Origem não autorizada") } } },
         "/auth/get-session": { get: { summary: "Sessão técnica Better Auth ou null", responses: { "200": resposta("Sessão técnica persistida ou null; não concede autorização de domínio") } } },
-        "/sessao": { get: { summary: "Sessão com cadastro ativo no domínio", security, responses: { "200": resposta("usuario: id, nomeCompleto, perfil, statusVerificacao; expiresAt"), "401": resposta("Sessão ou cadastro indisponível") } } },
+        "/sessao": { get: { summary: "Sessão com cadastro ativo no domínio", security, responses: { "200": resposta("usuario: id, nomeCompleto, perfil, statusVerificacao, aprovado, clubeId; expiresAt"), "401": resposta("Sessão ou cadastro indisponível") } } },
         "/protegida": { get: { summary: "Prova de acesso autenticado; não exige aprovação esportiva", security, responses: { "200": resposta("message: Acesso autenticado confirmado pelo servidor."), "401": resposta("Sessão ou cadastro indisponível") } } },
+        "/protegida/aprovado": { get: { summary: "Demonstração: exige aprovação esportiva (presidente ou atleta/técnico aprovado)", security, responses: { "200": resposta("perfil, aprovado"), "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Cadastro pendente ou rejeitado") } } },
+        "/protegida/presidente": { get: { summary: "Demonstração: exige perfil presidente", security, responses: { "200": resposta("perfil"), "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Perfil sem permissão") } } },
+        "/protegida/clubes/{clubeId}": { get: { summary: "Demonstração: presidente acessa qualquer clube; atleta/técnico aprovado somente o próprio", security, parameters: [{ name: "clubeId", in: "path", required: true, schema: { type: "string", format: "uuid" } }], responses: { "200": resposta("perfil, clubeId"), "400": resposta("clubeId inválido"), "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Sem aprovação ou clube de outro"), } } },
         "/auth/sign-out": { post: { summary: "Revoga a sessão atual no PostgreSQL e remove cookie", security, requestBody: { required: true, ...json({ type: "object" }) }, responses: { "200": resposta("Logout concluído"), "403": resposta("Origem não autorizada") } } },
       },
     };
@@ -94,4 +100,25 @@ export class AuthController {
   @Get("protegida")
   @UseGuards(SessionGuard)
   protegida() { return { message: "Acesso autenticado confirmado pelo servidor." }; }
+
+  // Rotas de demonstração da autorização de domínio; não concedem nem alteram dados esportivos.
+  @Get("protegida/aprovado")
+  @UseGuards(SessionGuard)
+  @RequerAprovado()
+  protegidaAprovado(@AtorAtual() ator: Ator) { return { perfil: ator.perfil, aprovado: ator.aprovado }; }
+
+  @Get("protegida/presidente")
+  @UseGuards(SessionGuard)
+  @Requer({ perfis: ["presidente"] })
+  protegidaPresidente(@AtorAtual() ator: Ator) { return { perfil: ator.perfil }; }
+
+  @Get("protegida/clubes/:clubeId")
+  @UseGuards(SessionGuard)
+  @RequerAprovado()
+  async protegidaClube(@AtorAtual() ator: Ator, @Param("clubeId", new ParseUUIDPipe()) clubeId: string) {
+    exigirAcessoClube(ator, clubeId);
+    // Revalida na transação, como farão as operações de escrita dos módulos esportivos.
+    const revalidado = await this.prisma.$transaction(tx => this.autorizacao.revalidarClube(tx, ator, clubeId));
+    return { perfil: revalidado.perfil, clubeId };
+  }
 }
