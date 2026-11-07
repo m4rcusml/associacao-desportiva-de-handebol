@@ -145,10 +145,36 @@ Em `server/`, configure `TEST_DATABASE_URL` no `.env` e execute:
 npm run test:integration
 ```
 
-A suíte aplica as migrações no banco de teste, inicia uma API em porta livre e limpa somente
-suas próprias fixtures. Não precisa das aplicações abertas. Não execute duas cópias da suíte
-no mesmo banco simultaneamente: uma prova instala temporariamente um trigger de falha no commit.
+A suíte descobre todos os arquivos `test/**/*.integration.ts` e os executa em série, aplica as
+migrações no banco de teste, inicia uma API em porta livre e limpa somente suas próprias fixtures.
+Não precisa das aplicações abertas. O runner exige `DATABASE_URL` e `TEST_DATABASE_URL` com nomes
+de banco diferentes; o banco de teste deve terminar em `_test`, sem parâmetros ou fragmento na URL.
+Antes das migrações, obtém um advisory lock transacional no PostgreSQL: uma segunda execução no
+mesmo banco falha imediatamente, inclusive em outra máquina. O lock é liberado ao finalizar ou
+fechar a conexão. Use sempre `npm run test:integration`; não execute arquivos isoladamente.
+Essa exclusão protege os testes que instalam temporariamente triggers de falha no commit.
 O log de erro dessa falha e o aviso de senha incorreta são esperados nos testes.
+
+### Checks de backend nos PRs (MAR-53)
+
+O workflow [Backend](.github/workflows/backend.yml) executa em todos os PRs, pushes em `main`
+e manualmente, sem modificar ou instalar o frontend. O check esperado pelo revisor é
+`Backend checks`: `npm ci`, `npm run lint`, `npm run typecheck` (inclui build) e
+`npm run test:integration`, em Ubuntu 24.04 com Node.js 26.8.2 e npm 12.2.0, aceitos pelos manifests.
+Cada job recebe PostgreSQL 17.11 descartável, com banco `handebol_test` e credenciais fictícias
+exclusivas de CI; não usa segredos de implantação nem depende de um arquivo `.env`.
+O runner também pode carregar o `.env` local quando existir, preservando as variáveis do ambiente.
+
+O revisor deve conferir esse check aprovado, a descoberta dos arquivos de integração e as provas
+de rejeição de banco inadequado/execução simultânea. Alterações apenas no frontend também recebem
+o check para evitar checks obrigatórios pendentes por filtro de caminhos. O workflow tem somente
+permissão de leitura e não altera proteção de branch ou configura bypass. A primeira execução
+hospedada deve ser conferida no PR; executar os comandos localmente não comprova o runner do GitHub.
+
+Validação local da MAR-53 em 07/11/2026: `npm ci`, lint, tipos/build, leitura do YAML do workflow
+e 17 testes de integração aprovados. A suíte passou no banco dedicado existente e em um
+PostgreSQL 17.11 descartável, com as três migrações aplicadas desde zero e as variáveis fictícias
+da CI. Nenhuma dependência foi adicionada. A execução hospedada no GitHub Actions permanece pendente.
 
 Validação em 07/11/2026, Node.js 26.8.2/npm 12.2.0 e PostgreSQL 17.11:
 

@@ -1,19 +1,13 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { execFileSync } from "node:child_process";
 import { randomInt, randomUUID } from "node:crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
 import { AuthService } from "../dist/modules/autenticacao/auth.service.js";
 
-const database = process.env.TEST_DATABASE_URL;
-assert.ok(database, "Configure TEST_DATABASE_URL com banco dedicado terminado em _test");
-assert.ok(new URL(database).pathname.endsWith("_test"), "Banco de integração deve terminar em _test");
-assert.notEqual(new URL(database).pathname, new URL(process.env.DATABASE_URL!).pathname, "Não use o banco de desenvolvimento nos testes");
-process.env.DATABASE_URL = database;
-process.env.NODE_ENV = "test";
+assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
 const app = await createApp();
 const prisma = app.get(PrismaService);
@@ -47,7 +41,6 @@ async function login(loginEmail: string) {
 }
 
 before(async () => {
-  execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"], { env: process.env, stdio: "pipe" });
   await app.listen(0, "127.0.0.1");
   base = `${await app.getUrl()}/api`;
   await prisma.usuario.create({ data: { id: clubeId, authId: `fixture-${clubeId}`, nomeCompleto: "Presidente de teste", perfil: "presidente", presidente: { create: {} } } });

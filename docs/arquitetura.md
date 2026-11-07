@@ -172,6 +172,10 @@ Limites de tamanho/formato das fotos e permissões de consulta e edição ainda 
 ## Desenvolvimento e banco
 
 - npm como gerenciador de pacotes, com lockfile versionado e `npm ci` em instalações automatizadas.
+- CI de backend em GitHub Actions, com lint, tipos/build e todos os arquivos de integração em
+  PostgreSQL descartável por job. O runner local/CI valida o banco dedicado e usa advisory lock
+  transacional para recusar suítes simultâneas no mesmo banco; arquivos executam em série.
+  Runtimes e check esperado pelo revisor estão no [README](../README.md#checks-de-backend-nos-prs-mar-53).
 - Versões diretas fixadas nos manifests e lockfiles separados de `client/` e `server/`;
   não há workspace nem orquestrador adicional nesta etapa. Matriz inicial abaixo.
 - Preservar scripts convencionais dos frameworks e ferramentas para execução, build e testes,
