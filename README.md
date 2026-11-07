@@ -67,6 +67,27 @@ cliente Prisma e cria, em transação, um clube fictício e seu presidente fict�
 de login**. Pode ser repetido; não aprova atletas/técnicos nem cria acesso administrativo.
 O seed recusa `NODE_ENV=production`.
 
+#### Presidente inicial e novos presidentes (MAR-55)
+
+O primeiro presidente com acesso é criado por um procedimento restrito, executado por quem
+administra a implantação (acesso ao servidor e ao `DATABASE_URL`), após `npm run build`:
+
+```sh
+npm run presidente:inicial -- --nome "Nome Completo" --email pessoa@exemplo.org
+```
+
+A senha é digitada de forma oculta e confirmada no terminal; com entrada redirecionada, vale a
+primeira linha. Não há senha padrão nem senha em argumentos ou arquivos versionados. Identidade,
+credencial, `Usuario` e `Presidente` (sem criador) são gravados em uma transação. O procedimento é
+serializado por advisory lock e recusa a execução quando já existe presidente ativo com credencial;
+o presidente fictício do seed, sem credencial, não impede o procedimento. Falhas não deixam registros.
+
+Depois disso, somente presidente ativo autenticado cria outros presidentes com
+`POST /api/presidentes` (`nomeCompleto`, `email`, `password` com a senha inicial), e o criador fica
+em `Presidente.criadoPorPresidenteId`. Campos adicionais são rejeitados; atleta, técnico, conta
+inativa e cadastro público não criam presidentes. Enquanto recuperação e troca de senha não
+existirem, a senha inicial deve ser entregue ao novo presidente por canal seguro.
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -201,6 +222,13 @@ presidente, inativo, identidade sem domínio, cruzamento de clubes, parâmetros 
 transferência) e revalidação em transação concorrente com desativação. Nenhuma dependência nova.
 Revisão da MAR-54: comparação de UUID de clube sem distinção entre maiúsculas e minúsculas;
 regressão HTTP para atleta/técnico no próprio clube e em outro clube. Lint, tipos/build e 22 testes revalidados.
+
+Validação local da MAR-55 em 07/11/2026: lint, tipos/build e 26 testes de integração aprovados,
+incluindo quatro novos: procedimento do presidente inicial executado como processo (entrada inválida,
+falha no commit, duas execuções simultâneas com exatamente uma concluída, login e repetição recusada),
+criação autorizada com criador registrado, e-mail repetido/campos forjados, rollback no commit pela API
+e escalada negada (sem sessão, atleta, técnico aprovado, presidente desativado e cadastro público).
+A entrada oculta no terminal interativo não é coberta pelos testes automatizados.
 
 ## Caminho feliz
 
