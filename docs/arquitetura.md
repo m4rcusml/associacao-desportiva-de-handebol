@@ -156,6 +156,18 @@ Client usa fetch com cookies e sem cache; as páginas são cascas estáticas, se
 Ao introduzir SSR autenticado, repassar cookies e provar isolamento/cache antes de utilizá-lo.
 O contrato mínimo é servido em `/api/openapi.json`, com schema de cadastro derivado da validação.
 
+Autorização de domínio (MAR-54): `SessionGuard` resolve o ator (`carregarAtor`) a partir da sessão
+persistida — conta ativa, perfil, status de verificação e clube atual (vínculo aberto do atleta ou
+clube do técnico) — e o anexa à requisição (`@AtorAtual()`). Requisitos são declarados por
+`@Requer({ perfis, aprovado })`/`@RequerAprovado()`, sem regras nos controllers. Presidente é
+considerado aprovado; atleta/técnico pendente ou rejeitado autentica (401 só sem sessão, inativo
+ou sem domínio), mas recebe 403 em operações esportivas. Acesso a clube (`exigirAcessoClube`):
+presidente acessa qualquer clube; atleta/técnico aprovado, somente o próprio, obtido do cadastro e
+nunca da entrada. Escritas sensíveis chamam `AutorizacaoService.revalidar`/`revalidarClube` dentro
+da transação, que relê o ator com `FOR SHARE` na linha `Usuario`. Convenção: operações que alterem
+ativação, aprovação ou clube de uma conta bloqueiam essa linha com `FOR UPDATE`. As rotas
+`/api/protegida/{aprovado,presidente,clubes/:clubeId}` só demonstram e testam essas regras.
+
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,
 conta inativa/sem domínio e replays paralelos após logout. Cadastro de atleta, login, recarga,
