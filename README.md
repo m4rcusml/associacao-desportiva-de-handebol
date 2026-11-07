@@ -12,7 +12,7 @@ os fluxos descritos abaixo são o comportamento planejado e ainda não estão im
 - [Modelagem do banco e suas regras](docs/modelo-banco-dados.md)
 - [Diagrama com atributos e relações](docs/modelo-banco-dados.mmd)
 - [Pendências e confirmações com o cliente](docs/pendencias.md)
-- [Glossário](GLOSSARY.md)
+- [Glossário](docs/GLOSSARY.md)
 - [Diagrama no Miro](https://miro.com/app/board/uXjVEU3V9rY=/?moveToWidget=3458764688860471326)
 
 ## Desenvolvimento local

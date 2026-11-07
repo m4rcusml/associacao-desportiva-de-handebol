@@ -16,7 +16,7 @@ Consulte os documentos conforme a tarefa, mantendo as definições detalhadas em
 - [docs/requisitos.md](docs/requisitos.md): funcionalidades, regras de negócio e requisitos não funcionais.
 - [docs/arquitetura.md](docs/arquitetura.md): tecnologias e decisões técnicas aprovadas.
 - [docs/modelo-banco-dados.md](docs/modelo-banco-dados.md): entidades, relacionamentos e restrições.
-- [GLOSSARY.md](GLOSSARY.md): vocabulário do domínio a utilizar no código e nas discussões.
+- [docs/GLOSSARY.md](docs/GLOSSARY.md): vocabulário do domínio a utilizar no código e nas discussões.
 - [docs/pendencias.md](docs/pendencias.md): perguntas em aberto e comportamentos provisórios. Consulte antes de implementar uma regra afetada; pendências não são funcionalidades aprovadas.
 
 ## Direção do desenvolvimento

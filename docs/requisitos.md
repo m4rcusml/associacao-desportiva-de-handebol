@@ -8,7 +8,7 @@ Esta versão cobre usuários, clubes, campeonatos, jogos, carteirinhas, credenci
 desempenho e suspensões. Requisitos descrevem o comportamento esperado; a modelagem descreve sua
 representação no banco.
 
-Referências: [modelagem lógica](modelo-banco-dados.md), [diagrama](modelo-banco-dados.mmd) e [glossário](../GLOSSARY.md). [Definições iniciais](definicoes-iniciais.md) é um
+Referências: [modelagem lógica](modelo-banco-dados.md), [diagrama](modelo-banco-dados.mmd) e [glossário](GLOSSARY.md). [Definições iniciais](definicoes-iniciais.md) é um
 registro histórico, substituído pelas decisões posteriores quando houver divergência.
 
 Os identificadores RF, RNF e RN representam, respectivamente, requisitos funcionais, requisitos não

@@ -1,7 +1,7 @@
 # Gestão de handebol
 
 Vocabulário consolidado na primeira versão da modelagem, em 04/11/2026. As decisões e restrições
-estão em [docs/modelo-banco-dados.md](docs/modelo-banco-dados.md).
+estão em [modelo-banco-dados.md](modelo-banco-dados.md).
 
 ## Linguagem
 
