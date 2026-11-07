@@ -2,8 +2,8 @@
 
 Projeto de uma aplicação para organizar clubes, atletas, campeonatos e jogos de handebol. A proposta
 reúne aprovação de cadastros, carteirinhas, credenciamento, arbitragem e histórico esportivo,
-apoiando o trabalho cotidiano da associação. O repositório inicia a preparação técnica;
-os fluxos descritos abaixo são o comportamento planejado e ainda não estão implementados.
+apoiando o trabalho cotidiano da associação. Persistência e o fluxo mínimo de contas estão
+implementados localmente. Os fluxos esportivos descritos no caminho feliz continuam planejados.
 
 ## Documentação
 
@@ -18,10 +18,29 @@ os fluxos descritos abaixo são o comportamento planejado e ainda não estão im
 ## Desenvolvimento local
 
 Frontend e backend têm instalações, lockfiles e builds independentes. A matriz de versões
-está em [arquitetura](docs/arquitetura.md#matriz-inicial--07112026); `.node-version` indica
-o Node.js alvo. Instale Docker com Compose para executar o PostgreSQL local.
+está em [arquitetura](docs/arquitetura.md#matriz-inicial--07112026); os manifests indicam
+os runtimes aceitos. Instale Docker com Compose para executar o PostgreSQL local.
 Copie `.env.example` da raiz para `.env` e `server/.env.example` para `server/.env`.
-As credenciais de exemplo são exclusivamente locais. O frontend ainda não exige variáveis de ambiente.
+As credenciais de exemplo são exclusivamente locais. Em `server/.env`, gere e preencha
+`BETTER_AUTH_SECRET` (mínimo 32 caracteres):
+
+```sh
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+Não versione o valor gerado. As outras variáveis estão nos `.env.example`:
+
+| Variável | Uso |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL do backend e das migrações; deve corresponder ao Compose. |
+| `TEST_DATABASE_URL` | Banco separado, com nome terminado em `_test`; nunca usar o banco de desenvolvimento. |
+| `BETTER_AUTH_URL` | URL externa da API, localmente `http://localhost:3001`. |
+| `CLIENT_ORIGIN` | Origem exata autorizada, localmente `http://localhost:3000`, sem curinga. |
+| `BETTER_AUTH_SECRET` | Segredo local aleatório, mantido no backend. |
+| `PORT` | Porta da API, padrão 3001. |
+| `NEXT_PUBLIC_API_URL` | Opcional em `client/.env.local`, conforme `client/.env.example`; padrão `http://localhost:3001/api`. Incorporado no build do Next. |
+
+Use `localhost` nas duas URLs do navegador; não misture com `127.0.0.1`.
 
 Na raiz do repositório, inicie o banco:
 
@@ -33,8 +52,25 @@ docker compose up -d --wait
 O volume nomeado preserva os dados entre reinicializações. `docker compose down` para o banco
 sem remover o volume; não use `down -v` para uma parada normal.
 
-Em cada aplicação, execute `npm ci` na primeira instalação ou após atualização do lockfile.
-Inicie em terminais separados:
+Prepare a persistência em `server/`:
+
+```sh
+cd server
+npm ci
+npm run db:deploy
+npm run db:seed
+```
+
+`db:deploy` aplica as migrações versionadas, sem resetar o banco. `db:seed` gera/compila o
+cliente Prisma e cria, em transação, um clube fictício e seu presidente fictício **sem credencial
+de login**. Pode ser repetido; não aprova atletas/técnicos nem cria acesso administrativo.
+O seed recusa `NODE_ENV=production`.
+
+Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
+executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
+Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
+
+Inicie as aplicações em terminais separados:
 
 ```sh
 cd client
@@ -58,16 +94,79 @@ O endpoint de saúde confirma apenas que o processo HTTP está ativo; ainda não
 | Build | `npm run build` | `npm run build` |
 | Executar build | `npm start` | `npm run start:prod` |
 
-A estrutura contém uma página inicial e um endpoint de saúde. Autenticação, conexão Prisma,
-migrações, seed e funcionalidades esportivas serão implementados nas próximas etapas.
-Não há suíte de testes de negócio ainda; a primeira prova deve cobrir cadastro e revogação
-concorrente, sem recuperação de senha nesta etapa. Não foram criados recursos online.
+`typecheck` do backend também verifica seed, configuração Prisma e testes, usando as declarações
+geradas pelo build. `build` gera o cliente Prisma antes de compilar. Um único `PrismaService`
+é compartilhado por toda a aplicação Nest; seed e testes rodam em processos próprios.
 
-Verificação inicial em 07/11/2026: build, lint, tipos e árvore de dependências passaram nas duas
-aplicações com Node.js 26.8.2/npm 12.2.0. Os builds responderam HTTP 200 e o PostgreSQL 17.11
-foi iniciado e consultado. Os patches-alvo da matriz ainda não foram executados. ESLint 9 está
-descontinuado no registro npm, mas é a última linha aceita pelos plugins atuais do Next;
-a limitação e a atualização futura estão registradas na arquitetura.
+### Fluxo de contas disponível
+
+1. Abra `http://localhost:3000/cadastro`; informe nome completo, e-mail, senha de 8 a 128
+   caracteres e perfil atleta ou técnico. Atleta deve selecionar clube; técnico começa sem clube.
+2. O cadastro solicita verificação e fica pendente; não há confirmação de e-mail nem autoaprovação.
+3. Entre em `/login`. A página inicial consulta `/api/sessao` e permite verificar `/api/protegida`.
+4. Recarregue para confirmar a sessão persistida. “Sair da conta” revoga somente a sessão atual
+   no PostgreSQL e remove o cookie; outros dispositivos continuam autenticados.
+
+O contrato está em `GET /api/openapi.json`. Cadastro usa `POST /api/cadastros`; login e logout
+usam `POST /api/auth/sign-in/email` e `POST /api/auth/sign-out` (corpo `{}` no logout).
+`GET /api/auth/get-session` consulta apenas a sessão técnica; use `/api/sessao` para o cadastro
+ativo do domínio. Rotas nativas de cadastro, edição de conta e recuperação estão bloqueadas.
+Campos extras são rejeitados; presidente não pode ser criado publicamente.
+
+Identidade técnica, hash gerado pelo Better Auth, usuário, extensão e vínculo inicial são
+gravados na mesma transação Prisma. E-mail é normalizado para minúsculas; duplicatas retornam
+409, inclusive em concorrência. Em falha de vínculo ou de commit, nada é mantido; uma nova
+tentativa pode concluir. Após resposta perdida, repetir retorna 409 se já houve commit: faça login.
+O guard consulta sessão persistida e cadastro ativo a cada acesso protegido. Aprovação esportiva
+não é exigida na rota de demonstração e não é concedida por autenticar.
+
+Cookies são `HttpOnly; SameSite=Lax`, host-only e `Secure` em produção; HTTP local usa `Secure=false`.
+Sessões expiram em sete dias, sem renovação automática nesta entrega, com `cookieCache` desligado.
+POST exige `Origin` exatamente igual a `CLIENT_ORIGIN`, inclusive em clientes de linha de comando;
+use JSON. CORS autoriza apenas essa origem e cookies. A biblioteca mantém sua proteção nativa de
+origem/CSRF. Com `NODE_ENV=production`, API e cliente exigem URLs HTTPS na configuração.
+
+As páginas são cascas estáticas; os dados autenticados são consultados no navegador com
+`credentials: include` e `cache: no-store`. Não há SSR de sessão nesta entrega. Se for introduzido,
+será necessário repassar cookies ao Nest e testar isolamento por requisição e cache. HTTPS,
+encaminhamento do domínio público e cookies hospedados ainda precisam de prova online.
+
+### Testes de integração
+
+Com Docker ativo, crie uma vez o banco dedicado (ajuste o usuário se mudou o `.env`):
+
+```sh
+docker compose exec postgres psql -U handebol -d postgres -c "CREATE DATABASE handebol_test;"
+```
+
+Em `server/`, configure `TEST_DATABASE_URL` no `.env` e execute:
+
+```sh
+npm run test:integration
+```
+
+A suíte aplica as migrações no banco de teste, inicia uma API em porta livre e limpa somente
+suas próprias fixtures. Não precisa das aplicações abertas. Não execute duas cópias da suíte
+no mesmo banco simultaneamente: uma prova instala temporariamente um trigger de falha no commit.
+O log de erro dessa falha e o aviso de senha incorreta são esperados nos testes.
+
+Validação em 07/11/2026, Node.js 26.8.2/npm 12.2.0 e PostgreSQL 17.11:
+
+- Três migrações aplicadas, seed repetível e leitura/escrita pelo Prisma comprovadas.
+- Onze testes HTTP/banco: privilégios, restrições SQL, OpenAPI, origem/CORS, consistência em
+  falhas e repetição, cadastros concorrentes, hash/login, expiração, conta inativa, identidade sem
+  domínio, múltiplos dispositivos e replays paralelos do cookie antigo após conclusão do logout.
+- Configuração HTTPS de produção testada no handler com emissão de cookie Secure/HttpOnly/Lax;
+  isso não substitui a prova do proxy/TLS hospedado.
+- Navegador Edge/Playwright: cadastro de atleta e técnico, login, acesso protegido, recarga autenticada e
+  logout com nova recarga; inspeção de layout móvel e desktop.
+- Lint, tipos e builds das duas aplicações aprovados; árvore de dependências do backend válida.
+- Auditoria npm do backend: nenhum alerta de produção; sete alertas moderados na cadeia
+  de desenvolvimento `typescript-eslint`/`minimatch`. ESLint 9 segue a limitação já documentada.
+
+Não foram criados recursos online. PEN-030 continua parcialmente aberta: arbitragem temporária,
+Socket.IO, concorrência com operações esportivas, implantação e futura recuperação/reset não
+foram implementados nem validados. Os patches-alvo de Node/npm da matriz não foram executados.
 
 ## Caminho feliz
 

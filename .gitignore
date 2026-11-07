@@ -9,3 +9,6 @@ coverage/
 !.env.example
 *.log
 .vercel/
+server/src/generated/
+output/playwright/
+.playwright-cli/

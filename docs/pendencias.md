@@ -125,10 +125,13 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
 
 - PEN-030: escolha documental concluída em 07/11/2026 — Better Auth com Prisma/PostgreSQL,
   tabelas `AuthUser`, `AuthAccount`, `AuthSession`, `AuthVerification` e `SessaoArbitragem` própria.
-  Integração ainda não validada: fixar matriz de versões (PEN-032) e comprovar cadastro consistente,
-  cookies/CSRF/SSR e revogação HTTP/Socket.IO antes do aceite técnico. Recuperação e prova de reset
-  adiadas nesta etapa; retomá-las posteriormente. A escolha está encerrada; a PEN-030 permanece
-  parcialmente aberta para validação. Regras atuais da arbitragem substituem as pendências
+  Prova local parcial concluída: versões fixadas, migrações/seed, cadastro atômico com falhas e
+  repetição concorrente, cookies/CSRF/CORS, sessões persistidas e replays paralelos após logout
+  HTTP validados. Client não usa SSR de sessão; será preciso validar seu repasse de cookies/cache
+  quando introduzido. Arbitragem temporária, concorrência com escritas esportivas e revogação
+  Socket.IO continuam fora da entrega, assim como TLS/proxy/cookies hospedados. Recuperação e prova
+  de reset seguem adiadas. A escolha está encerrada; a PEN-030 **não está totalmente encerrada**.
+  Regras atuais da arbitragem substituem as pendências
   históricas da conclusão: PEN-022 resolvida; PEN-021 com detalhes residuais.
 - PEN-031 parcialmente resolvida: Vercel para frontend, Render para backend e Supabase para banco
   e fotos; usar franquia gratuita de armazenamento nesta etapa, conferindo limites antes de provisionar.
@@ -138,10 +141,12 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   preferência por Node.js LTS e scripts convencionais. Estrutura mínima de `client/` e `server/`
   criada em 07/11/2026, com pacotes/lockfiles independentes e matriz na arquitetura. PostgreSQL
   17.11 iniciado e consultado em Docker Compose, com volume persistente. Scripts de desenvolvimento,
-  lint, tipos e build definidos no README. Prisma, migrações e seed ainda serão implementados;
-  a escolha é versionar migrações e aplicá-las na publicação, com seed fictício reproduzível.
-  Conexão hospedada direta ou Session Pooler conforme rede. Faltam prova da autenticação,
-  alinhamento à versão do Supabase provisionado e detalhes de implantação; produção permanece adiada.
+  lint, tipos e build definidos no README. Prisma 7.10.1 e Better Auth/adaptador 1.7.18 fixados
+  e validados juntos; três migrações aplicadas e seed fictício reproduzível. Onze testes de integração,
+  navegador e lint/tipos/build aprovados. Node/npm executados: 26.8.2/12.2.0; patches-alvo ainda não.
+  Conexão hospedada direta ou Session Pooler conforme rede. Faltam alinhamento à versão do Supabase
+  provisionado e detalhes de implantação; produção permanece adiada. Alertas moderados de ferramentas
+  de lint e a limitação de suporte do ESLint 9 continuam registrados na arquitetura.
 - PEN-033: equipe define os contratos em código/OpenAPI e detalha eventos, reconexão, publicação
   após transação e conflitos. Não exige questionário técnico ao usuário; decisões de comportamento
   ainda indefinidas, inclusive PEN-023, precisam ser esclarecidas.

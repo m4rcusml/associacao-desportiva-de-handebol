@@ -12,6 +12,7 @@
     "strict": true,
     "skipLibCheck": true,
     "sourceMap": true,
+    "declaration": true,
     "incremental": true
   },
   "include": ["src/**/*.ts"],

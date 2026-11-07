@@ -14,6 +14,14 @@ registro histórico, substituído pelas decisões posteriores quando houver dive
 Os identificadores RF, RNF e RN representam, respectivamente, requisitos funcionais, requisitos não
 funcionais e regras de negócio. Não implicam ordem de implementação.
 
+Implementação local em 07/11/2026: cadastro mínimo de atleta/técnico com solicitação pendente,
+vínculo inicial obrigatório do atleta, login por e-mail/senha sem confirmação de e-mail,
+consulta de sessão, rota autenticada de demonstração e logout revogável. Persistência em
+PostgreSQL/Prisma validada com testes de falha e concorrência do cadastro e repetição do cookie
+após logout. Aprovação esportiva, carteirinhas, recuperação, arbitragem e demais fluxos continuam
+planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
+Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
+
 | Situação   | Significado                                                                        |
 | ---------- | ---------------------------------------------------------------------------------- |
 | Confirmado | Decisão expressa ou proposta aceita por Marcus nas rodadas                         |

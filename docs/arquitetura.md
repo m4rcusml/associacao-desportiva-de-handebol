@@ -2,8 +2,8 @@
 
 Decisões acordadas com Marcus em 06/11/2026 e atualizadas em 07/11/2026 pela resolução da
 PEN-030 e pelas definições posteriores de desenvolvimento, infraestrutura e arbitragem.
-Este documento descreve a direção aprovada. A estrutura mínima local foi criada;
-as funcionalidades de domínio e a infraestrutura online ainda não foram implementadas.
+Este documento descreve a direção aprovada. Persistência e cadastro/autenticação mínimos estão
+implementados e validados localmente; os demais fluxos de domínio e a infraestrutura online não.
 
 Referências: [requisitos](requisitos.md), [modelagem](modelo-banco-dados.md) e
 [pendências](pendencias.md).
@@ -104,16 +104,45 @@ complementam o domínio. `Usuario.authId` permanece único e sem FK; não exige 
 O cadastro deve impedir identidades parcialmente criadas de obter permissões e tratar falhas e
 repetições. Um hook após criação não comprova atomicidade entre biblioteca e domínio.
 
-Direção para a prova de integração: handler oficial Node/Express no NestJS e guard de domínio,
-sem exigir a ponte comunitária `@thallesp/nestjs-better-auth`. A montagem precede o parser do
-corpo nas rotas da biblioteca; as demais rotas mantêm validação normal. Confirmar esse desenho,
-ESM, rotas, OpenAPI, cookies `HttpOnly; Secure; SameSite=Lax`, origem/CSRF e SSR antes de implementar
-o módulo definitivo. O Next.js apenas consome a API e repassa cookies no SSR.
+Integração implementada: handler oficial Node/Express no NestJS e guard de domínio,
+sem a ponte comunitária `@thallesp/nestjs-better-auth`. A montagem precede o parser do
+corpo nas rotas da biblioteca; as demais rotas mantêm validação normal. ESM, rotas, OpenAPI,
+cookies e origem/CSRF foram testados localmente. O Next.js apenas consome a API; repasse
+de cookies no SSR será validado se essa renderização for introduzida para dados autenticados.
 
-A biblioteca foi escolhida; a integração ainda não foi testada. Gerar/revisar o esquema da versão
-fixada e migrá-lo pelo Prisma. A prova inicial valida cadastro sem elevação de privilégio,
-consistência em falhas e revogação concorrente em HTTP/Socket.IO. Transações e uso único
-concorrente do reset serão validados quando a recuperação for retomada. Não adicionar Redis nesta etapa.
+A integração local de contas permanentes foi validada em 07/11/2026. O esquema técnico foi
+revisado contra o esquema oficial e o código de cadastro da versão fixada; migrações Prisma
+criadas e aplicadas. O cadastro da aplicação grava `AuthUser`, `AuthAccount` (provider `credential`,
+accountId igual ao userId, hash da função pública `better-auth/crypto`), `Usuario`, extensão e
+vínculo inicial em uma única transação Prisma. O login/sessão/logout ficam com Better Auth.
+Cadastro nativo está desabilitado e só três rotas técnicas estão expostas: login, consulta e logout.
+Edição técnica independente do domínio, recuperação e criação pública de presidente estão bloqueadas.
+
+`PrismaService` é singleton do contêiner Nest; o mesmo cliente é usado pelo adaptador e pelo cadastro.
+Hooks posteriores não são usados para garantir atomicidade. Falha de FK e falha no commit foram
+injetadas em teste; a identidade e o domínio não persistem. E-mail único normalizado resolve
+repetições concorrentes com 201/409; uma resposta perdida após commit é recuperável pelo login.
+Campos mínimos provisórios: nome completo, e-mail, senha e perfil; atleta escolhe clube existente,
+técnico começa sem clube. A solicitação é registrada e o status inicial é pendente.
+
+O handler oficial precede os parsers, com allowlist de rotas/métodos. POST exige origem exata
+do cliente, CORS permite credenciais somente dessa origem e a proteção nativa não foi desativada.
+Cookies host-only, HttpOnly/Lax; Secure e prefixo seguro em produção com URLs HTTPS obrigatórias.
+Sessões têm duração absoluta de sete dias, sem refresh automático; `cookieCache` está desligado.
+Guard e `/api/sessao` compartilham a consulta de sessão persistida e cadastro ativo. A rota de
+demonstração exige autenticação, sem conceder aprovação ou permissões esportivas.
+
+Client usa fetch com cookies e sem cache; as páginas são cascas estáticas, sem SSR de sessão.
+Ao introduzir SSR autenticado, repassar cookies e provar isolamento/cache antes de utilizá-lo.
+O contrato mínimo é servido em `/api/openapi.json`, com schema de cadastro derivado da validação.
+
+Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
+locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,
+conta inativa/sem domínio e replays paralelos após logout. Cadastro de atleta, login, recarga,
+rota protegida e logout passaram no navegador local. Isso **não** comprova arbitragem temporária,
+revogação HTTP/Socket.IO concorrente com escritas esportivas nem TLS/proxy hospedado. PEN-030
+permanece parcialmente aberta. Reset e uso único concorrente serão validados quando retomados.
+Não há Redis nem serviço de e-mail nesta entrega.
 
 ## Interface, conectividade e arquivos
 
@@ -150,7 +179,7 @@ Limites de tamanho/formato das fotos e permissões de consulta e edição ainda 
 
 | Ferramenta | Versão selecionada | Observação |
 | --- | --- | --- |
-| Node.js | 26.13.0 LTS | Alvo local em `.node-version`; conferir o runtime efetivo ao executar. |
+| Node.js | 26.13.0 LTS | Alvo documental; conferir o runtime efetivo e os engines dos manifests. |
 | npm | 12.2.2 | Alvo declarado em `packageManager`; lockfiles independentes por aplicação. |
 | Next.js / eslint-config-next | 16.4.5 | Frontend com App Router. |
 | React / React DOM | 19.3.1 | Mesma versão nos dois pacotes. |
@@ -158,17 +187,26 @@ Limites de tamanho/formato das fotos e permissões de consulta e edição ainda 
 | TypeScript | 6.0.3 | Compatível com a linha selecionada do CLI Nest e do typescript-eslint. |
 | ESLint | 9.39.5 | Configurações próprias; plugins transitivos do Next ainda não aceitam ESLint 10. |
 | PostgreSQL | 17.11 (`postgres:17.11-bookworm`) | Base local provisória; confirmar alinhamento ao projeto Supabase quando provisionado. |
+| Better Auth / adaptador Prisma | 1.7.18 | Fixados e validados localmente com handler oficial Express em ESM. |
+| Prisma / client / adapter-pg | 7.10.1 | Fixados; driver adapter PostgreSQL, configuração `prisma7.config.ts` e cliente gerado. |
+| Express / tipos Express | 5.2.1 / 5.0.6 | Dependências diretas para montagem do handler e parsers, compatíveis com Nest instalado. |
+| Zod | 4.6.7 | Mesmo validador de e-mail do Better Auth fixado; schema estrito do cadastro. |
 
 TypeScript 7 e ESLint 10 não foram selecionados por incompatibilidade com as ferramentas
 consultadas. O registro npm sinaliza ESLint 9 como descontinuado; ele foi mantido apenas por
 compatibilidade dos plugins do Next. Reavaliar quando esses plugins aceitarem a linha suportada,
 sem forçar resolução de dependências. Essa limitação é das verificações de desenvolvimento.
-Better Auth/adaptador 1.7.18 e Prisma/client/adapter-pg 7.10.1 são **candidatos
-para a próxima prova**, ainda não instalados nem validados juntos. Não confundir essa matriz
-documental com prova de integração de autenticação ou execução de PostgreSQL.
+Prisma 7 exige Node compatível e driver adapter; os engines aceitam o Node 26.8.2 executado.
+Better Auth 1.7.18 declara Prisma/client 7 nos peers e sua documentação usa Prisma 7;
+Prisma 8 RC não foi selecionado. A árvore instalada não apresenta peers inválidos.
+Auditoria npm: zero alertas de produção do backend; sete moderados na cadeia de lint
+`typescript-eslint`/`minimatch`, sem atualização forçada incompatível nesta entrega.
 
 Fontes: metadados oficiais dos pacotes no registro npm, [releases Node.js](https://nodejs.org/en/about/previous-releases),
 [adaptador Better Auth](https://better-auth.com/docs/adapters/prisma),
+[integração Express](https://better-auth.com/docs/integrations/express),
+[esquema técnico Better Auth](https://better-auth.com/docs/concepts/database),
+[Prisma 7](https://www.prisma.io/docs/orm/more/upgrade-guides/upgrading-versions/upgrading-to-prisma-7),
 [Node na Vercel](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions) e
 [Node no Render](https://render.com/docs/node-version). A Vercel seleciona a versão principal
 e atualiza patches automaticamente; o patch exato local não é garantia do runtime hospedado.
@@ -178,7 +216,9 @@ aplicações com **Node.js 26.8.2 e npm 12.2.0**, já disponíveis na máquina. 
 26.13.0/12.2.2 ainda não foram executados; os manifests aceitam os patches locais testados.
 Os builds responderam HTTP 200 na página inicial e em `/api/health`. Docker Compose validou a
 configuração, iniciou PostgreSQL saudável e uma consulta confirmou versão 17.11 e banco `handebol`.
-Isso valida o bootstrap; não valida integração Prisma/Better Auth, autenticação ou implantação online.
+Validação posterior desta entrega: migrações, seed, Prisma/Better Auth, onze testes de integração
+e fluxo de atleta no navegador aprovados, além de lint/tipos/build das duas aplicações.
+Não valida implantação online nem os fluxos fora do cadastro/autenticação mínimos.
 
 ## Ambientes e implantação
 
@@ -202,9 +242,9 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 
 ## Decisões ainda necessárias
 
-1. Executar PostgreSQL local e a prova inicial de cadastro e revogação com Better Auth,
-   NestJS/Express, Prisma e arbitragem temporária. Estrutura e scripts estão no repositório;
-   os comandos locais constam no [README](../README.md#desenvolvimento-local).
+1. Completar a prova da PEN-030 com arbitragem temporária e revogação concorrente HTTP/Socket.IO
+   quando esse fluxo for implementado. Contas permanentes, migrações, seed e prova local de
+   cadastro/logout já foram validados; comandos no [README](../README.md#desenvolvimento-local).
 2. Detalhar e validar implantação de teste, encaminhamento, cookies, segredos e verificações;
    definir limites e permissões das fotos.
 3. Definir em código o contrato da API (documentado em OpenAPI), eventos, conflitos, publicação

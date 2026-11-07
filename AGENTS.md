@@ -31,5 +31,6 @@ Consulte os documentos conforme a tarefa, mantendo as definições detalhadas em
 
 - Faça a menor alteração que resolva o pedido e preserve mudanças existentes que não pertençam à tarefa.
 - Consulte os scripts e comandos no README e nos manifests. Execute as verificações adequadas à alteração e informe o que foi validado e o que permanece pendente.
+- Ao finalizar uma funcionalidade no backend, priorize testes no próprio backend. Crie um frontend básico para testar a integração somente se necessário e após confirmar com o usuário essa necessidade e o escopo da interface.
 - Atualize a documentação de referência quando o trabalho alterar o comportamento ou as decisões que ela descreve. Mantenha cada definição em sua fonte, evitando documentos e processos desnecessários.
 - Faça commits somente quando o usuário autorizar explicitamente.

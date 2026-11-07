@@ -19,3 +19,19 @@ h1 {
   font-size: clamp(1.75rem, 5vw, 2.5rem);
   line-height: 1.2;
 }
+
+a { color: #175669; text-underline-offset: 0.2em; }
+.auth { max-width: 30rem; }
+form { display: flex; flex-direction: column; gap: 0.6rem; margin-block: 2rem; }
+label { font-weight: 600; margin-top: 0.7rem; }
+input, select, button { font: inherit; padding: 0.8rem; border: 1px solid #727b7e; border-radius: 0.3rem; min-height: 2.75rem; box-sizing: border-box; }
+input, select { width: 100%; background: white; color: #202020; }
+button { background: #175669; color: white; border-color: #175669; cursor: pointer; font-weight: 600; }
+button:hover { background: #103e4c; }
+button.secondary { color: #175669; background: transparent; }
+button:disabled { opacity: 0.6; cursor: wait; }
+:focus-visible { outline: 3px solid #175669; outline-offset: 3px; }
+[role="alert"] { color: #a11922; }
+p { line-height: 1.6; max-width: 70ch; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+::selection { background: #c3e8ec; color: #103e4c; }

@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AuthUser {
+  id            String        @id
+  name          String
+  email         String        @unique
+  emailVerified Boolean       @default(false)
+  image         String?
+  createdAt     DateTime      @default(now()) @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @db.Timestamptz
+  accounts      AuthAccount[]
+  sessions      AuthSession[]
+}
+
+model AuthAccount {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  AuthUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz
+  refreshTokenExpiresAt DateTime? @db.Timestamptz
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @db.Timestamptz
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model AuthSession {
+  id        String   @id
+  token     String   @unique
+  userId    String
+  user      AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @db.Timestamptz
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  @@index([userId])
+}
+
+model AuthVerification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  updatedAt  DateTime @updatedAt @db.Timestamptz
+
+  @@index([identifier])
+}
+
+enum Perfil {
+  atleta
+  tecnico
+  presidente
+}
+
+enum StatusVerificacao {
+  pendente
+  aprovado
+  rejeitado
+}
+
+model Usuario {
+  id           String      @id @default(uuid()) @db.Uuid
+  authId       String      @unique
+  nomeCompleto String
+  perfil       Perfil
+  ativo        Boolean     @default(true)
+  criadoEm     DateTime    @default(now()) @db.Timestamptz
+  atleta       Atleta?
+  tecnico      Tecnico?
+  presidente   Presidente?
+}
+
+model Presidente {
+  usuarioId             String         @id @db.Uuid
+  usuario               Usuario        @relation(fields: [usuarioId], references: [id])
+  criadoPorPresidenteId String?        @db.Uuid
+  criadoPor             Presidente?    @relation("sucessao", fields: [criadoPorPresidenteId], references: [usuarioId])
+  sucessores            Presidente[]   @relation("sucessao")
+  clubes                Clube[]
+  atletasVerificados    Atleta[]
+  tecnicosVerificados   Tecnico[]
+  vinculosDefinidos     VinculoClube[]
+}
+
+model Atleta {
+  usuarioId                 String            @id @db.Uuid
+  usuario                   Usuario           @relation(fields: [usuarioId], references: [id])
+  fotoChave                 String?
+  statusVerificacao         StatusVerificacao @default(pendente)
+  verificacaoSolicitadaEm   DateTime?         @db.Timestamptz
+  verificadoPorPresidenteId String?           @db.Uuid
+  verificadoPor             Presidente?       @relation(fields: [verificadoPorPresidenteId], references: [usuarioId])
+  verificadoEm              DateTime?         @db.Timestamptz
+  vinculos                  VinculoClube[]
+}
+
+model Tecnico {
+  usuarioId                 String            @id @db.Uuid
+  usuario                   Usuario           @relation(fields: [usuarioId], references: [id])
+  clubeId                   String?           @unique @db.Uuid
+  clube                     Clube?            @relation(fields: [clubeId], references: [id])
+  statusVerificacao         StatusVerificacao @default(pendente)
+  verificacaoSolicitadaEm   DateTime?         @db.Timestamptz
+  verificadoPorPresidenteId String?           @db.Uuid
+  verificadoPor             Presidente?       @relation(fields: [verificadoPorPresidenteId], references: [usuarioId])
+  verificadoEm              DateTime?         @db.Timestamptz
+}
+
+model Clube {
+  id                    String         @id @default(uuid()) @db.Uuid
+  nome                  String
+  cidade                String?
+  criadoPorPresidenteId String         @db.Uuid
+  criadoPor             Presidente     @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
+  tecnico               Tecnico?
+  vinculos              VinculoClube[]
+}
+
+model VinculoClube {
+  id                      String      @id @default(uuid()) @db.Uuid
+  atletaId                String      @db.Uuid
+  atleta                  Atleta      @relation(fields: [atletaId], references: [usuarioId])
+  clubeId                 String      @db.Uuid
+  clube                   Clube       @relation(fields: [clubeId], references: [id])
+  inicio                  DateTime    @default(now()) @db.Timestamptz
+  fim                     DateTime?   @db.Timestamptz
+  definidoPorPresidenteId String?     @db.Uuid
+  definidoPor             Presidente? @relation(fields: [definidoPorPresidenteId], references: [usuarioId])
+
+  @@index([clubeId])
+}

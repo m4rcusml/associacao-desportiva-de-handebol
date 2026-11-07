@@ -3,7 +3,32 @@
 Consolidada em 04/11/2026 e atualizada em 07/11/2026 com a PEN-030 e as regras de acesso da arbitragem.
 Fonte das decisões: revisão e definições aprovadas por Marcus. O [diagrama Mermaid](modelo-banco-dados.mmd)
 inclui o complemento técnico; a cópia anteriormente publicada no Miro ainda precisa ser sincronizada.
-Esta entrega é modelagem lógica; não aplica migrações ao banco.
+A modelagem descreve o domínio completo. A implementação local cobre somente o subconjunto de
+cadastro/autenticação abaixo; os demais registros continuam sem migração.
+
+## Subconjunto implementado — 07/11/2026
+
+`server/prisma/schema.prisma` e três migrações criam `AuthUser`, `AuthAccount`, `AuthSession`,
+`AuthVerification`, `Usuario`, `Atleta`, `Tecnico`, `Presidente`, `Clube` e `VinculoClube`.
+Nomes técnicos foram configurados no Better Auth 1.7.18; timestamps são `timestamptz`.
+`AuthVerification` existe como parte do esquema técnico, mas seus fluxos não estão expostos.
+`Usuario.authId` continua único, opaco e sem FK.
+
+A segunda migração usa SQL complementar: aprovação exige presidente/data, período de vínculo
+válido, índice parcial para um vínculo aberto e exclusão GiST (`btree_gist`) para impedir
+sobreposição de períodos. Triggers diferidos verificam uma única extensão correspondente ao perfil
+e exatamente um vínculo aberto por atleta ao concluir a transação. A terceira migração reforça
+a validação de origem e destino em alterações dos identificadores de relação. O usuário do banco precisa
+poder instalar `btree_gist` na migração; a extensão foi validada no PostgreSQL local.
+
+Cadastro usa uma transação para identidade técnica, credencial e domínio; gera hash pelo Better Auth,
+normaliza e-mail e rejeita campos não permitidos. Ambos os perfis públicos começam pendentes, com
+solicitação de verificação registrada. Atleta informa clube; técnico não pode atribuir clube.
+Não há fluxo público de aprovação/presidente. O seed local cria presidente fictício sem credencial
+de login e um clube para demonstração, preservando a FK administrativa sem criar acesso público.
+Testes comprovam rollback também quando a falha ocorre no commit e acesso negado para identidade
+sem domínio. Aprovações, transferências e edição não estão implementadas; revalidar suas regras
+transacionais ao introduzir essas operações.
 
 ## Convenções e implementação da herança
 
@@ -211,10 +236,10 @@ Storage na franquia gratuita, com limites e permissões ainda a definir.
 
 ## Complemento técnico de autenticação — PEN-030
 
-Decisão de planejamento de 07/11/2026; integração e esquema físico ainda não validados.
-Os nomes `Auth*` identificam responsabilidades lógicas, mapeáveis aos modelos nativos.
-Gerar o esquema da configuração/versão fixada, revisar e usar migrações Prisma; esta lista
-não substitui o esquema completo da biblioteca nem fixa tipos físicos de seus IDs.
+Decisão de 07/11/2026, com esquema físico e integração local das contas permanentes validados
+nesta entrega. Os nomes `Auth*` estão configurados nos modelos nativos; IDs técnicos usam texto.
+O schema físico completo da versão fixada está em `server/prisma/schema.prisma`, com migrações
+versionadas. A lista abaixo resume responsabilidades; não substitui esse contrato físico.
 As convenções gerais de UUID e sufixo `Id` não substituem o contrato nativo: `providerId` e
 `accountId`, por exemplo, são identificadores de autenticação, não FKs do domínio.
 
