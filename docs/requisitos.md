@@ -327,6 +327,17 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   login e operações dependentes da conta, inclusive arbitragem por designação. Não pode deixar
   o sistema sem presidente ativo; essa proteção deve valer também em operações concorrentes.
   Entrada pela senha compartilhada continua independente da conta, conforme RN-025.
+  Detalhes aprovados por Marcus (MAR-60): para essa proteção, presidente ativo é o presidente
+  com conta ativa **e** credencial de login. O presidente não desativa a própria conta.
+  Desativar e reativar revogam as sessões da conta; após a reativação é preciso novo login.
+  A sucessão segue a RF-007: um presidente existente cria o novo presidente e, depois, o anterior
+  pode ser desativado. Não se transfere conta ou credencial de uma pessoa para outra, preservando
+  a autoria dos registros.
+- Técnico desativado continua atribuído ao clube (`Tecnico.clubeId`), assim como os vínculos do
+  atleta desativado são mantidos, mas perde o acesso. Enquanto isso, o clube fica sem técnico apto
+  a escalar e a arbitragem credencia diretamente, como em clube sem técnico. O presidente pode
+  substituir ou desvincular o técnico desativado; ao reativar, ele volta ao clube somente se
+  ainda estiver atribuído.
 - Presidente pode editar nome/cidade do clube sem apagar vínculos históricos. Retirar inscrição
   só é permitido quando ela não possui jogos. Não haverá desativação nem exclusão de clubes
   nesta versão. Não foi aprovada exceção de transferência para clube eliminado/desistente:

@@ -47,6 +47,8 @@ model AuthSession {
   expiresAt DateTime @db.Timestamptz
   ipAddress String?
   userAgent String?
+  /// Versão de ativação do `Usuario` lida no login; o trigger da migração `sessao_conta_ativa` recusa versão desatualizada.
+  versaoAtivacao Int?
   createdAt DateTime @default(now()) @db.Timestamptz
   updatedAt DateTime @updatedAt @db.Timestamptz
 
@@ -82,6 +84,8 @@ model Usuario {
   nomeCompleto String
   perfil       Perfil
   ativo        Boolean     @default(true)
+  /// Incrementada a cada desativação/reativação; invalida logins iniciados antes da mudança.
+  versaoAtivacao Int       @default(0)
   criadoEm     DateTime    @default(now()) @db.Timestamptz
   atleta       Atleta?
   tecnico      Tecnico?
