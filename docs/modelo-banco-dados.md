@@ -26,6 +26,8 @@ normaliza e-mail e rejeita campos não permitidos. Ambos os perfis públicos com
 solicitação de verificação registrada. Atleta informa clube; técnico não pode atribuir clube.
 Não há fluxo público de aprovação/presidente. O seed local cria presidente fictício sem credencial
 de login e um clube para demonstração, preservando a FK administrativa sem criar acesso público.
+O presidente inicial com credencial vem do procedimento restrito descrito no README; os seguintes
+são criados por presidente ativo, com `criadoPorPresidenteId` preenchido (MAR-55).
 Testes comprovam rollback também quando a falha ocorre no commit e acesso negado para identidade
 sem domínio. Aprovações, transferências e edição não estão implementadas; revalidar suas regras
 transacionais ao introduzir essas operações.
@@ -58,7 +60,7 @@ administrativas não geram linhas adicionais.
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `Usuario`              | `PK` `id`; `UNIQUE` `authId`                                                                                               | Nenhum                                                                                                                           |
 | `Atleta`               | `PK`/`FK` `usuarioId`                                                                                                      | `fotoChave`, `verificacaoSolicitadaEm`, `verificadoPorPresidenteId`, `verificadoEm`                                              |
-| `Presidente`           | `PK`/`FK` `usuarioId`                                                                                                      | `criadoPorPresidenteId` somente para pré-cadastro inicial                                                                        |
+| `Presidente`           | `PK`/`FK` `usuarioId`                                                                                                      | `criadoPorPresidenteId` nulo somente no presidente inicial                                                                       |
 | `Tecnico`              | `PK`/`FK` `usuarioId`; `UNIQUE` `clubeId` quando preenchido                                                                | `clubeId` e campos de solicitação/decisão da verificação                                                                         |
 | `Clube`                | `PK` `id`                                                                                                                  | `cidade`                                                                                                                         |
 | `VinculoClube`         | `PK` `id`; um vínculo aberto por atleta; períodos sem sobreposição                                                         | `fim`; `definidoPorPresidenteId` no vínculo inicial solicitado pelo atleta                                                       |

@@ -124,6 +124,10 @@ accountId igual ao userId, hash da função pública `better-auth/crypto`), `Usu
 vínculo inicial em uma única transação Prisma. O login/sessão/logout ficam com Better Auth.
 Cadastro nativo está desabilitado e só três rotas técnicas estão expostas: login, consulta e logout.
 Edição técnica independente do domínio, recuperação e criação pública de presidente estão bloqueadas.
+Presidentes (MAR-55): o inicial é criado pelo procedimento restrito `npm run presidente:inicial`
+(transação única, advisory lock, recusado se já houver presidente ativo com credencial); os demais,
+por presidente ativo em `POST /api/presidentes`, com revalidação do criador na transação. Ambos
+usam a mesma criação de identidade/credencial do cadastro público (`autenticacao/identidade.ts`).
 
 `PrismaService` é singleton do contêiner Nest; o mesmo cliente é usado pelo adaptador e pelo cadastro.
 Hooks posteriores não são usados para garantir atomicidade. Falha de FK e falha no commit foram

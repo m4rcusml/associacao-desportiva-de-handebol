@@ -1,5 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
+import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from "@nestjs/common";
 import { hashPassword } from "better-auth/crypto";
 import type { Request } from "express";
 import { ThrottlerGuard } from "@nestjs/throttler";
@@ -11,12 +10,7 @@ import { type Ator, exigirAcessoClube } from "../autorizacao/ator.js";
 import { AtorAtual, Requer, RequerAprovado } from "../autorizacao/autorizacao.decorators.js";
 import { AutorizacaoService } from "../autorizacao/autorizacao.service.js";
 import { z } from "zod";
-
-const camposConta = z.strictObject({
-  nomeCompleto: z.string().trim().min(3).max(150),
-  email: z.email().max(254).toLowerCase(),
-  password: z.string().min(8).max(128),
-});
+import { camposConta, criarIdentidade, traduzirErroIdentidade } from "./identidade.js";
 const cadastroSchema = z.discriminatedUnion("perfil", [
   camposConta.extend({ perfil: z.literal("atleta"), clubeId: z.uuid() }),
   camposConta.extend({ perfil: z.literal("tecnico") }),
@@ -46,6 +40,9 @@ export class AuthController {
         "/protegida/aprovado": { get: { summary: "Demonstração: exige aprovação esportiva (presidente ou atleta/técnico aprovado)", security, responses: { "200": resposta("perfil, aprovado"), "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Cadastro pendente ou rejeitado") } } },
         "/protegida/presidente": { get: { summary: "Demonstração: exige perfil presidente", security, responses: { "200": resposta("perfil"), "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Perfil sem permissão") } } },
         "/protegida/clubes/{clubeId}": { get: { summary: "Demonstração: presidente acessa qualquer clube; atleta/técnico aprovado somente o próprio", security, parameters: [{ name: "clubeId", in: "path", required: true, schema: { type: "string", format: "uuid" } }], responses: { "200": resposta("perfil, clubeId"), "400": resposta("clubeId inválido"), "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Sem aprovação ou clube de outro"), } } },
+        "/presidentes": { post: { summary: "Presidente ativo cria outro presidente com senha inicial; registra o criador", security, requestBody: { required: true, ...json(z.toJSONSchema(camposConta)) }, responses: {
+          "201": resposta("usuario: id, nomeCompleto, perfil; criadoPorPresidenteId"), "400": resposta("Dados inválidos ou campos adicionais"), "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Perfil sem permissão ou origem não autorizada"), "409": resposta("E-mail já cadastrado ou conflito com restrições do cadastro"),
+        } } },
         "/auth/sign-out": { post: { summary: "Revoga a sessão atual no PostgreSQL e remove cookie", security, requestBody: { required: true, ...json({ type: "object" }) }, responses: { "200": resposta("Logout concluído"), "403": resposta("Origem não autorizada") } } },
       },
     };
@@ -67,9 +64,7 @@ export class AuthController {
     const passwordHash = await hashPassword(password);
     try {
       return await this.prisma.$transaction(async tx => {
-        const authId = randomUUID();
-        await tx.authUser.create({ data: { id: authId, name: nomeCompleto, email } });
-        await tx.authAccount.create({ data: { id: randomUUID(), userId: authId, accountId: authId, providerId: "credential", password: passwordHash } });
+        const authId = await criarIdentidade(tx, { nomeCompleto, email, passwordHash });
         const solicitadaEm = new Date();
         const usuario = await tx.usuario.create({ data: {
           authId, nomeCompleto, perfil,
@@ -80,17 +75,8 @@ export class AuthController {
         return { usuario, statusVerificacao: "pendente" };
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === "P2002") throw new ConflictException("E-mail já cadastrado. Entre com sua senha.");
-        if (error.code === "P2003") throw new BadRequestException("Clube não encontrado");
-      }
-      // CHECK, EXCLUDE e triggers diferidos chegam sem código Prisma próprio: no comando, dentro de
-      // meta.driverAdapterError; no COMMIT, como DriverAdapterError direto.
-      type ErroDriver = { cause?: { originalCode?: string } };
-      const driver = error instanceof Prisma.PrismaClientKnownRequestError ? error.meta?.driverAdapterError as ErroDriver | undefined : error as ErroDriver;
-      const codigo = driver?.cause?.originalCode;
-      if (codigo === "23514" || codigo === "23P01") throw new ConflictException("Não foi possível concluir o cadastro por conflito com os dados existentes.");
-      throw error;
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") throw new BadRequestException("Clube não encontrado");
+      throw traduzirErroIdentidade(error);
     }
   }
 

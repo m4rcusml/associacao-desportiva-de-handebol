@@ -6,6 +6,7 @@ import { AuthService } from "./modules/autenticacao/auth.service.js";
 import { AuthController } from "./modules/autenticacao/auth.controller.js";
 import { SessionGuard } from "./modules/autenticacao/session.guard.js";
 import { AutorizacaoService } from "./modules/autorizacao/autorizacao.service.js";
+import { PresidentesController } from "./modules/presidentes/presidentes.controller.js";
 
 @Module({
   imports: [ThrottlerModule.forRoot({
@@ -13,7 +14,7 @@ import { AutorizacaoService } from "./modules/autorizacao/autorizacao.service.js
     throttlers: [{ name: "cadastro", ttl: minutes(15), limit: 5 }],
     errorMessage: "Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.",
   })],
-  controllers: [HealthController, AuthController],
+  controllers: [HealthController, AuthController, PresidentesController],
   providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService],
 })
 export class AppModule {}
