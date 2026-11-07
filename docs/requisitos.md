@@ -94,7 +94,7 @@ ainda precisa confirmá-la com o cliente.
 | ID     | Requisito                                                                                                                                         | Situação   |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | RF-024 | Permitir ao presidente designar vários árbitros para o mesmo jogo, incluindo atletas, técnicos ou pessoas sem cadastro.                           | Confirmado |
-| RF-025 | Disponibilizar a página temporária de arbitragem somente no dia marcado para o jogo, sem liberação manual adicional.                             | Confirmado |
+| RF-025 | Disponibilizar a página temporária no dia local do jogo, mantendo acesso após meia-noite se já iniciado, conforme seção 11.                             | Confirmado |
 | RF-026 | Permitir acesso sem senha do jogo ao usuário autenticado que esteja designado como árbitro daquela partida.                                       | Confirmado |
 | RF-027 | Permitir acesso dos demais responsáveis pela senha compartilhada e específica daquele jogo, solicitando nome completo de quem entra com senha.    | Confirmado |
 | RF-028 | Permitir escolher visualização de linha ou banco, mantendo as mesmas permissões.                                                                  | Confirmado |
@@ -187,11 +187,11 @@ ainda precisa confirmá-la com o cliente.
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
 | RN-037 | Suspensão é cumprida por quantidade de jogos, inclusive quando aplicada manualmente.                                                                               | Confirmado |
 | RN-038 | Suspensão afeta apenas o campeonato em que foi aplicada.                                                                                                           | Confirmado |
-| RN-039 | Cada jogo efetivamente realizado pelo clube do atleta naquele campeonato, após a aplicação, conta para cumprimento, mesmo sem o atleta ser escolhido pelo técnico. | Confirmado |
+| RN-039 | Cada jogo encerrado definitivamente do clube no campeonato, após aplicação e elegível ao cumprimento, conta uma vez, mesmo sem escalação; inclui jogos excepcionais conforme seção 11. | Confirmado |
 | RN-040 | Jogos cancelados não contam; jogos adiados só contam quando realizados.                                                                                            | Confirmado |
 | RN-041 | Suspensão automática passa a valer para os jogos seguintes, após o encerramento do jogo que originou a punição. O próprio jogo de origem não cumpre a suspensão.   | Confirmado |
 | RN-042 | Não ativar regras automáticas com critérios inventados antes de sua validação pelo cliente.                                                                        | Proposto   |
-| RN-043 | Não presumir soma nem cumprimento paralelo de suspensões simultâneas: o tratamento ainda depende de decisão.                                                       | Pendente   |
+| RN-043 | Suspensões simultâneas do mesmo atleta no mesmo campeonato são cumpridas em paralelo, sem soma de durações. | Confirmado |
 
 A exceção da RN-025 é deliberada: a senha compartilhada permite acesso sem conferir vínculo com os
 clubes. O cadastro da pessoa não elimina essa exceção.
@@ -246,9 +246,9 @@ O levantamento consolidado, incluindo casos específicos e ordem sugerida de res
 | PEN-003 | Quais métricas serão efetivamente utilizadas?                                                                      | Aguardando cliente; manter temp_.                                               |
 | PEN-004 | Quais penalidades, limites de acumulação e quantidades de jogos geram suspensão automática?                        | Aguardando cliente; automática prevista, critérios não habilitados.             |
 | PEN-005 | O presidente continuará incluindo os clubes no campeonato?                                                         | Operação provisória expressamente adotada; aguarda confirmação do cliente.      |
-| PEN-006 | Como tratar múltiplas suspensões, revisões posteriores e cancelamento de punições?                                 | Não definido; não presumir acumulação.                                          |
+| PEN-006 | Como tratar múltiplas suspensões simultâneas? | Resolvido: cumprimento em paralelo; revisões na seção 11 e PEN-009 residual. |
 | PEN-007 | Quais ações, autores, alterações e justificativas integram a auditoria completa?                                   | Necessidade reconhecida; detalhamento adiado por solicitação de Marcus.         |
-| PEN-008 | Quais campos compõem a ficha cadastral e quais são obrigatórios?                                                   | Usar os campos mínimos essenciais provisoriamente; confirmar a ficha com o cliente. |
+| PEN-008 | Quais campos compõem a ficha cadastral e quais são obrigatórios? | Campos mínimos provisórios; foto e efeitos da edição definidos na seção 11. Ficha final e dados da carteirinha pendentes. |
 
 A conclusão da primeira versão documental não significa que as funcionalidades com critérios
 pendentes estejam prontas para implementação completa.
@@ -286,7 +286,7 @@ das métricas, das regras disciplinares e das metas operacionais permanece pende
 
 Decisões confirmadas por Marcus nesta rodada:
 
-- A arbitragem acessa somente no dia marcado para o jogo, por conta autenticada e designação
+- A arbitragem acessa no dia marcado para o jogo (com exceção de meia-noite na seção 11), por conta autenticada e designação
   ou por nome completo e senha do jogo. Não há etapa manual de liberação. Credenciar antes
   da partida e iniciar o jogo continuam sendo ações distintas.
 - Somente presidente pode adiar ou cancelar; ambas as ações invalidam imediatamente todas
@@ -297,8 +297,8 @@ Decisões confirmadas por Marcus nesta rodada:
 - Troca manual invalida todas as sessões abertas pela senha anterior, exigindo nova entrada;
   preserva sessões por conta e designação. Não haverá retirada individual de acesso por senha.
 - Contas permanentes e acessos a outros jogos permanecem válidos nessas operações.
-- Fuso da data, partidas que atravessam meia-noite e distribuição da senha ainda precisam de
-  esclarecimento antes de implementar os comportamentos correspondentes (PEN-021).
+- Fuso da data, partidas atravessando meia-noite e consulta da senha foram esclarecidos
+  posteriormente na seção 11 (PEN-021).
 - Campos cadastrais mínimos necessários aos fluxos aprovados serão usados provisoriamente,
   com confirmação posterior do cliente (PEN-008). Não acrescentar dados pessoais sem necessidade.
 - Serviço de e-mail e recuperação de senha estão adiados nesta etapa, incluindo sua prova;
@@ -307,5 +307,89 @@ Decisões confirmadas por Marcus nesta rodada:
   backup/restauração será detalhado posteriormente (PEN-026).
 
 Os contratos de API/eventos serão definidos tecnicamente em código, com API documentada em
-OpenAPI. Isso não autoriza decidir regras de produto ainda pendentes, como conflitos visíveis
-ao usuário (PEN-023). As escolhas de ferramentas e hospedagem estão na [arquitetura](arquitetura.md).
+OpenAPI. Isso não autoriza decidir regras de produto ainda pendentes. Conflitos visíveis
+ao usuário (PEN-023) foram esclarecidos na seção 11. Ferramentas e hospedagem: [arquitetura](arquitetura.md).
+
+## 11. Esclarecimentos para o planejamento do backend — 07/11/2026
+
+Decisões de Marcus nesta rodada. Complementam as regras anteriores e substituem as pendências
+correspondentes; descrevem comportamento aprovado, ainda não implementado.
+
+### Contas, clubes e escalação
+
+- Rejeição de atleta/técnico não exige motivo. A mesma conta pode corrigir seus dados e solicitar
+  nova análise; rejeitado continua sem aprovação esportiva até nova aprovação.
+- Edição de dados cadastrais permitidos não exige nova aprovação. Isso não permite ao usuário
+  alterar perfil, clube, aprovação ou outros atributos administrativos por conta própria.
+- Não existe retirada de aprovação nesta versão. Invalidar carteirinha continua sendo operação
+  distinta e não bloqueia a conta. Não há troca de perfil nesta versão.
+- Presidente pode desativar/reativar outras contas, preservando histórico. Desativação impede
+  login e operações dependentes da conta, inclusive arbitragem por designação. Não pode deixar
+  o sistema sem presidente ativo; essa proteção deve valer também em operações concorrentes.
+  Entrada pela senha compartilhada continua independente da conta, conforme RN-025.
+- Presidente pode editar nome/cidade do clube sem apagar vínculos históricos. Retirar inscrição
+  só é permitido quando ela não possui jogos. Não haverá desativação nem exclusão de clubes
+  nesta versão. Não foi aprovada exceção de transferência para clube eliminado/desistente:
+  permanece o bloqueio enquanto seu campeonato estiver em andamento.
+- Novo técnico aprovado do clube consulta/altera a escalação anterior até o início do jogo,
+  preservando autoria histórica. Sem técnico, arbitragem credencia diretamente; presidente
+  não ganha uma operação de escalação substituta.
+
+### Campeonato, acesso e concorrência
+
+- Presidente inicia, encerra ou cancela o campeonato manualmente; datas são informativas.
+  Iniciar exige ao menos dois clubes inscritos; encerrar exige todos os jogos finalizados ou
+  cancelados; cancelar exige ausência de jogo em andamento e cancela os jogos ainda agendados.
+  O bloqueio de transferências acompanha o status do campeonato.
+- O backend determina o dia do jogo no fuso do local da partida; conversão para o fuso de quem
+  consulta é apresentação no frontend e não altera autorização.
+- Se o jogo já começou, acessos existentes e novas entradas de arbitragem continuam permitidos
+  após meia-noite até encerramento. Se não começou até a virada do dia local, o acesso termina
+  e depende de reagendamento pelo presidente. Cancelar/adiar continua revogando os acessos.
+- Presidente e árbitros autenticados e designados podem consultar a senha compartilhada
+  posteriormente. Entrada apenas por senha não permite consultar nem trocar a senha.
+  Armazenamento protegido definido na arquitetura; nenhuma senha em texto puro ou logs.
+- Duas tentativas simultâneas de iniciar ou encerrar não repetem efeitos: a segunda informa
+  que a ação já foi realizada e devolve estado atualizado. A repetição da mesma operação de
+  encerramento deve ser reconhecível sem devolver à arbitragem permissões revogadas.
+- Duas correções/estornos do mesmo lançamento: a primeira válida prevalece; a segunda é
+  recusada como conflito, com registro atualizado para nova decisão. Não sobrescrever silenciosamente.
+- Um único árbitro autorizado pode confirmar o encerramento após conferir placar/registros;
+  não há aprovação de um segundo árbitro. Depois, somente presidente corrige.
+
+### Credenciamento, carteirinha e fotos
+
+- Arbitragem pode corrigir camisa até o encerramento, inclusive após entrada em quadra,
+  respeitando unicidade por clube/jogo. Depois, somente presidente; preservar alterações.
+- Arbitragem pode desfazer credenciamento antes do encerramento somente sem entrada em quadra
+  e sem gols/penalidades registrados. Casos com entrada/lançamentos são corrigidos pelo presidente,
+  com histórico. O procedimento dessas correções complexas ainda precisa ser detalhado (PEN-019).
+- Presidente pode substituir o código QR da mesma carteirinha, invalidando o anterior e
+  preservando credenciamentos existentes. Leitura automática não ganha conferência manual obrigatória.
+- Foto do atleta é opcional, JPEG/PNG/WebP, até 5 MB por arquivo. Atleta e presidente podem
+  enviar/substituir. Consulta somente pelo próprio atleta, presidentes, técnico atual do clube
+  e arbitragem autorizada do jogo em que esteja escalado ou credenciado. QR sozinho não expõe foto.
+
+### Suspensões e jogos excepcionais
+
+- Suspensões simultâneas do mesmo atleta/campeonato são cumpridas em paralelo, inclusive
+  sobreposição de manual com automática. Um jogo elegível pode cumprir cada suspensão vigente
+  uma vez; não somar durações para cumprimento sequencial.
+- Nova suspensão preserva a participação no jogo já credenciado e só impede os próximos jogos.
+  O jogo já credenciado não é consumido como um dos próximos jogos dessa nova suspensão.
+- Presidente pode revogar suspensão, preservando o original, jogos já cumpridos e histórico
+  com indicação de suspensão revogada. Redução parcial e exigência de justificativa não foram
+  explicitamente definidas; permanecem na PEN-009, sem serem presumidas.
+- Quando regras automáticas forem aprovadas, retirar uma penalidade recalcula a suspensão,
+  liberando o saldo indevido. Não altera jogos passados nem compensa partidas perdidas pelo atleta.
+- Encerrar/cancelar campeonato encerra saldos restantes e preserva histórico; não transfere
+  punições para outro campeonato. Registrar esse encerramento, distinto do cumprimento por jogos.
+- Interrompidos definitivamente, abandonados, W.O. e invalidados contam para cumprimento;
+  adiados/cancelados não contam enquanto não realizados. A partida que será retomada permanece
+  o mesmo jogo e só conta uma vez no encerramento definitivo.
+- Preservar placar até a interrupção e gols/penalidades individuais nos históricos, inclusive
+  nos casos excepcionais. W.O. sem início fica 0 a 0. Vencedor é registrado separadamente:
+  arbitragem pode indicar clube vencedor ou ausência de vencedor antes de encerrar; após
+  encerramento, somente presidente decide/corrige, inclusive invalidação posterior.
+- Métricas definitivas e critérios de suspensão automática continuam pendentes; manter `temp_`
+  e não ativar regras automáticas fictícias.

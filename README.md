@@ -13,6 +13,7 @@ implementados localmente. Os fluxos esportivos descritos no caminho feliz contin
 - [Diagrama com atributos e relações](docs/modelo-banco-dados.mmd)
 - [Pendências e confirmações com o cliente](docs/pendencias.md)
 - [Glossário](docs/GLOSSARY.md)
+- [Planejamento do backend no Linear](https://linear.app/marcusml/project/handebol-backend-7b366946f85f)
 - [Diagrama no Miro](https://miro.com/app/board/uXjVEU3V9rY=/?moveToWidget=3458764688860471326)
 
 ## Desenvolvimento local
@@ -206,7 +207,7 @@ foram implementados nem validados. Os patches-alvo de Node/npm da matriz não fo
 3. **Preparação pelo técnico:** antes de cada partida, o técnico escolhe os atletas do seu
    clube que pretende levar ao jogo. Essa lista é preliminar e pode mudar até o início.
 4. **Chegada e credenciamento:** no dia marcado, antes da partida, os árbitros acessam a página temporária,
-   sem liberação manual adicional.
+   sem liberação manual adicional; se o jogo começou, o acesso continua após meia-noite até encerrar.
    Usuário autenticado e designado entra sem senha; os demais usam a senha do jogo e informam
    nome completo. O atleta apresenta sua carteirinha e informa o número da camisa.
    A arbitragem credencia manualmente ou lê o QR code; o sistema verifica aprovação,
@@ -220,6 +221,10 @@ foram implementados nem validados. Os patches-alvo de Node/npm da matriz não fo
    cabem ao presidente. Suspensões manuais são aplicadas por ele, por quantidade de jogos
    naquele campeonato; punições automáticas dependem de critérios a confirmar com o cliente.
 
+As decisões posteriores sobre exceções, fotos, fuso local, consulta da senha e ciclo de contas/
+competições estão em [requisitos, seção 11](docs/requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026).
+São decisões para desenvolvimento, ainda sem implementação dos respectivos fluxos.
+
 As métricas ainda provisórias usam o prefixo `temp_`. As exceções e decisões em aberto
 estão detalhadas nas [pendências](docs/pendencias.md).
 
@@ -229,3 +234,18 @@ estão detalhadas nas [pendências](docs/pendencias.md).
 - Validação específica de categoria por idade/sexo, controle de substituições e tempo jogado.
 - Auditoria completa, cujo detalhamento ficou para uma próxima etapa.
 - Doações, patrocínios, divulgação pública de resultados e exportações, sem escopo confirmado.
+
+## Fluxo de desenvolvimento por tarefa
+
+Marcus seleciona uma tarefa do Linear com dependências concluídas e critérios de aceite definidos.
+O agente implementador cria branch separada `feat/<identificador>-<descricao>`, implementa,
+valida, atualiza a documentação afetada, commita nessa branch e abre PR vinculada à tarefa.
+A seleção da tarefa autoriza commits e abertura de PR dentro desse escopo.
+
+Outro agente revisa o diff contra os critérios e as regras do repositório, corrige na mesma
+branch, executa as validações afetadas e faz merge após os checks passarem e os impedimentos
+serem resolvidos. Não marcar a tarefa como concluída antes do merge.
+Fluxo no Linear: Backlog → Todo (selecionada) → In Progress → In Review → Done (merge).
+
+Pendência de produto não pode ser decidida pelo agente: registrar o bloqueio e esclarecer
+com Marcus. Tarefas de backend priorizam testes no backend; frontend exige escopo confirmado.

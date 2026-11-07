@@ -115,6 +115,9 @@ classDiagram
         uuid campeonatoId
         uuid inscricaoClubeAId
         uuid inscricaoClubeBId
+        string fusoHorario
+        string resultadoExcepcional
+        uuid inscricaoClubeVencedorId
         datetime inicioPrevistoEm
         datetime iniciadoEm
         datetime encerradoEm
@@ -137,6 +140,7 @@ classDiagram
     class AcessoArbitragem {
         uuid jogoId
         string senhaHash
+        string senhaCifrada
         datetime revogadoEm
     }
     class Arbitragem {

@@ -65,7 +65,7 @@ administrativas não geram linhas adicionais.
 | `Carteirinha`          | `PK` `id`; `UNIQUE` `atletaId`, `codigo`, `tokenQr`                                                                        | Nenhum após emissão                                                                                                              |
 | `Campeonato`           | `PK` `id`                                                                                                                  | `inicio`, `fim` enquanto não agendado                                                                                            |
 | `InscricaoClube`       | `PK` `id`; `UNIQUE` `campeonatoId` + `clubeId`                                                                             | Nenhum                                                                                                                           |
-| `Jogo`                 | `PK` `id`; clubes A e B distintos e inscritos no mesmo campeonato                                                          | `inicioPrevistoEm`, `iniciadoEm`, `encerradoEm`, `local`                                                                         |
+| `Jogo`                 | `PK` `id`; clubes A e B distintos e inscritos no mesmo campeonato                                                          | `inicioPrevistoEm`, `iniciadoEm`, `encerradoEm`, `local`, `resultadoExcepcional`, `inscricaoClubeVencedorId`                                                                         |
 | `Participacao`         | `PK` `id`; `UNIQUE` `jogoId` + `vinculoClubeId`; `UNIQUE` `jogoId` + `inscricaoClubeId` + `numeroCamisa` quando preenchido | `escolhidaPorTecnicoId`, `escolhidaEm`, `carteirinhaId`, `credenciadoEm`, `numeroCamisa`, `entrouEmQuadraEm`                     |
 | `AcessoArbitragem`     | `PK`/`FK` `jogoId`; uma senha compartilhada por jogo                                                                       | `revogadoEm`                                                                                                                     |
 | `Arbitragem`           | `PK` `id`; `UNIQUE` `jogoId` + `usuarioId` quando preenchido                                                               | `usuarioId`, `designadoPorPresidenteId`, `designadoEm`, `acessouEm`                                                              |
@@ -95,7 +95,9 @@ clubes. Nome de campeonato/edição também não é uma chave de identidade.
 - Transferir atleta é proibido se o clube atual participa de algum campeonato em andamento.
   Fora desse impedimento, encerrar vínculo e abrir o seguinte ocorre na mesma transação.
 - `clubeId` do técnico é atribuição atual. O técnico que escolheu cada atleta fica identificado
-  na `Participacao` mesmo após substituição. Não há carteirinha nem credenciamento de técnico.
+  na `Participacao` mesmo após substituição. Novo técnico aprovado consulta/altera escalação
+  anterior até o início; a modelagem física deve preservar autoria das escolhas/alterações.
+  Não há carteirinha nem credenciamento de técnico. Sem técnico, arbitragem credencia diretamente.
 
 ## `Carteirinha`
 
@@ -104,7 +106,8 @@ opaco único. O QR identifica a carteirinha; não autoriza operações administr
 `status` aceita `ativa` ou invalidada. `Presidente` pode invalidar e
 reativar, registrando data e responsável. Invalidar não bloqueia login e afeta apenas
 credenciamentos futuros, preservando jogos já credenciados. Dados da carteirinha e aprovação não são
-graváveis pelo próprio atleta.
+graváveis pelo próprio atleta. Presidente pode substituir `tokenQr`, invalidando o anterior,
+sem criar outra carteirinha nem reescrever participações. Preservar histórico de substituições.
 
 ## `Campeonato` e jogo
 
@@ -116,6 +119,15 @@ por campeonato. Cada `Jogo` referencia duas inscrições distintas do próprio c
 essa coincidência. `status` do jogo: agendado, `em_andamento`, finalizado ou cancelado.
 Datas finais não antecedem iniciais. Iniciar e encerrar preenchem os respectivos horários. Uma
 correção de resultado não reabre o acesso de arbitragem.
+
+O ciclo do campeonato é manual pelo presidente, com condições em requisitos, seção 11; datas
+não mudam status automaticamente. `Jogo` passa a precisar de `fusoHorario` IANA do local,
+independente do instante UTC de `inicioPrevistoEm`. Registrar resultado excepcional e vencedor
+separadamente do placar (`inscricaoClubeVencedorId` opcional, limitado às inscrições do jogo);
+a ausência de vencedor deve ser explícita no resultado de encerramento.
+A representação física de interrupção/retomada, abandono, W.O. e invalidação será detalhada na
+implementação; não confundir interrupção temporária com finalização nem criar outra partida
+para retomada. As estatísticas preservadas continuam nas projeções existentes.
 
 ## Escolha, credenciamento e participação
 
@@ -146,7 +158,10 @@ com senha. Usuário autenticado e previamente designado para aquele jogo entra s
 isolado não autoriza acesso: os demais usam a senha compartilhada e informam `nome`
 completo. Para esses acessos, `designadoPorPresidenteId` e `designadoEm` podem estar ausentes: a
 autorização é a senha. Não guardar a senha em texto; `senhaHash` deve usar algoritmo próprio
-para senhas. O acesso é permitido somente no dia marcado, sem liberação manual adicional, e é
+para senhas. Manter também `senhaCifrada` para consulta posterior por presidente e conta
+autenticada/designada, com proteção e gestão de chave na arquitetura. Sem senha em texto puro.
+O acesso usa o dia no fuso do local; se a partida começou, continua após meia-noite até encerrar.
+Sem início até a virada, exige reagendamento. Não há liberação manual adicional; o acesso é
 revogado ao encerramento; toda requisição valida a disponibilidade de acesso, o `status` do jogo e a
 operação solicitada. Antes de iniciar a partida, permitir credenciamento, mas não lançamentos de
 jogo em andamento. Retirar uma designação deve invalidar as sessões correspondentes de acesso sem
@@ -162,7 +177,7 @@ O campo `liberadoEm` foi retirado: não há uma operação de liberação manual
 A primeira senha é gerada automaticamente. Somente presidente ou usuário autenticado pela
 própria conta e designado para aquele jogo pode solicitar troca manual. A sessão por nome e
 senha não concede essa permissão, mesmo que a pessoa possua cadastro. A troca atualiza
-`senhaHash` e revoga todas as `SessaoArbitragem` com `metodoEntrada = senha` na mesma transação,
+`senhaHash` e `senhaCifrada` e revoga todas as `SessaoArbitragem` com `metodoEntrada = senha` na mesma transação,
 preservando as sessões por designação. Não haverá retirada individual de acesso por senha.
 
 Somente presidente adia ou cancela. Ambas as ações invalidam imediatamente todas as sessões
@@ -171,8 +186,7 @@ temporárias do jogo, de ambos os métodos. Adiar também gera nova senha e o ac
 na implementação, sem reutilizar sessões antigas nem acrescentar um novo status por suposição.
 Cancelar ou finalizar mantém o acesso bloqueado. Contas permanentes e outros jogos não são revogados.
 Aplicar as mudanças junto da invalidação das sessões, com controle de concorrência e notificações
-apenas após persistência. Fuso do dia do jogo, partidas que atravessam meia-noite e distribuição
-da senha continuam a esclarecer na PEN-021.
+apenas após persistência. Repetições de início/fim e conflitos de correção seguem requisitos, seção 11.
 
 ## Métricas provisórias, correções e histórico
 
@@ -203,22 +217,30 @@ todos os critérios e o alcance da contagem ainda dependem do cliente. Não pree
 nem ativá-las. Garantir idempotência da geração automática por atleta + `jogoOrigemId` +
 `regraSuspensaoId`.
 
-Suspensão só impede jogos daquele campeonato, até cumprir a quantidade. Cada jogo finalizado do
-clube no campeonato, ocorrido após a aplicação, conta uma vez, mesmo sem escolha/credenciamento do
-atleta. O próprio jogo que originou a punição não conta. `CumprimentoSuspensao` registra os jogos usados
+Suspensão só impede jogos daquele campeonato, até cumprir a quantidade. Cada jogo encerrado
+definitivamente do clube no campeonato e elegível após aplicação conta uma vez, mesmo sem
+escolha/credenciamento.
+Nova suspensão preserva jogo já credenciado; o impedimento e cumprimento se referem aos próximos
+jogos. Jogos excepcionais e retomadas seguem requisitos, seção 11. O próprio jogo que originou
+a punição não conta. `CumprimentoSuspensao` registra os jogos usados
 na contagem; saldo é `quantidadeJogos` menos a quantidade de cumprimentos, nunca negativo. Não
 armazenar saldo divergente em outro campo. Jogos adiados só contam quando realizados; cancelados não
 contam. Lançar cumprimento e verificar credenciamento exige consistência transacional. Alteração do
 `status` de um jogo exige reconciliar cumprimentos. Não recontar ao corrigir placar.
 Transferência durante campeonato em andamento está bloqueada, portanto não transportamos suspensão
-entre clubes. Acúmulo de suspensões simultâneas e auditoria completa permanecem pendentes; não
-implementar soma ou cumprimento paralelo silenciosamente.
+entre clubes. Suspensões simultâneas são cumpridas em paralelo: cada jogo elegível cumpre cada suspensão
+vigente uma vez, respeitando a chave composta. Presidente pode revogar, preservando original e
+cumprimentos; `canceladaEm` representa revogação, com responsável e histórico a modelar.
+Encerramento/cancelamento do campeonato exige registro de término do saldo, distinto de
+revogação e de jogos cumpridos. Redução parcial e justificativa obrigatória continuam pendentes.
 
 ## Pendências que não bloqueiam esta versão documental
 
 - Validar métricas `temp_` e critérios de punição automática com cliente.
 - Auditoria completa: autoria, valores anteriores/novos e justificativas de alterações.
-- Tratamento disciplinar de múltiplas suspensões simultâneas, cancelamento de suspensão e efeitos retroativos.
+- Redução parcial de suspensão, justificativa obrigatória e procedimento de correção de
+  credenciamento com entrada/lançamentos. Revogação, paralelismo e recálculo sem compensação
+  foram definidos em requisitos, seção 11.
 - Detalhes da ficha cadastral além de `nome`, autenticação, foto opcional e vínculos.
 
 Essas pendências limitam implementação das respectivas funcionalidades; esta versão não afirma que
@@ -232,7 +254,7 @@ A escolha do Better Auth foi concluída na PEN-030; seu complemento lógico est�
 Para começar, os campos já modelados e essenciais aos fluxos serão usados provisoriamente,
 sem exigir dados adicionais até confirmação do cliente. E-mail e credencial pertencem à
 autenticação; atleta informa clube inicial e técnico pode ficar sem clube. Fotos usam Supabase
-Storage na franquia gratuita, com limites e permissões ainda a definir.
+Storage na franquia gratuita. Formatos, tamanho e permissões definidos nos requisitos, seção 11.
 
 ## Complemento técnico de autenticação — PEN-030
 
@@ -290,6 +312,6 @@ encerramento de permitir gravação posterior. Preservar sessões da conta e ace
 Notificações só chegam a destinatários ainda autorizados, inclusive em conexões já abertas.
 
 As regras de dia de acesso, adiamento e troca de senha estão definidas na seção de arbitragem;
-PEN-022 resolvida. A PEN-021 conserva apenas os detalhes operacionais ali indicados.
+PEN-022 e PEN-021 resolvidas; esclarecimentos em requisitos, seção 11.
 Recuperação de senha e sua prova estão adiadas nesta etapa; as estruturas nativas permanecem previstas.
 Não introduzir tabela de tentativas, metadados pessoais ou retenção como obrigação nesta rodada.

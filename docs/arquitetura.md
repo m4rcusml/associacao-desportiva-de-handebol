@@ -88,12 +88,19 @@ detalhado antes de implementar resultados em tempo real.
 A arbitragem usa `SessaoArbitragem`, própria da aplicação e limitada ao jogo, incluindo quem
 entra por senha compartilhada sem criar conta permanente. O cookie temporário é separado do
 cookie da conta. Entrada por designação depende também da sessão de conta que a originou.
-O acesso ocorre somente no dia marcado, sem liberação manual adicional. Encerramento,
+O acesso usa o dia marcado no fuso do local do jogo, sem liberação manual adicional;
+se o jogo já começou, continua após meia-noite até encerramento. Sem início até meia-noite,
+exige reagendamento. Conversão no frontend não interfere na autorização. Encerramento,
 cancelamento ou adiamento invalidam todos os acessos temporários abertos para o jogo,
 inclusive conexões já abertas. Somente o presidente adia ou cancela. A senha inicial é automática;
 adiar gera uma nova. Troca manual exige presidente ou conta autenticada e designada para o jogo;
-entrar apenas por nome e senha não concede essa permissão. Trocar a senha invalida todas as
-sessões por senha, preservando as por designação; não há retirada individual de acesso por senha.
+entrar apenas por nome e senha não concede essa permissão. Presidente e contas autenticadas
+e designadas também podem consultar a senha posteriormente. Manter hash apropriado para
+validação e cópia cifrada com criptografia autenticada no backend, usando chave em segredo
+externo ao banco/repositório; nunca expor em logs, URLs ou eventos Socket.IO. Consulta é
+autorizada em cada requisição e não pode ser armazenada em cache.
+Trocar a senha invalida todas as sessões por senha, preservando as por designação;
+não há retirada individual de acesso por senha.
 Revalidar autorização junto da transação de escrita, com controle de concorrência com o
 encerramento; somente um guard anterior à transação não basta. As notificações Socket.IO
 também exigem destinatários ainda autorizados; validar só o handshake é insuficiente.
@@ -167,7 +174,10 @@ Não há Redis nem serviço de e-mail nesta entrega.
 - Fotos ficam no Supabase Storage, usando a franquia gratuita nesta etapa; o banco mantém
   a referência. Conferir limites vigentes antes de provisionar; não contratar plano pago automaticamente.
 
-Limites de tamanho/formato das fotos e permissões de consulta e edição ainda precisam ser definidos.
+Fotos opcionais JPEG/PNG/WebP de até 5 MB; validar conteúdo e tamanho no backend.
+Armazenamento privado, com consulta autorizada pelo backend ou URL assinada de curta duração.
+Permissões em [requisitos, seção 11](requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026);
+QR não dá acesso público. Integração com Storage e políticas ainda não implementadas.
 
 ## Desenvolvimento e banco
 
@@ -267,7 +277,7 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
    cadastro/logout já foram validados; comandos no [README](../README.md#desenvolvimento-local).
 2. Detalhar e validar implantação de teste, encaminhamento, cookies, segredos, IP real do cliente
    para os limites de tentativa (`trust proxy` e `advanced.ipAddress`) e verificações;
-   definir limites e permissões das fotos.
+   implementar limites e permissões das fotos definidos nos requisitos.
 3. Definir em código o contrato da API (documentado em OpenAPI), eventos, conflitos, publicação
    após transação e reconexão. A equipe conduz as decisões técnicas; comportamentos de produto
    ainda indefinidos exigem esclarecimento com Marcus.

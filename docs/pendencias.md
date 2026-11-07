@@ -16,7 +16,7 @@ obrigações de implementar. Os responsáveis indicados são sugestões para con
 | PEN-003 | Confirmar métricas por jogo e atleta: quais dados registrar, definições e forma de cálculo.                                                               | Manter os campos provisórios com prefixo temp_. Placar, gols, cartões amarelos/vermelhos e exclusões de dois minutos são a proposta atual, não a lista definitiva. RF-037.                     |
 | PEN-004 | Definir regras de suspensão automática: penalidades consideradas, limites, período de acumulação, quantidade de jogos e eventual reinício da contagem.    | A funcionalidade foi solicitada, mas os critérios não podem ser inventados. Regras automáticas permanecem inativas até confirmação. RF-039 e RN-041/RN-042.                                    |
 | PEN-005 | Confirmar se o presidente continuará incluindo os clubes participantes dos campeonatos.                                                                   | É o procedimento provisoriamente adotado. Se houver inscrição pelo próprio clube, definir quem solicita, quem aprova e os prazos. RF-014.                                                      |
-| PEN-008 | Definir ficha cadastral e dados obrigatórios de atletas, técnicos, clubes e competições; dados exibidos na carteirinha e elementos usados na verificação. | Usar provisoriamente os campos mínimos essenciais aos fluxos já definidos e confirmar depois com o cliente. Sem documentos; somente fotos de atletas. Edição e efeitos na aprovação continuam pendentes. RF-001 a RF-005. |
+| PEN-008 | Ficha cadastral final, dados da carteirinha e critérios de verificação. | Parcial: campos mínimos provisórios autorizados; foto opcional e edição sem nova aprovação definidos em requisitos, seção 11. Campos finais e critérios do cliente continuam pendentes. |
 
 ## 2. Regras disciplinares e efeitos posteriores
 
@@ -24,11 +24,11 @@ Condução sugerida: Marcus com o cliente.
 
 | ID      | Caso em aberto                                                                                                                    | Decisão necessária                                                                                                                                                                       |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PEN-006 | Mais de uma suspensão para o mesmo atleta no mesmo campeonato, inclusive por decisão manual ou revisão de jogo anterior.          | Definir se acumula, substitui ou cumpre em paralelo. Não presumir uma dessas opções. RN-043.                                                                                             |
-| PEN-009 | Presidente corrige ou cancela punição; um cartão é removido depois que gerou suspensão ou depois que o atleta cumpriu parte dela. | Definir quem autoriza, justificativa, recálculo e efeitos sobre jogos já realizados e atletas que deixaram de jogar.                                                                     |
-| PEN-010 | Campeonato termina ou é cancelado antes de o atleta cumprir todos os jogos.                                                       | Definir destino do saldo: extinguir, manter registrado sem bloquear ou outra regra. A restrição atual vale apenas naquele campeonato; não transportar automaticamente para outra edição. |
-| PEN-011 | Suspensão manual é aplicada depois do credenciamento, antes da entrada em quadra ou durante a partida.                            | Definir quando o impedimento começa e se a elegibilidade deve ser revalidada. A exceção já aprovada para invalidação de carteirinha não resolve automaticamente o caso de suspensão.     |
-| PEN-012 | Jogo é interrompido, abandonado, decidido por ausência de um clube ou invalidado depois de encerrado.                             | Definir se conta como realizado para cumprimento de suspensão e como tratar resultado/estatísticas. Cancelamento simples já está definido: não conta.                                    |
+| PEN-006 | Suspensões simultâneas no mesmo campeonato. | Resolvido: cumprir em paralelo, inclusive manual com automática. Requisitos, seção 11. |
+| PEN-009 | Revogação, redução parcial e recálculo de suspensão. | Parcial: presidente revoga com histórico; correção de penalidade recalcula automática sem compensar ausências ou alterar jogos passados. Redução parcial e justificativa obrigatória ainda pendentes. |
+| PEN-010 | Saldo ao terminar/cancelar campeonato. | Resolvido: encerrar saldo e preservar histórico, sem transportar. Requisitos, seção 11. |
+| PEN-011 | Nova suspensão depois do credenciamento. | Resolvido: preservar participação no jogo já credenciado; impedimento vale para próximos jogos. |
+| PEN-012 | Jogos interrompidos, abandonados, W.O. ou invalidados. | Resolvido: cumprimento uma vez no encerramento definitivo; preservar estatísticas/placar; vencedor separado. Adiados/cancelados não contam enquanto não realizados. Requisitos, seção 11. |
 
 ## 3. Operação de contas, clubes e competições
 
@@ -36,12 +36,12 @@ Condução sugerida: Marcus com o cliente.
 
 | ID      | Caso em aberto                                                                                                             | Decisão necessária                                                                                                                                                                                        |
 | ------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PEN-013 | Cadastro rejeitado, solicitação corrigida ou aprovação posteriormente retirada.                                            | Definir motivo de rejeição, nova solicitação, edição dos dados e efeitos da retirada da aprovação. Invalidar carteirinha é uma operação já definida, distinta desse caso.                                 |
-| PEN-014 | Pessoa precisa trocar de perfil, por exemplo atleta que passa a ser técnico ou presidente.                                 | Definir se a mudança será permitida, quem autoriza e como preservar histórico. A exclusividade de um perfil por vez permanece aprovada.                                                                   |
-| PEN-015 | Sucessão de presidente e desativação de contas.                                                                            | Definir quem desativa outro presidente, como evitar ausência de responsável administrativo e quais efeitos a desativação tem sobre participações e designações existentes.                                |
-| PEN-016 | Clube precisa ser retirado do campeonato, desativado ou alterado depois de possuir jogos e credenciamentos.                | Definir permissões, prazo e tratamento dos jogos/histórico. Não presumir exclusão de registros históricos.                                                                                                |
+| PEN-013 | Rejeição, reapresentação e retirada de aprovação. | Resolvido: rejeição sem motivo obrigatório, nova solicitação na mesma conta e edição sem nova aprovação. Não haverá retirada de aprovação. |
+| PEN-014 | Troca de perfil. | Resolvido para esta versão: não permitir. Um perfil por pessoa permanece. |
+| PEN-015 | Desativação/reativação de contas e sucessão. | Resolvido: presidente administra outras contas, sem apagar histórico e sem desativar o último presidente ativo. Efeitos em requisitos, seção 11; criação segue RF-007. |
+| PEN-016 | Alteração de clube e retirada de inscrição. | Resolvido: editar nome/cidade; retirar inscrição somente sem jogos. Sem exclusão/desativação de clubes. Preservar histórico. |
 | PEN-017 | Atleta troca de clube após sua participação no campeonato terminar, mas o campeonato como um todo ainda está em andamento. | A regra atual bloqueia a transferência enquanto o clube atual participar de campeonato em andamento. Confirmar se haverá exceção para clube eliminado/desistente; até lá, manter o bloqueio aprovado.     |
-| PEN-018 | Troca do técnico depois de ele escolher jogadores ou clube sem técnico no dia da partida.                                  | Definir se o novo técnico pode revisar a escolha anterior e se o presidente pode fazer a escolha preliminar. A arbitragem já pode credenciar atletas válidos fora da lista, inclusive sem escolha prévia. |
+| PEN-018 | Troca de técnico e clube sem técnico. | Resolvido: novo técnico aprovado altera escalação até início; sem técnico, arbitragem credencia diretamente, sem escalação pelo presidente. |
 
 ## 4. Credenciamento, carteirinha e arbitragem
 
@@ -49,11 +49,11 @@ Condução sugerida: Marcus com o cliente para as regras; equipe técnica para o
 
 | ID      | Caso em aberto                                                                                         | Decisão necessária                                                                                                                                                                                                                      |
 | ------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PEN-019 | Credenciamento incorreto ou número da camisa errado, inclusive após entrada em quadra ou encerramento. | Definir correção/estorno, responsáveis e preservação do histórico. A unicidade da camisa por clube e jogo continua obrigatória.                                                                                                         |
-| PEN-020 | QR code copiado, identificação perdida ou necessidade de substituir a carteirinha.                     | Definir conferência de identidade na entrada, possibilidade de trocar o código e tratamento da credencial antiga. A leitura automática para atleta válido já foi aprovada; não introduzir conferência manual obrigatória por suposição. |
-| PEN-021 | Disponibilidade da página da arbitragem.                                                              | Parcialmente resolvido: acesso apenas no dia marcado, sem liberação manual. Só presidente adia/cancela, invalidando todas as sessões; adiamento gera nova senha e acesso depende da nova data. Faltam fuso do dia, partidas atravessando meia-noite e distribuição da senha. |
+| PEN-019 | Correção/estorno de credenciamento e camisa. | Parcial: camisa corrigível pela arbitragem até encerramento; estorno somente sem entrada/lançamentos. Presidente resolve demais casos, mas procedimento com entrada/lançamentos, elegibilidade e reflexos nas estatísticas ainda pendente. |
+| PEN-020 | Perda/cópia do QR e substituição. | Resolvido: presidente substitui QR na mesma carteirinha; anterior deixa de funcionar, credenciamentos preservados. Sem conferência manual obrigatória adicional. |
+| PEN-021 | Dia de acesso, meia-noite e distribuição da senha. | Resolvido: fuso do local no backend; conversão visual no frontend. Após meia-noite acesso continua se jogo começou; se não, exigir reagendamento. Presidente e contas designadas consultam senha posteriormente, protegida por criptografia. |
 | PEN-022 | Troca da senha compartilhada e retirada de acesso.                                                    | Resolvido em 07/11/2026: primeira senha automática; troca manual por presidente ou conta autenticada e designada. Entrada por nome/senha não permite troca. Trocar revoga todas as sessões por senha, preserva designadas; sem retirada individual. |
-| PEN-023 | Vários árbitros tentam iniciar/encerrar o jogo ou corrigir o mesmo lançamento simultaneamente.         | Definir comportamento visível para conflito e confirmação de encerramento. A solução técnica deve evitar perda/duplicação; não criar hierarquia entre linha e banco sem nova decisão.                                                   |
+| PEN-023 | Início/encerramento e correções simultâneas. | Resolvido: repetição de início/fim informa ação já realizada; segunda correção conflitante recusada com estado atualizado. Um árbitro confirma encerramento. |
 
 ## 5. Auditoria e requisitos técnicos a detalhar
 
@@ -77,13 +77,11 @@ aprovados.
 
 ## 7. Ordem sugerida de resolução
 
-1. Confirmar métricas e critérios automáticos (PEN-003/PEN-004), ficha cadastral e inclusão de clubes (PEN-008/PEN-005).
-2. Fechar exceções disciplinares (PEN-006 e PEN-009 a PEN-012), principalmente impedimento após credenciamento.
-3. Resolver correção de credenciamento, detalhes residuais de data/distribuição e conflitos
-   (PEN-019 a PEN-021 e PEN-023). Troca de senha (PEN-022) esclarecida.
-4. Resolver ciclo de contas e clubes (PEN-013 a PEN-018).
-5. Detalhar auditoria e condições operacionais (PEN-007, PEN-025 e PEN-026); a aprovação dos RNFs está concluída.
-6. Decidir o escopo dos pedidos históricos (PEN-027 a PEN-029).
+1. Confirmar métricas definitivas, critérios automáticos, ficha final e inclusão de clubes com o cliente (PEN-003/PEN-004/PEN-008/PEN-005).
+2. Detalhar correção de credenciamento com entrada/lançamentos e redução parcial de suspensão (PEN-019/PEN-009 residuais).
+3. Confirmar eventual exceção de transferência para clube eliminado/desistente (PEN-017); até lá vale o bloqueio aprovado.
+4. Detalhar condições operacionais, retenção e auditoria completa (PEN-025/PEN-026/PEN-007), sem reabrir itens já adiados.
+5. Decidir escopo dos pedidos históricos (PEN-027 a PEN-029).
 
 As pendências bloqueiam apenas a definição completa dos comportamentos afetados; não impedem
 continuar as partes já acordadas.
@@ -91,6 +89,9 @@ continuar as partes já acordadas.
 ## 8. Decisões já encerradas
 
 Não são pendências:
+
+- Esclarecimentos desta rodada: PEN-006, PEN-010 a PEN-016, PEN-018, PEN-020, PEN-021 e PEN-023. Regras em [requisitos, seção 11](requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026). PEN-009/PEN-019 conservam somente os detalhes residuais acima.
+- Ciclo manual do campeonato e limites/permissões de fotos foram definidos na mesma seção.
 
 - PEN-024: os 12 RNFs foram aprovados por Marcus em 04/11/2026.
 - PEN-022: geração e troca de senha, permissões e revogação definidas em 07/11/2026;
@@ -132,10 +133,10 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   Socket.IO continuam fora da entrega, assim como TLS/proxy/cookies hospedados. Recuperação e prova
   de reset seguem adiadas. A escolha está encerrada; a PEN-030 **não está totalmente encerrada**.
   Regras atuais da arbitragem substituem as pendências
-  históricas da conclusão: PEN-022 resolvida; PEN-021 com detalhes residuais.
+  históricas da conclusão: PEN-022 e PEN-021 resolvidas.
 - PEN-031 parcialmente resolvida: Vercel para frontend, Render para backend e Supabase para banco
   e fotos; usar franquia gratuita de armazenamento nesta etapa, conferindo limites antes de provisionar.
-  Serviço de e-mail adiado. Faltam limites/permissões das fotos e configurações de implantação;
+  Serviço de e-mail adiado. Fotos: limites/permissões definidos em requisitos, seção 11; faltam configurações de implantação;
   produção e custos correspondentes serão avaliados posteriormente.
 - PEN-032 parcialmente resolvida: npm e lockfile versionado, versões estáveis recentes compatíveis,
   preferência por Node.js LTS e scripts convencionais. Estrutura mínima de `client/` e `server/`
@@ -149,4 +150,4 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   de lint e a limitação de suporte do ESLint 9 continuam registrados na arquitetura.
 - PEN-033: equipe define os contratos em código/OpenAPI e detalha eventos, reconexão, publicação
   após transação e conflitos. Não exige questionário técnico ao usuário; decisões de comportamento
-  ainda indefinidas, inclusive PEN-023, precisam ser esclarecidas.
+  ainda indefinidas precisam ser esclarecidas; PEN-023 foi resolvida nesta rodada.
