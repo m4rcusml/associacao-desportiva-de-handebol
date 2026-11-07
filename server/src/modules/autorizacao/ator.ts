@@ -52,6 +52,6 @@ export function exigirRequisito(ator: Ator | null, requisito: Requisito = {}): A
  */
 export function exigirAcessoClube(ator: Ator, clubeId: string, perfis: readonly Perfil[] = ["presidente", "tecnico", "atleta"]): Ator {
   exigirRequisito(ator, { perfis, aprovado: true });
-  if (ator.perfil !== "presidente" && ator.clubeId !== clubeId) throw new ForbiddenException("Acesso restrito ao seu clube");
+  if (ator.perfil !== "presidente" && ator.clubeId?.toLowerCase() !== clubeId.toLowerCase()) throw new ForbiddenException("Acesso restrito ao seu clube");
   return ator;
 }

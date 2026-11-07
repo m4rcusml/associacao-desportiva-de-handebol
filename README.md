@@ -199,6 +199,8 @@ Validação local da MAR-54 em 07/11/2026: lint, tipos/build e 22 testes de inte
 incluindo cinco novos de autorização por HTTP (atleta/técnico pendente, rejeitado e aprovado,
 presidente, inativo, identidade sem domínio, cruzamento de clubes, parâmetros forjados e
 transferência) e revalidação em transação concorrente com desativação. Nenhuma dependência nova.
+Revisão da MAR-54: comparação de UUID de clube sem distinção entre maiúsculas e minúsculas;
+regressão HTTP para atleta/técnico no próprio clube e em outro clube. Lint, tipos/build e 22 testes revalidados.
 
 ## Caminho feliz
 

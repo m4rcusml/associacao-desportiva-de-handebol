@@ -102,7 +102,9 @@ test("atleta e técnico aprovados acessam somente o próprio clube; presidente a
   for (const { cookie } of [atleta, tecnico]) {
     assert.equal(await status("/protegida/aprovado", cookie), 200);
     assert.equal(await status(`/protegida/clubes/${clubeA}`, cookie), 200);
+    assert.equal(await status(`/protegida/clubes/${clubeA.toUpperCase()}`, cookie), 200);
     assert.equal(await status(`/protegida/clubes/${clubeB}`, cookie), 403);
+    assert.equal(await status(`/protegida/clubes/${clubeB.toUpperCase()}`, cookie), 403);
     assert.equal(await status("/protegida/presidente", cookie), 403);
   }
   // Clube vem do cadastro: parâmetros extras na requisição não alteram o clube autorizado.
