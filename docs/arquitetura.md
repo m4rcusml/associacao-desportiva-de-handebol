@@ -184,6 +184,13 @@ credencial (fictício do seed) não conta. Reativar também apaga sessões: a pe
 Repetição responde 200 com `alterado: false`. Nada é excluído. `contaAtiva(tx, usuarioId)`
 (`modules/contas/contas.ts`) é a checagem que a arbitragem por designação deve reutilizar dentro
 da transação (`FOR SHARE`); a entrada por senha compartilhada não a utiliza (RN-025).
+Clubes (MAR-56): `modules/clubes` expõe as escritas do presidente, revalidado na transação, e
+leituras (`visao-geral` e consulta por clube) para qualquer conta autenticada e ativa; o campo
+`ativo` do técnico só é incluído para o presidente.
+Atribuição e desvinculação bloqueiam a linha `Clube` (`FOR UPDATE`) e depois as linhas `Usuario`
+dos técnicos envolvidos, em ordem fixa, seguindo a convenção acima. Substituir exige informar o
+técnico atual, de modo que operações simultâneas na mesma vaga não se sobrescrevem: a segunda recebe 409.
+A unicidade de `Tecnico.clubeId` e o CHECK de técnico aprovado garantem as regras também no banco.
 
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,

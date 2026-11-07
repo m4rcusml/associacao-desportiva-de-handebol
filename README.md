@@ -94,6 +94,22 @@ revoga as sessões já abertas; reativar exige novo login. Histórico e vínculo
 há exclusão de conta nem troca de perfil. O último presidente ativo com credencial não pode ser
 desativado, inclusive em solicitações simultâneas (MAR-60).
 
+#### Clubes e técnicos (MAR-56)
+
+Somente presidente ativo autenticado administra clubes: `POST /api/clubes` (`nome`, `cidade`
+opcional; nome não precisa ser único) e `PATCH /api/clubes/{clubeId}` (`nome` e/ou `cidade`, que
+aceita `null`). Não há exclusão nem desativação de clubes; a edição preserva vínculos.
+Qualquer conta autenticada e ativa, inclusive pendente, lista todos os clubes com o técnico atual
+(id e nome, ou `null`) em `GET /api/clubes/visao-geral` e consulta um clube em
+`GET /api/clubes/{clubeId}`; somente o presidente recebe também `criadoPorPresidenteId` e `ativo`
+do técnico. `GET /api/clubes` continua público e mínimo (id, nome, cidade), sem técnico, para o
+cadastro. Técnico atribuído cuja conta foi desativada permanece no clube até ser substituído ou
+desvinculado pelo presidente. A vaga de técnico é administrada com
+`PUT /api/clubes/{clubeId}/tecnico` (`tecnicoId`; para substituir, `substituirTecnicoId` com o
+técnico atual) e `DELETE /api/clubes/{clubeId}/tecnico/{tecnicoId}`, deixando o clube sem técnico.
+Só técnico aprovado e com conta ativa é atribuído; técnico já atribuído a outro clube, vaga ocupada
+sem indicar o técnico atual e atribuições concorrentes à mesma vaga respondem 409.
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -247,6 +263,20 @@ login concorrente (barreira entre a leitura da conta pelo hook e a gravação da
 desativação e reativação, no intervalo não deixa sessão gravada; sessão em gravação faz a desativação
 aguardar e é revogada; versão desatualizada ou ausente é recusada pelo banco. Migração
 `sessao_conta_ativa`; nenhuma dependência nova.
+
+Validação local da MAR-56 em 07/11/2026: lint, tipos/build e 31 testes de integração aprovados,
+incluindo cinco novos: criação/consulta/edição de clubes com nome repetido, listagem pública mínima
+e regressão do cadastro de atleta; atribuição, repetição, substituição explícita e desvinculação com
+efeito imediato no acesso do técnico; recusa de técnico pendente, rejeitado, inativo ou inexistente e
+restrições do banco acionadas diretamente; três rodadas de atribuições concorrentes à mesma vaga, de
+substituições concorrentes e do mesmo técnico em dois clubes, com exatamente uma concluída; e acessos
+indevidos (sem sessão, atleta, técnicos, pendente, sem origem e presidente desativado). Uma migração nova.
+Após a revisão: 33 testes aprovados, com dois novos — visão geral/consulta para presidente (com `ativo`
+do técnico), técnico e atleta, inclusive pendentes (sem `ativo`), clube sem técnico, 401 sem sessão e
+para conta desativada, rota pública sem técnico; e técnico atribuído com conta desativada substituído
+e desvinculado pelo presidente, com nova atribuição de técnico inativo recusada. Lint e tipos/build aprovados.
+Após integrar a MAR-60 da `main`: lint, tipos/build e 38 testes de integração aprovados em banco
+recém-criado; a migração `tecnico_clube_aprovado` foi renomeada para depois de `sessao_conta_ativa`.
 
 ## Caminho feliz
 

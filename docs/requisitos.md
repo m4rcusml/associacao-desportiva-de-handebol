@@ -345,6 +345,10 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
 - Novo técnico aprovado do clube consulta/altera a escalação anterior até o início do jogo,
   preservando autoria histórica. Sem técnico, arbitragem credencia diretamente; presidente
   não ganha uma operação de escalação substituta.
+- Listagem e consulta de clubes com o técnico atual (id e nome) são visíveis a qualquer conta
+  autenticada e ativa, inclusive com aprovação pendente; somente o presidente vê também se a conta
+  do técnico está ativa. A listagem pública usada no cadastro continua mínima (id, nome e cidade),
+  sem técnico. Quem verá dados esportivos sem login será decidido com a MAR-74 (MAR-56).
 
 ### Campeonato, acesso e concorrência
 

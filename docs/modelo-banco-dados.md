@@ -39,6 +39,10 @@ de conta inativa ou com versão diferente da atual, impedindo que login concorre
 a desativação ou, havendo reativação no intervalo, sessão válida sem novo login.
 Pelo menos um presidente ativo com credencial permanece, com serialização no banco. Não há
 colunas de autoria/data da desativação: auditoria continua em PEN-007.
+A migração `tecnico_clube_aprovado` (MAR-56) acrescenta CHECK que só permite `Tecnico.clubeId` preenchido com
+verificação aprovada; a unicidade de `clubeId` já limita a um técnico por clube e um clube por técnico.
+Presidente cria/edita clubes e atribui, substitui ou desvincula técnicos; `clubeId` do técnico é
+somente a atribuição atual, sem tabela de períodos, conforme a modelagem abaixo.
 Testes comprovam rollback também quando a falha ocorre no commit e acesso negado para identidade
 sem domínio. Aprovações, transferências e edição não estão implementadas; revalidar suas regras
 transacionais ao introduzir essas operações.
