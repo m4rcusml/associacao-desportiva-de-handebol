@@ -26,9 +26,20 @@ normaliza e-mail e rejeita campos não permitidos. Ambos os perfis públicos com
 solicitação de verificação registrada. Atleta informa clube; técnico não pode atribuir clube.
 Não há fluxo público de aprovação/presidente. O seed local cria presidente fictício sem credencial
 de login e um clube para demonstração, preservando a FK administrativa sem criar acesso público.
+Esse presidente fictício existe somente no desenvolvimento local (o seed recusa `NODE_ENV=production`),
+nunca conta como presidente ativo e não deve receber credencial. Se isso mudar, revisar a proteção
+do último presidente ativo (MAR-60) e o procedimento `presidente:inicial` (MAR-55).
 O presidente inicial com credencial vem do procedimento restrito descrito no README; os seguintes
 são criados por presidente ativo, com `criadoPorPresidenteId` preenchido (MAR-55).
-A quarta migração (MAR-56) acrescenta CHECK que só permite `Tecnico.clubeId` preenchido com
+Presidente desativa/reativa outras contas alterando `Usuario.ativo`, incrementando
+`Usuario.versaoAtivacao` e revogando as `AuthSession` da conta (MAR-60); extensões, vínculos,
+`Tecnico.clubeId`, aprovações, credencial e autoria são mantidos. `AuthSession.versaoAtivacao` guarda
+a versão lida no login; um trigger (`BEFORE INSERT/UPDATE`, com `FOR SHARE` na conta) recusa sessão
+de conta inativa ou com versão diferente da atual, impedindo que login concorrente grave sessão após
+a desativação ou, havendo reativação no intervalo, sessão válida sem novo login.
+Pelo menos um presidente ativo com credencial permanece, com serialização no banco. Não há
+colunas de autoria/data da desativação: auditoria continua em PEN-007.
+A migração `tecnico_clube_aprovado` (MAR-56) acrescenta CHECK que só permite `Tecnico.clubeId` preenchido com
 verificação aprovada; a unicidade de `clubeId` já limita a um técnico por clube e um clube por técnico.
 Presidente cria/edita clubes e atribui, substitui ou desvincula técnicos; `clubeId` do técnico é
 somente a atribuição atual, sem tabela de períodos, conforme a modelagem abaixo.

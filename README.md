@@ -88,6 +88,12 @@ em `Presidente.criadoPorPresidenteId`. Campos adicionais são rejeitados; atleta
 inativa e cadastro público não criam presidentes. Enquanto recuperação e troca de senha não
 existirem, a senha inicial deve ser entregue ao novo presidente por canal seguro.
 
+Presidente ativo desativa ou reativa outras contas com `POST /api/contas/{usuarioId}/desativacao`
+e `POST /api/contas/{usuarioId}/reativacao` (corpo vazio). Desativar bloqueia login e operações e
+revoga as sessões já abertas; reativar exige novo login. Histórico e vínculos são preservados; não
+há exclusão de conta nem troca de perfil. O último presidente ativo com credencial não pode ser
+desativado, inclusive em solicitações simultâneas (MAR-60).
+
 #### Clubes e técnicos (MAR-56)
 
 Somente presidente ativo autenticado administra clubes: `POST /api/clubes` (`nome`, `cidade`
@@ -246,6 +252,18 @@ criação autorizada com criador registrado, e-mail repetido/campos forjados, ro
 e escalada negada (sem sessão, atleta, técnico aprovado, presidente desativado e cadastro público).
 A entrada oculta no terminal interativo não é coberta pelos testes automatizados.
 
+Validação local da MAR-60 em 07/11/2026: lint, tipos/build e 30 testes de integração aprovados,
+incluindo quatro novos: desativação de atleta/técnico com revogação das sessões abertas (vários
+dispositivos), login recusado, histórico/vínculo/aprovação preservados, repetição sem efeito e
+reativação com novo login; acesso indevido (sem sessão, atleta, técnico aprovado, própria conta,
+origem, corpo forjado, conta inexistente); cinco rodadas dos dois últimos presidentes desativando um
+ao outro simultaneamente, com exatamente um ativo; recusa do último presidente com credencial e
+`contaAtiva` aguardando desativação concorrente. Após revisão: 31 testes aprovados, com regressão de
+login concorrente (barreira entre a leitura da conta pelo hook e a gravação da sessão): desativação, ou
+desativação e reativação, no intervalo não deixa sessão gravada; sessão em gravação faz a desativação
+aguardar e é revogada; versão desatualizada ou ausente é recusada pelo banco. Migração
+`sessao_conta_ativa`; nenhuma dependência nova.
+
 Validação local da MAR-56 em 07/11/2026: lint, tipos/build e 31 testes de integração aprovados,
 incluindo cinco novos: criação/consulta/edição de clubes com nome repetido, listagem pública mínima
 e regressão do cadastro de atleta; atribuição, repetição, substituição explícita e desvinculação com
@@ -257,6 +275,8 @@ Após a revisão: 33 testes aprovados, com dois novos — visão geral/consulta 
 do técnico), técnico e atleta, inclusive pendentes (sem `ativo`), clube sem técnico, 401 sem sessão e
 para conta desativada, rota pública sem técnico; e técnico atribuído com conta desativada substituído
 e desvinculado pelo presidente, com nova atribuição de técnico inativo recusada. Lint e tipos/build aprovados.
+Após integrar a MAR-60 da `main`: lint, tipos/build e 38 testes de integração aprovados em banco
+recém-criado; a migração `tecnico_clube_aprovado` foi renomeada para depois de `sessao_conta_ativa`.
 
 ## Caminho feliz
 
