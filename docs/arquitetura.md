@@ -172,7 +172,9 @@ da transação, que relê o ator com `FOR SHARE` na linha `Usuario`. Convenção
 ativação, aprovação ou clube de uma conta bloqueiam essa linha com `FOR UPDATE`. As rotas
 `/api/protegida/{aprovado,presidente,clubes/:clubeId}` só demonstram e testam essas regras.
 
-Clubes (MAR-56): `modules/clubes` expõe as operações do presidente, revalidado na transação.
+Clubes (MAR-56): `modules/clubes` expõe as escritas do presidente, revalidado na transação, e
+leituras (`visao-geral` e consulta por clube) para qualquer conta autenticada e ativa; o campo
+`ativo` do técnico só é incluído para o presidente.
 Atribuição e desvinculação bloqueiam a linha `Clube` (`FOR UPDATE`) e depois as linhas `Usuario`
 dos técnicos envolvidos, em ordem fixa, seguindo a convenção acima. Substituir exige informar o
 técnico atual, de modo que operações simultâneas na mesma vaga não se sobrescrevem: a segunda recebe 409.

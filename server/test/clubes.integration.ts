@@ -142,7 +142,7 @@ test("atribuir, substituir e desvincular técnico; clube pode ficar sem técnico
 
   const atribuido = await atribuir(clube.id, primeiro.id.toUpperCase());
   assert.equal(atribuido.status, 200, await atribuido.clone().text());
-  assert.deepEqual((await atribuido.json()).tecnico, { id: primeiro.id, nomeCompleto: "Pessoa Fictícia" });
+  assert.deepEqual((await atribuido.json()).tecnico, { id: primeiro.id, nomeCompleto: "Pessoa Fictícia", ativo: true });
   assert.equal(await acessoAoClube(clube.id, primeiro.cookie), 200);
   // Repetir a mesma atribuição não altera nada.
   assert.equal((await atribuir(clube.id, primeiro.id)).status, 200);
@@ -241,7 +241,6 @@ test("acessos indevidos às operações de clubes são recusados sem efeitos", a
 
   const operacoes: [Metodo, string, unknown?][] = [
     ["POST", "/clubes", { nome: "Clube indevido" }],
-    ["GET", `/clubes/${clube.id}`],
     ["PATCH", `/clubes/${clube.id}`, { nome: "Nome indevido" }],
     ["PUT", `/clubes/${clube.id}/tecnico`, { tecnicoId: outroTecnico.id, substituirTecnicoId: tecnicoDoClube.id }],
     ["DELETE", `/clubes/${clube.id}/tecnico/${tecnicoDoClube.id}`],
@@ -252,7 +251,7 @@ test("acessos indevidos às operações de clubes são recusados sem efeitos", a
       assert.equal((await request(metodo, path, cookie, body)).status, 403, `${metodo} ${path}`);
     }
     // Escrita sem origem do cliente é recusada antes da autorização.
-    if (metodo !== "GET") assert.equal((await request(metodo, path, presidente.cookie, body, false)).status, 403);
+    assert.equal((await request(metodo, path, presidente.cookie, body, false)).status, 403);
   }
 
   // Presidente desativado perde o acesso com a mesma sessão.
@@ -262,13 +261,85 @@ test("acessos indevidos às operações de clubes são recusados sem efeitos", a
   for (const [metodo, path, body] of operacoes) assert.equal((await request(metodo, path, desativado.cookie, body)).status, 401);
 
   const estado = await (await request("GET", `/clubes/${clube.id}`, presidente.cookie)).json();
-  assert.deepEqual(estado, { id: clube.id, nome: "Clube protegido", cidade: "Olinda", criadoPorPresidenteId: presidente.id, tecnico: { id: tecnicoDoClube.id, nomeCompleto: "Pessoa Fictícia" } });
+  assert.deepEqual(estado, { id: clube.id, nome: "Clube protegido", cidade: "Olinda", criadoPorPresidenteId: presidente.id, tecnico: { id: tecnicoDoClube.id, nomeCompleto: "Pessoa Fictícia", ativo: true } });
   assert.equal(await prisma.clube.count({ where: { nome: "Clube indevido" } }), 0);
   assert.equal(await clubeDoTecnico(outroTecnico.id), null);
 
   // Contrato OpenAPI publica as novas rotas.
   const contrato = await (await request("GET", "/openapi.json")).json();
-  for (const [path, metodo] of [["/clubes", "get"], ["/clubes", "post"], ["/clubes/{clubeId}", "patch"], ["/clubes/{clubeId}/tecnico", "put"], ["/clubes/{clubeId}/tecnico/{tecnicoId}", "delete"]]) {
+  for (const [path, metodo] of [["/clubes", "get"], ["/clubes", "post"], ["/clubes/visao-geral", "get"], ["/clubes/{clubeId}", "get"], ["/clubes/{clubeId}", "patch"], ["/clubes/{clubeId}/tecnico", "put"], ["/clubes/{clubeId}/tecnico/{tecnicoId}", "delete"]]) {
     assert.ok(contrato.paths[path]?.[metodo], `${metodo} ${path}`);
   }
+});
+
+test("visão geral e consulta de clubes: contas autenticadas e ativas; ativo do técnico só para presidente", async () => {
+  const comTecnico = await criarClube("Clube visível com técnico", "Natal");
+  const semTecnico = await criarClube("Clube visível sem técnico");
+  const tecnico = await tecnicoAprovado();
+  assert.equal((await atribuir(comTecnico.id, tecnico.id)).status, 200);
+  const atletaPendente = await cadastrar("atleta", comTecnico.id);
+  const tecnicoPendente = await cadastrar("tecnico");
+  const dadosTecnico = { id: tecnico.id, nomeCompleto: "Pessoa Fictícia" };
+  const daLista = async (cookie: string) => {
+    const response = await request("GET", "/clubes/visao-geral", cookie);
+    assert.equal(response.status, 200, await response.clone().text());
+    const lista = await response.json() as { id: string }[];
+    return [comTecnico.id, semTecnico.id].map(id => lista.find(c => c.id === id));
+  };
+
+  // Presidente: técnico com situação da conta e dados administrativos.
+  assert.deepEqual(await daLista(presidente.cookie), [
+    { id: comTecnico.id, nome: "Clube visível com técnico", cidade: "Natal", criadoPorPresidenteId: presidente.id, tecnico: { ...dadosTecnico, ativo: true } },
+    { id: semTecnico.id, nome: "Clube visível sem técnico", cidade: null, criadoPorPresidenteId: presidente.id, tecnico: null },
+  ]);
+  // Técnico e atleta, inclusive pendentes: mesma lista sem `ativo` nem criador.
+  const semAdministrativo = [
+    { id: comTecnico.id, nome: "Clube visível com técnico", cidade: "Natal", tecnico: dadosTecnico },
+    { id: semTecnico.id, nome: "Clube visível sem técnico", cidade: null, tecnico: null },
+  ];
+  for (const { cookie } of [tecnico, atletaPendente, tecnicoPendente]) {
+    assert.deepEqual(await daLista(cookie), semAdministrativo);
+    const detalhe = await request("GET", `/clubes/${comTecnico.id}`, cookie);
+    assert.equal(detalhe.status, 200);
+    assert.deepEqual(await detalhe.json(), semAdministrativo[0]);
+  }
+  // Situação da conta do técnico refletida apenas para o presidente.
+  await prisma.usuario.update({ where: { id: tecnico.id }, data: { ativo: false } });
+  assert.deepEqual((await (await request("GET", `/clubes/${comTecnico.id}`, presidente.cookie)).json()).tecnico, { ...dadosTecnico, ativo: false });
+  assert.deepEqual((await daLista(atletaPendente.cookie))[0], semAdministrativo[0]);
+
+  // Sem sessão e conta desativada: 401. A rota pública continua mínima, sem técnico.
+  const atletaDesativado = await cadastrar("atleta", semTecnico.id);
+  await prisma.usuario.update({ where: { id: atletaDesativado.id }, data: { ativo: false } });
+  for (const cookie of ["", tecnico.cookie, atletaDesativado.cookie]) {
+    assert.equal((await request("GET", "/clubes/visao-geral", cookie)).status, 401);
+    assert.equal((await request("GET", `/clubes/${comTecnico.id}`, cookie)).status, 401);
+  }
+  const publica = await (await request("GET", "/clubes")).json() as Record<string, unknown>[];
+  assert.deepEqual(publica.find(c => c.id === comTecnico.id), { id: comTecnico.id, nome: "Clube visível com técnico", cidade: "Natal" });
+});
+
+test("técnico atribuído com conta desativada continua no clube e pode ser substituído ou desvinculado", async () => {
+  const clube = await criarClube("Clube com técnico desativado");
+  const [inativo, substituto] = [await tecnicoAprovado(), await tecnicoAprovado()];
+  assert.equal((await atribuir(clube.id, inativo.id)).status, 200);
+  await prisma.usuario.update({ where: { id: inativo.id }, data: { ativo: false } });
+  assert.equal(await clubeDoTecnico(inativo.id), clube.id);
+
+  // Substituição informando o técnico inativo como atual.
+  const trocado = await atribuir(clube.id, substituto.id, inativo.id);
+  assert.equal(trocado.status, 200, await trocado.clone().text());
+  assert.deepEqual((await trocado.json()).tecnico, { id: substituto.id, nomeCompleto: "Pessoa Fictícia", ativo: true });
+  assert.equal(await clubeDoTecnico(inativo.id), null);
+  // Atribuir técnico inativo continua recusado.
+  const outroClube = await criarClube("Clube sem técnico inativo");
+  assert.equal((await atribuir(outroClube.id, inativo.id)).status, 409);
+  assert.equal((await atribuir(clube.id, inativo.id, substituto.id)).status, 409);
+
+  // Desvincular técnico atribuído que teve a conta desativada.
+  await prisma.usuario.update({ where: { id: substituto.id }, data: { ativo: false } });
+  const desvinculado = await request("DELETE", `/clubes/${clube.id}/tecnico/${substituto.id}`, presidente.cookie);
+  assert.equal(desvinculado.status, 200, await desvinculado.clone().text());
+  assert.equal((await desvinculado.json()).tecnico, null);
+  assert.equal(await clubeDoTecnico(substituto.id), null);
 });

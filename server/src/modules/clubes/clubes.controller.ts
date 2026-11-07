@@ -5,18 +5,18 @@ import { SessionGuard } from "../autenticacao/session.guard.js";
 import type { Ator } from "../autorizacao/ator.js";
 import { AtorAtual, Requer } from "../autorizacao/autorizacao.decorators.js";
 import { AutorizacaoService } from "../autorizacao/autorizacao.service.js";
-import { atribuicaoSchema, atribuirTecnico, desvincularTecnico, detalharClube, edicaoClubeSchema, novoClubeSchema, traduzirErroClube } from "./clubes.js";
+import { atribuicaoSchema, atribuirTecnico, desvincularTecnico, detalharClube, edicaoClubeSchema, listarClubes, novoClubeSchema, traduzirErroClube } from "./clubes.js";
 
 const somentePresidente = { perfis: ["presidente"] } as const;
 const uuidPipe = new ParseUUIDPipe();
 
 /**
- * Administração de clubes pelo presidente (RF-009/010, RN-004/005). A listagem mínima pública usada
- * no cadastro continua em `GET /api/clubes`. Não há exclusão nem desativação de clubes.
+ * Clubes (RF-009/010, RN-004/005): escritas somente pelo presidente; leituras com técnico para contas
+ * autenticadas e ativas. A listagem mínima pública usada no cadastro continua em `GET /api/clubes`.
+ * Não há exclusão nem desativação de clubes.
  */
 @Controller("clubes")
 @UseGuards(SessionGuard)
-@Requer(somentePresidente)
 export class ClubesController {
   constructor(private readonly prisma: PrismaService, private readonly autorizacao: AutorizacaoService) {}
 
@@ -29,6 +29,7 @@ export class ClubesController {
   }
 
   @Post()
+  @Requer(somentePresidente)
   async criar(@AtorAtual() ator: Ator, @Body() body: unknown) {
     const parsed = novoClubeSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException("Dados inválidos. Informe nome de 2 a 120 caracteres e, opcionalmente, cidade de 2 a 120 caracteres; campos adicionais não são permitidos.");
@@ -38,12 +39,23 @@ export class ClubesController {
     });
   }
 
+  /**
+   * Leituras: qualquer conta autenticada e ativa (inclusive com aprovação pendente). Somente o
+   * presidente recebe dados administrativos (`criadoPorPresidenteId` e `ativo` do técnico).
+   * Declarada antes de `:clubeId`.
+   */
+  @Get("visao-geral")
+  visaoGeral(@AtorAtual() ator: Ator) {
+    return listarClubes(this.prisma, ator.perfil === "presidente");
+  }
+
   @Get(":clubeId")
-  consultar(@Param("clubeId", uuidPipe) clubeId: string) {
-    return detalharClube(this.prisma, clubeId.toLowerCase());
+  consultar(@AtorAtual() ator: Ator, @Param("clubeId", uuidPipe) clubeId: string) {
+    return detalharClube(this.prisma, clubeId.toLowerCase(), ator.perfil === "presidente");
   }
 
   @Patch(":clubeId")
+  @Requer(somentePresidente)
   async editar(@AtorAtual() ator: Ator, @Param("clubeId", uuidPipe) clubeId: string, @Body() body: unknown) {
     const parsed = edicaoClubeSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException("Dados inválidos. Informe nome e/ou cidade (2 a 120 caracteres; cidade pode ser null); campos adicionais não são permitidos.");
@@ -57,6 +69,7 @@ export class ClubesController {
 
   /** Atribui técnico ao clube sem técnico ou substitui o atual (informando-o em `substituirTecnicoId`). */
   @Put(":clubeId/tecnico")
+  @Requer(somentePresidente)
   async atribuir(@AtorAtual() ator: Ator, @Param("clubeId", uuidPipe) clubeId: string, @Body() body: unknown) {
     const parsed = atribuicaoSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException("Dados inválidos. Informe tecnicoId e, para substituir, substituirTecnicoId (UUIDs); campos adicionais não são permitidos.");
@@ -65,6 +78,7 @@ export class ClubesController {
 
   /** Desvincula o técnico informado; o clube fica sem técnico. */
   @Delete(":clubeId/tecnico/:tecnicoId")
+  @Requer(somentePresidente)
   @HttpCode(200)
   async desvincular(@AtorAtual() ator: Ator, @Param("clubeId", uuidPipe) clubeId: string, @Param("tecnicoId", uuidPipe) tecnicoId: string) {
     return this.emTransacao(ator, tx => desvincularTecnico(tx, clubeId.toLowerCase(), tecnicoId.toLowerCase()));

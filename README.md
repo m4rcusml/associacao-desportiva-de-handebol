@@ -91,10 +91,14 @@ existirem, a senha inicial deve ser entregue ao novo presidente por canal seguro
 #### Clubes e técnicos (MAR-56)
 
 Somente presidente ativo autenticado administra clubes: `POST /api/clubes` (`nome`, `cidade`
-opcional; nome não precisa ser único), `GET /api/clubes/{clubeId}` (clube e técnico atual) e
-`PATCH /api/clubes/{clubeId}` (`nome` e/ou `cidade`, que aceita `null`). Não há exclusão nem
-desativação de clubes; a edição preserva vínculos. `GET /api/clubes` continua público e mínimo
-(id, nome, cidade) para o cadastro. A vaga de técnico é administrada com
+opcional; nome não precisa ser único) e `PATCH /api/clubes/{clubeId}` (`nome` e/ou `cidade`, que
+aceita `null`). Não há exclusão nem desativação de clubes; a edição preserva vínculos.
+Qualquer conta autenticada e ativa, inclusive pendente, lista todos os clubes com o técnico atual
+(id e nome, ou `null`) em `GET /api/clubes/visao-geral` e consulta um clube em
+`GET /api/clubes/{clubeId}`; somente o presidente recebe também `criadoPorPresidenteId` e `ativo`
+do técnico. `GET /api/clubes` continua público e mínimo (id, nome, cidade), sem técnico, para o
+cadastro. Técnico atribuído cuja conta foi desativada permanece no clube até ser substituído ou
+desvinculado pelo presidente. A vaga de técnico é administrada com
 `PUT /api/clubes/{clubeId}/tecnico` (`tecnicoId`; para substituir, `substituirTecnicoId` com o
 técnico atual) e `DELETE /api/clubes/{clubeId}/tecnico/{tecnicoId}`, deixando o clube sem técnico.
 Só técnico aprovado e com conta ativa é atribuído; técnico já atribuído a outro clube, vaga ocupada
@@ -249,6 +253,10 @@ efeito imediato no acesso do técnico; recusa de técnico pendente, rejeitado, i
 restrições do banco acionadas diretamente; três rodadas de atribuições concorrentes à mesma vaga, de
 substituições concorrentes e do mesmo técnico em dois clubes, com exatamente uma concluída; e acessos
 indevidos (sem sessão, atleta, técnicos, pendente, sem origem e presidente desativado). Uma migração nova.
+Após a revisão: 33 testes aprovados, com dois novos — visão geral/consulta para presidente (com `ativo`
+do técnico), técnico e atleta, inclusive pendentes (sem `ativo`), clube sem técnico, 401 sem sessão e
+para conta desativada, rota pública sem técnico; e técnico atribuído com conta desativada substituído
+e desvinculado pelo presidente, com nova atribuição de técnico inativo recusada. Lint e tipos/build aprovados.
 
 ## Caminho feliz
 

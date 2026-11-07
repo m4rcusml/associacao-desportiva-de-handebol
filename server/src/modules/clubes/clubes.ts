@@ -19,14 +19,30 @@ export const atribuicaoSchema = z.strictObject({ tecnicoId: uuid, substituirTecn
 
 type Tx = Prisma.TransactionClient;
 
-export async function detalharClube(db: Pick<Tx, "clube">, clubeId: string) {
-  const clube = await db.clube.findUnique({ where: { id: clubeId }, select: {
-    id: true, nome: true, cidade: true, criadoPorPresidenteId: true,
-    tecnico: { select: { usuarioId: true, usuario: { select: { nomeCompleto: true } } } },
-  } });
+const selecaoClube = {
+  id: true, nome: true, cidade: true, criadoPorPresidenteId: true,
+  tecnico: { select: { usuarioId: true, usuario: { select: { nomeCompleto: true, ativo: true } } } },
+} as const;
+type ClubeLido = Prisma.ClubeGetPayload<{ select: typeof selecaoClube }>;
+
+/** Somente o presidente recebe `criadoPorPresidenteId` e a situação da conta do técnico (`ativo`). */
+function apresentarClube({ tecnico, criadoPorPresidenteId, ...dados }: ClubeLido, paraPresidente: boolean) {
+  return { ...dados, ...(paraPresidente ? { criadoPorPresidenteId } : {}), tecnico: tecnico ? {
+    id: tecnico.usuarioId, nomeCompleto: tecnico.usuario.nomeCompleto,
+    ...(paraPresidente ? { ativo: tecnico.usuario.ativo } : {}),
+  } : null };
+}
+
+export async function detalharClube(db: Pick<Tx, "clube">, clubeId: string, paraPresidente = true) {
+  const clube = await db.clube.findUnique({ where: { id: clubeId }, select: selecaoClube });
   if (!clube) throw new NotFoundException("Clube não encontrado");
-  const { tecnico, ...dados } = clube;
-  return { ...dados, tecnico: tecnico ? { id: tecnico.usuarioId, nomeCompleto: tecnico.usuario.nomeCompleto } : null };
+  return apresentarClube(clube, paraPresidente);
+}
+
+/** Visão geral para contas autenticadas: todos os clubes com o técnico atual (ou null). */
+export async function listarClubes(db: Pick<Tx, "clube">, paraPresidente: boolean) {
+  const clubes = await db.clube.findMany({ select: selecaoClube, orderBy: [{ nome: "asc" }, { id: "asc" }] });
+  return clubes.map(clube => apresentarClube(clube, paraPresidente));
 }
 
 /** Serializa alterações da vaga de técnico do clube (lock da linha `Clube`). */
