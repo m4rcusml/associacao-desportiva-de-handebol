@@ -1,7 +1,7 @@
 # Modelagem do banco — versão 1
 
 Consolidada em 04/11/2026 e atualizada em 07/11/2026 com a PEN-030 e as regras de acesso da arbitragem.
-Fonte das decisões: revisão com Marcus e mediação autorizada. O [diagrama Mermaid](modelo-banco-dados.mmd)
+Fonte das decisões: revisão e definições aprovadas por Marcus. O [diagrama Mermaid](modelo-banco-dados.mmd)
 inclui o complemento técnico; a cópia anteriormente publicada no Miro ainda precisa ser sincronizada.
 Esta entrega é modelagem lógica; não aplica migrações ao banco.
 

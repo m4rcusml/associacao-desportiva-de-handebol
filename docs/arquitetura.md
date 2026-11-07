@@ -1,6 +1,6 @@
 # Arquitetura da aplicação
 
-Decisões acordadas com Marcus em 06/11/2026 e atualizadas em 07/11/2026 pela mediação da
+Decisões acordadas com Marcus em 06/11/2026 e atualizadas em 07/11/2026 pela resolução da
 PEN-030 e pelas definições posteriores de desenvolvimento, infraestrutura e arbitragem.
 Este documento descreve a direção aprovada. A estrutura mínima local foi criada;
 as funcionalidades de domínio e a infraestrutura online ainda não foram implementadas.
