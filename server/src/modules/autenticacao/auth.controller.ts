@@ -43,6 +43,18 @@ export class AuthController {
         "/presidentes": { post: { summary: "Presidente ativo cria outro presidente com senha inicial; registra o criador", security, requestBody: { required: true, ...json(z.toJSONSchema(camposConta)) }, responses: {
           "201": resposta("usuario: id, nomeCompleto, perfil; criadoPorPresidenteId"), "400": resposta("Dados inválidos ou campos adicionais"), "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Perfil sem permissão ou origem não autorizada"), "409": resposta("E-mail já cadastrado ou conflito com restrições do cadastro"),
         } } },
+        ...Object.fromEntries((["desativacao", "reativacao"] as const).map(operacao => [`/contas/{usuarioId}/${operacao}`, { post: {
+          summary: operacao === "desativacao"
+            ? "Presidente desativa outra conta: bloqueia login e operações e revoga as sessões abertas; histórico e vínculos preservados"
+            : "Presidente reativa outra conta; sessões anteriores continuam revogadas e a pessoa entra novamente",
+          security, parameters: [{ name: "usuarioId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+          requestBody: { required: false, ...json({ type: "object", additionalProperties: false }) },
+          responses: {
+            "200": resposta("usuario: id, perfil, ativo; alterado false quando a conta já estava no estado pedido"), "400": resposta("usuarioId inválido ou corpo com campos"),
+            "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Perfil sem permissão, própria conta ou origem não autorizada"), "404": resposta("Conta não encontrada"),
+            ...(operacao === "desativacao" ? { "409": resposta("Último presidente ativo com credencial") } : {}),
+          },
+        } }])),
         "/auth/sign-out": { post: { summary: "Revoga a sessão atual no PostgreSQL e remove cookie", security, requestBody: { required: true, ...json({ type: "object" }) }, responses: { "200": resposta("Logout concluído"), "403": resposta("Origem não autorizada") } } },
       },
     };

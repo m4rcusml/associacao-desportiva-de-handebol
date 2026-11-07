@@ -88,6 +88,12 @@ em `Presidente.criadoPorPresidenteId`. Campos adicionais são rejeitados; atleta
 inativa e cadastro público não criam presidentes. Enquanto recuperação e troca de senha não
 existirem, a senha inicial deve ser entregue ao novo presidente por canal seguro.
 
+Presidente ativo desativa ou reativa outras contas com `POST /api/contas/{usuarioId}/desativacao`
+e `POST /api/contas/{usuarioId}/reativacao` (corpo vazio). Desativar bloqueia login e operações e
+revoga as sessões já abertas; reativar exige novo login. Histórico e vínculos são preservados; não
+há exclusão de conta nem troca de perfil. O último presidente ativo com credencial não pode ser
+desativado, inclusive em solicitações simultâneas (MAR-60).
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -229,6 +235,14 @@ falha no commit, duas execuções simultâneas com exatamente uma concluída, lo
 criação autorizada com criador registrado, e-mail repetido/campos forjados, rollback no commit pela API
 e escalada negada (sem sessão, atleta, técnico aprovado, presidente desativado e cadastro público).
 A entrada oculta no terminal interativo não é coberta pelos testes automatizados.
+
+Validação local da MAR-60 em 07/11/2026: lint, tipos/build e 30 testes de integração aprovados,
+incluindo quatro novos: desativação de atleta/técnico com revogação das sessões abertas (vários
+dispositivos), login recusado, histórico/vínculo/aprovação preservados, repetição sem efeito e
+reativação com novo login; acesso indevido (sem sessão, atleta, técnico aprovado, própria conta,
+origem, corpo forjado, conta inexistente); cinco rodadas dos dois últimos presidentes desativando um
+ao outro simultaneamente, com exatamente um ativo; recusa do último presidente com credencial e
+`contaAtiva` aguardando desativação concorrente. Nenhuma migração ou dependência nova.
 
 ## Caminho feliz
 

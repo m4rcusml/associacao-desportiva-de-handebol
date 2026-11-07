@@ -28,6 +28,10 @@ Não há fluxo público de aprovação/presidente. O seed local cria presidente 
 de login e um clube para demonstração, preservando a FK administrativa sem criar acesso público.
 O presidente inicial com credencial vem do procedimento restrito descrito no README; os seguintes
 são criados por presidente ativo, com `criadoPorPresidenteId` preenchido (MAR-55).
+Presidente desativa/reativa outras contas alterando somente `Usuario.ativo` e revogando as
+`AuthSession` da conta (MAR-60); extensões, vínculos, aprovações, credencial e autoria são mantidos.
+Pelo menos um presidente ativo com credencial permanece, com serialização no banco. Não há
+colunas de autoria/data da desativação: auditoria continua em PEN-007, sem nova migração.
 Testes comprovam rollback também quando a falha ocorre no commit e acesso negado para identidade
 sem domínio. Aprovações, transferências e edição não estão implementadas; revalidar suas regras
 transacionais ao introduzir essas operações.

@@ -172,6 +172,16 @@ da transação, que relê o ator com `FOR SHARE` na linha `Usuario`. Convenção
 ativação, aprovação ou clube de uma conta bloqueiam essa linha com `FOR UPDATE`. As rotas
 `/api/protegida/{aprovado,presidente,clubes/:clubeId}` só demonstram e testam essas regras.
 
+Ativação de contas (MAR-60): `POST /api/contas/:usuarioId/desativacao` e `/reativacao`, somente
+presidente ativo e somente para outras contas. A transação obtém um advisory lock próprio
+(serializa ativações e evita deadlock quando dois presidentes desativam um ao outro), revalida o
+presidente, bloqueia a conta alvo com `FOR UPDATE`, altera `Usuario.ativo` e apaga as `AuthSession`
+da conta alvo. Desativar o último presidente ativo com credencial responde 409; presidente sem
+credencial (fictício do seed) não conta. Reativar também apaga sessões: a pessoa entra novamente.
+Repetição responde 200 com `alterado: false`. Nada é excluído. `contaAtiva(tx, usuarioId)`
+(`modules/contas/contas.ts`) é a checagem que a arbitragem por designação deve reutilizar dentro
+da transação (`FOR SHARE`); a entrada por senha compartilhada não a utiliza (RN-025).
+
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,
 conta inativa/sem domínio e replays paralelos após logout. Cadastro de atleta, login, recarga,
