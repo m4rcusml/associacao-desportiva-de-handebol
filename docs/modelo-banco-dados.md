@@ -28,6 +28,10 @@ Não há fluxo público de aprovação/presidente. O seed local cria presidente 
 de login e um clube para demonstração, preservando a FK administrativa sem criar acesso público.
 O presidente inicial com credencial vem do procedimento restrito descrito no README; os seguintes
 são criados por presidente ativo, com `criadoPorPresidenteId` preenchido (MAR-55).
+A quarta migração (MAR-56) acrescenta CHECK que só permite `Tecnico.clubeId` preenchido com
+verificação aprovada; a unicidade de `clubeId` já limita a um técnico por clube e um clube por técnico.
+Presidente cria/edita clubes e atribui, substitui ou desvincula técnicos; `clubeId` do técnico é
+somente a atribuição atual, sem tabela de períodos, conforme a modelagem abaixo.
 Testes comprovam rollback também quando a falha ocorre no commit e acesso negado para identidade
 sem domínio. Aprovações, transferências e edição não estão implementadas; revalidar suas regras
 transacionais ao introduzir essas operações.

@@ -88,6 +88,18 @@ em `Presidente.criadoPorPresidenteId`. Campos adicionais são rejeitados; atleta
 inativa e cadastro público não criam presidentes. Enquanto recuperação e troca de senha não
 existirem, a senha inicial deve ser entregue ao novo presidente por canal seguro.
 
+#### Clubes e técnicos (MAR-56)
+
+Somente presidente ativo autenticado administra clubes: `POST /api/clubes` (`nome`, `cidade`
+opcional; nome não precisa ser único), `GET /api/clubes/{clubeId}` (clube e técnico atual) e
+`PATCH /api/clubes/{clubeId}` (`nome` e/ou `cidade`, que aceita `null`). Não há exclusão nem
+desativação de clubes; a edição preserva vínculos. `GET /api/clubes` continua público e mínimo
+(id, nome, cidade) para o cadastro. A vaga de técnico é administrada com
+`PUT /api/clubes/{clubeId}/tecnico` (`tecnicoId`; para substituir, `substituirTecnicoId` com o
+técnico atual) e `DELETE /api/clubes/{clubeId}/tecnico/{tecnicoId}`, deixando o clube sem técnico.
+Só técnico aprovado e com conta ativa é atribuído; técnico já atribuído a outro clube, vaga ocupada
+sem indicar o técnico atual e atribuições concorrentes à mesma vaga respondem 409.
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -229,6 +241,14 @@ falha no commit, duas execuções simultâneas com exatamente uma concluída, lo
 criação autorizada com criador registrado, e-mail repetido/campos forjados, rollback no commit pela API
 e escalada negada (sem sessão, atleta, técnico aprovado, presidente desativado e cadastro público).
 A entrada oculta no terminal interativo não é coberta pelos testes automatizados.
+
+Validação local da MAR-56 em 07/11/2026: lint, tipos/build e 31 testes de integração aprovados,
+incluindo cinco novos: criação/consulta/edição de clubes com nome repetido, listagem pública mínima
+e regressão do cadastro de atleta; atribuição, repetição, substituição explícita e desvinculação com
+efeito imediato no acesso do técnico; recusa de técnico pendente, rejeitado, inativo ou inexistente e
+restrições do banco acionadas diretamente; três rodadas de atribuições concorrentes à mesma vaga, de
+substituições concorrentes e do mesmo técnico em dois clubes, com exatamente uma concluída; e acessos
+indevidos (sem sessão, atleta, técnicos, pendente, sem origem e presidente desativado). Uma migração nova.
 
 ## Caminho feliz
 

@@ -172,6 +172,12 @@ da transação, que relê o ator com `FOR SHARE` na linha `Usuario`. Convenção
 ativação, aprovação ou clube de uma conta bloqueiam essa linha com `FOR UPDATE`. As rotas
 `/api/protegida/{aprovado,presidente,clubes/:clubeId}` só demonstram e testam essas regras.
 
+Clubes (MAR-56): `modules/clubes` expõe as operações do presidente, revalidado na transação.
+Atribuição e desvinculação bloqueiam a linha `Clube` (`FOR UPDATE`) e depois as linhas `Usuario`
+dos técnicos envolvidos, em ordem fixa, seguindo a convenção acima. Substituir exige informar o
+técnico atual, de modo que operações simultâneas na mesma vaga não se sobrescrevem: a segunda recebe 409.
+A unicidade de `Tecnico.clubeId` e o CHECK de técnico aprovado garantem as regras também no banco.
+
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,
 conta inativa/sem domínio e replays paralelos após logout. Cadastro de atleta, login, recarga,
