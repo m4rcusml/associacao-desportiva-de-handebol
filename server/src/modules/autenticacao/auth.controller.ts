@@ -2,6 +2,7 @@ import { BadRequestException, Body, ConflictException, Controller, Get, Post, Re
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import type { Request } from "express";
+import { ThrottlerGuard } from "@nestjs/throttler";
 import { PrismaService } from "../../infrastructure/prisma.service.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import { AuthService } from "./auth.service.js";
@@ -33,9 +34,9 @@ export class AuthController {
       paths: {
         "/clubes": { get: { summary: "Clubes disponíveis para cadastro", responses: { "200": resposta("Lista de id, nome e cidade") } } },
         "/cadastros": { post: { summary: "Cadastro público com solicitação de verificação pendente", requestBody: { required: true, ...json(z.toJSONSchema(cadastroSchema)) }, responses: {
-          "201": resposta("Usuário e perfil criados atomicamente; faça login em seguida"), "400": resposta("Cadastro ou clube inválido"), "403": resposta("Origem não autorizada"), "409": resposta("E-mail já cadastrado"),
+          "201": resposta("Usuário e perfil criados atomicamente; faça login em seguida"), "400": resposta("Cadastro ou clube inválido"), "403": resposta("Origem não autorizada"), "409": resposta("E-mail já cadastrado ou conflito com restrições do cadastro"), "429": resposta("Limite de 5 tentativas por IP a cada 15 minutos"),
         } } },
-        "/auth/sign-in/email": { post: { summary: "Login Better Auth; emite cookie HttpOnly", requestBody: { required: true, ...json(z.toJSONSchema(camposConta.omit({ nomeCompleto: true }))) }, responses: { "200": resposta("Sessão criada"), "401": resposta("Credenciais inválidas"), "403": resposta("Origem não autorizada") } } },
+        "/auth/sign-in/email": { post: { summary: "Login Better Auth; emite cookie HttpOnly", requestBody: { required: true, ...json(z.toJSONSchema(camposConta.omit({ nomeCompleto: true }))) }, responses: { "200": resposta("Sessão criada"), "401": resposta("Credenciais inválidas ou cadastro inativo"), "429": resposta("Limite de tentativas de login do Better Auth"), "403": resposta("Origem não autorizada") } } },
         "/auth/get-session": { get: { summary: "Sessão técnica Better Auth ou null", responses: { "200": resposta("Sessão técnica persistida ou null; não concede autorização de domínio") } } },
         "/sessao": { get: { summary: "Sessão com cadastro ativo no domínio", security, responses: { "200": resposta("usuario: id, nomeCompleto, perfil, statusVerificacao; expiresAt"), "401": resposta("Sessão ou cadastro indisponível") } } },
         "/protegida": { get: { summary: "Prova de acesso autenticado; não exige aprovação esportiva", security, responses: { "200": resposta("message: Acesso autenticado confirmado pelo servidor."), "401": resposta("Sessão ou cadastro indisponível") } } },
@@ -50,6 +51,7 @@ export class AuthController {
   }
 
   @Post("cadastros")
+  @UseGuards(ThrottlerGuard)
   async cadastrar(@Body() body: unknown) {
     const parsed = cadastroSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException("Cadastro inválido. Confira nome, e-mail, senha de 8 a 128 caracteres e perfil. Atleta exige clube; técnico não escolhe clube. Campos adicionais não são permitidos.");
@@ -76,6 +78,12 @@ export class AuthController {
         if (error.code === "P2002") throw new ConflictException("E-mail já cadastrado. Entre com sua senha.");
         if (error.code === "P2003") throw new BadRequestException("Clube não encontrado");
       }
+      // CHECK, EXCLUDE e triggers diferidos chegam sem código Prisma próprio: no comando, dentro de
+      // meta.driverAdapterError; no COMMIT, como DriverAdapterError direto.
+      type ErroDriver = { cause?: { originalCode?: string } };
+      const driver = error instanceof Prisma.PrismaClientKnownRequestError ? error.meta?.driverAdapterError as ErroDriver | undefined : error as ErroDriver;
+      const codigo = driver?.cause?.originalCode;
+      if (codigo === "23514" || codigo === "23P01") throw new ConflictException("Não foi possível concluir o cadastro por conflito com os dados existentes.");
       throw error;
     }
   }

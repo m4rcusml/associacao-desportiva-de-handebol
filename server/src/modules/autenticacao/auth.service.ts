@@ -33,6 +33,13 @@ export class AuthService {
       account: { modelName: "AuthAccount" },
       verification: { modelName: "AuthVerification" },
       session: { modelName: "AuthSession", cookieCache: { enabled: false }, disableSessionRefresh: true },
+      // Explícito para valer também em desenvolvimento/teste; padrão do Better Auth no sign-in: 3 a cada 10 s por IP.
+      rateLimit: { enabled: true },
+      databaseHooks: { session: { create: { before: async session => {
+        // Sem cadastro ativo no domínio, o sign-in responde 401 e não grava sessão.
+        const usuario = await prisma.usuario.findUnique({ where: { authId: session.userId }, select: { ativo: true } });
+        if (!usuario?.ativo) return false;
+      } } } },
       advanced: { useSecureCookies: secure, defaultCookieAttributes: { httpOnly: true, sameSite: "lax", secure } },
     });
   }

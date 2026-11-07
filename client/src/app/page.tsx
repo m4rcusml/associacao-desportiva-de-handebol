@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, apiUrl } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 
 type Sessao = { usuario: { nomeCompleto: string; perfil: string; statusVerificacao: string | null } };
 
@@ -13,13 +13,12 @@ export default function Home() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`${apiUrl}/sessao`, { credentials: "include", cache: "no-store" })
-      .then(async response => {
-        if (response.status === 401) return;
-        if (!response.ok) throw new Error();
-        setSessao(await response.json());
+    api<Sessao>("/sessao")
+      .then(setSessao)
+      .catch(error => {
+        if (error instanceof ApiError && error.status === 401) return;
+        setMessage("Não foi possível consultar sua conta. Recarregue a página para tentar novamente.");
       })
-      .catch(() => setMessage("Não foi possível consultar sua conta. Recarregue a página para tentar novamente."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -35,7 +34,9 @@ export default function Home() {
         const data = await api<{ message: string }>("/protegida");
         setMessage(data.message);
       }
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha de conexão. Tente novamente."); }
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) setSessao(null);
+      setMessage(error instanceof Error ? error.message : "Falha de conexão. Tente novamente."); }
     finally { setBusy(false); }
   }
 
