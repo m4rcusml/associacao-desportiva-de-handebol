@@ -126,7 +126,12 @@ test("desativação revoga sessões e bloqueia login; histórico preservado; rea
   assert.equal(await status(`/protegida/clubes/${clubeId}`, novoCookie), 200);
   const sessao = await (await request("/sessao", novoCookie)).json();
   assert.deepEqual([sessao.usuario.id, sessao.usuario.aprovado, sessao.usuario.clubeId], [atleta.id, true, clubeId]);
-  assert.equal(await status("/protegida/aprovado", await login(tecnico.email)), 200);
+  // Técnico desativado e reativado continua atribuído ao clube (atribuição preparada direto no banco).
+  const tecnicoReativado = await prisma.tecnico.findUniqueOrThrow({ where: { usuarioId: tecnico.id } });
+  assert.deepEqual([tecnicoReativado.clubeId, tecnicoReativado.statusVerificacao], [clubeId, "aprovado"]);
+  const cookieTecnico = await login(tecnico.email);
+  assert.equal(await status("/protegida/aprovado", cookieTecnico), 200);
+  assert.equal((await (await request("/sessao", cookieTecnico)).json()).usuario.clubeId, clubeId);
 });
 
 test("acesso indevido: sem sessão, atleta, técnico aprovado, própria conta, origem e entrada inválida", async () => {

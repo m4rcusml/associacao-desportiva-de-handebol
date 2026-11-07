@@ -26,10 +26,14 @@ normaliza e-mail e rejeita campos não permitidos. Ambos os perfis públicos com
 solicitação de verificação registrada. Atleta informa clube; técnico não pode atribuir clube.
 Não há fluxo público de aprovação/presidente. O seed local cria presidente fictício sem credencial
 de login e um clube para demonstração, preservando a FK administrativa sem criar acesso público.
+Esse presidente fictício existe somente no desenvolvimento local (o seed recusa `NODE_ENV=production`),
+nunca conta como presidente ativo e não deve receber credencial. Se isso mudar, revisar a proteção
+do último presidente ativo (MAR-60) e o procedimento `presidente:inicial` (MAR-55).
 O presidente inicial com credencial vem do procedimento restrito descrito no README; os seguintes
 são criados por presidente ativo, com `criadoPorPresidenteId` preenchido (MAR-55).
 Presidente desativa/reativa outras contas alterando somente `Usuario.ativo` e revogando as
-`AuthSession` da conta (MAR-60); extensões, vínculos, aprovações, credencial e autoria são mantidos.
+`AuthSession` da conta (MAR-60); extensões, vínculos, `Tecnico.clubeId`, aprovações, credencial e
+autoria são mantidos.
 Pelo menos um presidente ativo com credencial permanece, com serialização no banco. Não há
 colunas de autoria/data da desativação: auditoria continua em PEN-007, sem nova migração.
 Testes comprovam rollback também quando a falha ocorre no commit e acesso negado para identidade
