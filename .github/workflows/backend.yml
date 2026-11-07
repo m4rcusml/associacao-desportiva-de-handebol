@@ -1,0 +1,58 @@
+name: Backend
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: handebol_test
+          POSTGRES_USER: handebol
+          POSTGRES_PASSWORD: ci_only_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U handebol -d handebol_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://handebol:ci_only_password@127.0.0.1:5432/handebol
+      TEST_DATABASE_URL: postgresql://handebol:ci_only_password@127.0.0.1:5432/handebol_test
+      BETTER_AUTH_URL: http://localhost:3001
+      CLIENT_ORIGIN: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-only-secret-at-least-32-characters-long
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26.8.2
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install npm
+        run: npm install --global npm@12.2.0
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Types and build
+        run: npm run typecheck
+      - name: Integration tests
+        run: npm run test:integration

@@ -1,18 +1,13 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
+import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
 import { AuthService } from "../dist/modules/autenticacao/auth.service.js";
 
-const database = process.env.TEST_DATABASE_URL;
-assert.ok(database, "Configure TEST_DATABASE_URL com banco dedicado terminado em _test");
-assert.ok(new URL(database).pathname.endsWith("_test"), "Banco de integração deve terminar em _test");
-assert.notEqual(new URL(database).pathname, new URL(process.env.DATABASE_URL!).pathname, "Não use o banco de desenvolvimento nos testes");
-process.env.DATABASE_URL = database;
-process.env.NODE_ENV = "test";
+assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
 const app = await createApp();
 const prisma = app.get(PrismaService);
@@ -22,11 +17,20 @@ const emails: string[] = [];
 const password = "Senha-local-de-teste-2026";
 const email = () => { const value = `${randomUUID()}@example.invalid`; emails.push(value); return value; };
 const cadastro = (overrides = {}) => ({ nomeCompleto: "Pessoa Fictícia", email: email(), password, perfil: "tecnico", ...overrides });
-const request = (path: string, body?: unknown, cookie = "", requestOrigin: string | null = origin) => fetch(`${base}${path}`, {
-  method: body === undefined ? "GET" : "POST",
-  headers: { ...(requestOrigin === null ? {} : { Origin: requestOrigin }), ...(cookie ? { Cookie: cookie } : {}), ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
-  ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-});
+const throttler = app.get<ThrottlerStorageService>(ThrottlerStorage);
+// onApplicationShutdown é o único método público que limpa contadores e expirações do armazenamento em memória.
+const zerarLimiteCadastro = () => throttler.onApplicationShutdown();
+const ipAleatorio = () => `10.${randomInt(256)}.${randomInt(256)}.${randomInt(1, 255)}`;
+// Por padrão, cada requisição simula um cliente distinto: zera o limite de cadastro (por IP do socket)
+// e envia X-Forwarded-For próprio (IP usado pelo limite do Better Auth). Testes de limite passam `ip`.
+const request = (path: string, body?: unknown, cookie = "", requestOrigin: string | null = origin, ip?: string) => {
+  if (ip === undefined) zerarLimiteCadastro();
+  return fetch(`${base}${path}`, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { "X-Forwarded-For": ip ?? ipAleatorio(), ...(requestOrigin === null ? {} : { Origin: requestOrigin }), ...(cookie ? { Cookie: cookie } : {}), ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+};
 async function login(loginEmail: string) {
   const response = await request("/auth/sign-in/email", { email: loginEmail, password });
   assert.equal(response.status, 200, await response.clone().text());
@@ -37,7 +41,6 @@ async function login(loginEmail: string) {
 }
 
 before(async () => {
-  execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy"], { env: process.env, stdio: "pipe" });
   await app.listen(0, "127.0.0.1");
   base = `${await app.getUrl()}/api`;
   await prisma.usuario.create({ data: { id: clubeId, authId: `fixture-${clubeId}`, nomeCompleto: "Presidente de teste", perfil: "presidente", presidente: { create: {} } } });
@@ -219,4 +222,48 @@ test("identidade técnica sem domínio não obtém acesso protegido", async () =
   });
   assert.equal((await request("/protegida", undefined, cookie)).status, 401);
   assert.equal((await request("/sessao", undefined, cookie)).status, 401);
+});
+
+test("usuário inativo não consegue entrar nem gravar sessão", async () => {
+  const input = cadastro();
+  assert.equal((await request("/cadastros", input)).status, 201);
+  const identity = await prisma.authUser.findUniqueOrThrow({ where: { email: input.email } });
+  await prisma.usuario.update({ where: { authId: identity.id }, data: { ativo: false } });
+  const response = await request("/auth/sign-in/email", { email: input.email, password });
+  assert.equal(response.status, 401);
+  assert.ok(!response.headers.getSetCookie().some(cookie => cookie.includes("session_token=") && !/Max-Age=0/i.test(cookie)));
+  assert.equal(await prisma.authSession.count({ where: { userId: identity.id } }), 0);
+});
+
+test("violação de restrição do cadastro no commit responde 409", async () => {
+  await prisma.$executeRawUnsafe(`CREATE FUNCTION conflito_cadastro_teste() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW."nomeCompleto" = 'Conflito simulado' THEN RAISE EXCEPTION 'Conflito simulado' USING ERRCODE = '23514'; END IF; RETURN NULL; END $$`);
+  await prisma.$executeRawUnsafe(`CREATE CONSTRAINT TRIGGER conflito_cadastro_teste AFTER INSERT ON "Usuario" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION conflito_cadastro_teste()`);
+  const input = cadastro({ nomeCompleto: "Conflito simulado" });
+  try {
+    assert.equal((await request("/cadastros", input)).status, 409);
+    assert.equal(await prisma.authUser.count({ where: { email: input.email } }), 0);
+  } finally {
+    await prisma.$executeRawUnsafe(`DROP TRIGGER conflito_cadastro_teste ON "Usuario"`);
+    await prisma.$executeRawUnsafe(`DROP FUNCTION conflito_cadastro_teste()`);
+  }
+});
+
+test("cadastro limita 5 tentativas por IP a cada 15 minutos", async () => {
+  zerarLimiteCadastro();
+  const ip = ipAleatorio();
+  for (let i = 0; i < 5; i++) assert.equal((await request("/cadastros", { perfil: "invalido" }, "", origin, ip)).status, 400);
+  const input = cadastro();
+  const bloqueado = await request("/cadastros", input, "", origin, ip);
+  assert.equal(bloqueado.status, 429);
+  assert.match((await bloqueado.json()).message, /Muitas tentativas de cadastro/);
+  assert.equal(await prisma.authUser.count({ where: { email: input.email } }), 0);
+});
+
+test("login limita tentativas por IP pelo Better Auth", async () => {
+  const input = cadastro();
+  assert.equal((await request("/cadastros", input)).status, 201);
+  const ip = ipAleatorio();
+  for (let i = 0; i < 3; i++) assert.equal((await request("/auth/sign-in/email", { email: input.email, password: "senha-incorreta" }, "", origin, ip)).status, 401);
+  assert.equal((await request("/auth/sign-in/email", { email: input.email, password }, "", origin, ip)).status, 429);
+  assert.equal((await request("/auth/sign-in/email", { email: input.email, password })).status, 200);
 });

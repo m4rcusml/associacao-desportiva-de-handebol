@@ -131,6 +131,19 @@ Cookies host-only, HttpOnly/Lax; Secure e prefixo seguro em produção com URLs 
 Sessões têm duração absoluta de sete dias, sem refresh automático; `cookieCache` está desligado.
 Guard e `/api/sessao` compartilham a consulta de sessão persistida e cadastro ativo. A rota de
 demonstração exige autenticação, sem conceder aprovação ou permissões esportivas.
+Login de cadastro inativo ou sem `Usuario` é recusado com 401, sem gravar sessão (hook de criação
+de sessão do Better Auth). Violações de CHECK, EXCLUDE e triggers diferidos no cadastro respondem 409.
+
+Limite de tentativas: `/api/cadastros` usa `@nestjs/throttler`, com 5 requisições por IP a cada
+15 minutos, contadores em memória e resposta 429; a guarda vale só nessa rota. O sign-in usa o
+limite do Better Auth (3 a cada 10 s por IP, em memória), habilitado explicitamente em todos os
+ambientes. Memória atende uma instância e zera a cada reinício; várias réplicas exigirão
+armazenamento compartilhado. O 409 de e-mail repetido permanece e revela contas existentes;
+reavaliar junto com a UX final e a confirmação por e-mail. **Pendente na implantação:** atrás do
+encaminhamento Vercel/Render, o throttler vê o IP do proxy enquanto `trust proxy` não for
+configurado no Express (um único contador para todos), e o Better Auth lê `X-Forwarded-For`, que o
+cliente pode forjar sem proxy confiável e que, ausente em produção, gera um contador compartilhado.
+Configurar `trust proxy` e `advanced.ipAddress` conforme os proxies reais antes da implantação de teste.
 
 Client usa fetch com cookies e sem cache; as páginas são cascas estáticas, sem SSR de sessão.
 Ao introduzir SSR autenticado, repassar cookies e provar isolamento/cache antes de utilizá-lo.
@@ -159,6 +172,10 @@ Limites de tamanho/formato das fotos e permissões de consulta e edição ainda 
 ## Desenvolvimento e banco
 
 - npm como gerenciador de pacotes, com lockfile versionado e `npm ci` em instalações automatizadas.
+- CI de backend em GitHub Actions, com lint, tipos/build e todos os arquivos de integração em
+  PostgreSQL descartável por job. O runner local/CI valida o banco dedicado e usa advisory lock
+  transacional para recusar suítes simultâneas no mesmo banco; arquivos executam em série.
+  Runtimes e check esperado pelo revisor estão no [README](../README.md#checks-de-backend-nos-prs-mar-53).
 - Versões diretas fixadas nos manifests e lockfiles separados de `client/` e `server/`;
   não há workspace nem orquestrador adicional nesta etapa. Matriz inicial abaixo.
 - Preservar scripts convencionais dos frameworks e ferramentas para execução, build e testes,
@@ -191,6 +208,7 @@ Limites de tamanho/formato das fotos e permissões de consulta e edição ainda 
 | Prisma / client / adapter-pg | 7.10.1 | Fixados; driver adapter PostgreSQL, configuração `prisma7.config.ts` e cliente gerado. |
 | Express / tipos Express | 5.2.1 / 5.0.6 | Dependências diretas para montagem do handler e parsers, compatíveis com Nest instalado. |
 | Zod | 4.6.7 | Mesmo validador de e-mail do Better Auth fixado; schema estrito do cadastro. |
+| @nestjs/throttler | 6.7.1 | Pacote oficial Nest; peers aceitam Nest 12; limite de `/api/cadastros`. |
 
 TypeScript 7 e ESLint 10 não foram selecionados por incompatibilidade com as ferramentas
 consultadas. O registro npm sinaliza ESLint 9 como descontinuado; ele foi mantido apenas por
@@ -219,6 +237,8 @@ configuração, iniciou PostgreSQL saudável e uma consulta confirmou versão 17
 Validação posterior desta entrega: migrações, seed, Prisma/Better Auth, onze testes de integração
 e fluxo de atleta no navegador aprovados, além de lint/tipos/build das duas aplicações.
 Não valida implantação online nem os fluxos fora do cadastro/autenticação mínimos.
+Revisão posterior: login de inativo, 409 de restrições e limites de tentativa cobertos por quinze
+testes de integração aprovados, com lint/tipos das duas aplicações; não revalidado no navegador.
 
 ## Ambientes e implantação
 
@@ -245,7 +265,8 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 1. Completar a prova da PEN-030 com arbitragem temporária e revogação concorrente HTTP/Socket.IO
    quando esse fluxo for implementado. Contas permanentes, migrações, seed e prova local de
    cadastro/logout já foram validados; comandos no [README](../README.md#desenvolvimento-local).
-2. Detalhar e validar implantação de teste, encaminhamento, cookies, segredos e verificações;
+2. Detalhar e validar implantação de teste, encaminhamento, cookies, segredos, IP real do cliente
+   para os limites de tentativa (`trust proxy` e `advanced.ipAddress`) e verificações;
    definir limites e permissões das fotos.
 3. Definir em código o contrato da API (documentado em OpenAPI), eventos, conflitos, publicação
    após transação e reconexão. A equipe conduz as decisões técnicas; comportamentos de produto
