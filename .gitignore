@@ -1,0 +1,13 @@
+/agents/
+
+node_modules/
+.next/
+next-env.d.ts
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.log
+.vercel/

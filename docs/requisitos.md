@@ -1,6 +1,6 @@
 # Requisitos — gestão de handebol
 
-Versão 1 — 04/11/2026. Documento derivado das rodadas de levantamento com Marcus nesta conversa.
+Versão 1 — 04/11/2026, atualizada em 07/11/2026. Documento derivado das rodadas de levantamento com Marcus nesta conversa.
 
 ## 1. Escopo e situação dos requisitos
 
@@ -86,11 +86,11 @@ ainda precisa confirmá-la com o cliente.
 | ID     | Requisito                                                                                                                                         | Situação   |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | RF-024 | Permitir ao presidente designar vários árbitros para o mesmo jogo, incluindo atletas, técnicos ou pessoas sem cadastro.                           | Confirmado |
-| RF-025 | Disponibilizar uma página temporária de gerenciamento do jogo para a arbitragem.                                                                  | Confirmado |
+| RF-025 | Disponibilizar a página temporária de arbitragem somente no dia marcado para o jogo, sem liberação manual adicional.                             | Confirmado |
 | RF-026 | Permitir acesso sem senha do jogo ao usuário autenticado que esteja designado como árbitro daquela partida.                                       | Confirmado |
 | RF-027 | Permitir acesso dos demais responsáveis pela senha compartilhada e específica daquele jogo, solicitando nome completo de quem entra com senha.    | Confirmado |
 | RF-028 | Permitir escolher visualização de linha ou banco, mantendo as mesmas permissões.                                                                  | Confirmado |
-| RF-029 | Expirar o acesso temporário da arbitragem quando o jogo for encerrado.                                                                            | Confirmado |
+| RF-029 | Invalidar todos os acessos temporários de arbitragem ao encerrar, adiar ou cancelar o jogo, inclusive em dispositivos já conectados.                | Confirmado |
 | RF-030 | Permitir abrir a página temporária antes da partida para credenciamento e permitir à arbitragem iniciar formalmente o jogo em uma ação posterior. | Confirmado |
 
 ### 3.5. Jogo, métricas e correções
@@ -158,7 +158,7 @@ ainda precisa confirmá-la com o cliente.
 | RN-025 | Na entrada sem senha de usuário autenticado e designado, atleta ou técnico que arbitra não pode pertencer a nenhum dos clubes envolvidos. Na entrada pela senha compartilhada, dispensar essa conferência, mesmo que a pessoa tenha cadastro. | Confirmado |
 | RN-026 | Para árbitro externo, confiar na indicação/autorização; não há verificação automática de vínculo com clube.                                                                                                                                   | Confirmado |
 | RN-027 | Ter conta não concede acesso sem senha: é necessário estar autenticado e designado para aquele jogo.                                                                                                                                          | Confirmado |
-| RN-028 | A senha é compartilhada entre os responsáveis pelo mesmo jogo e específica daquela partida.                                                                                                                                                   | Confirmado |
+| RN-028 | A senha é compartilhada, específica do jogo e gerada automaticamente na primeira emissão e no adiamento. Trocas manuais seguem as permissões da seção 10.                                                                                      | Confirmado |
 | RN-029 | Linha e banco diferem apenas na tela apresentada.                                                                                                                                                                                             | Confirmado |
 | RN-030 | Não é necessário distinguir qual árbitro fez cada lançamento.                                                                                                                                                                                 | Confirmado |
 | RN-031 | Encerramento do jogo expira o acesso temporário. Correções posteriores são feitas pelo presidente, sem reabertura para arbitragem.                                                                                                            | Confirmado |
@@ -198,7 +198,7 @@ disponibilidade ou capacidade.
 | ------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------- |
 | RNF-001 | Aplicar autorização no servidor por perfil, clube e jogo, em todas as operações protegidas.                           | Requisições diretas sem permissão são recusadas, mesmo sem passar pela interface.                             | Confirmado |
 | RNF-002 | Proteger senhas e credenciais temporárias; não persistir senha compartilhada em texto puro e não incluí-la em logs.   | Inspeção de armazenamento e logs não revela a senha; a validação usa hash apropriado para senhas.             | Confirmado |
-| RNF-003 | Revalidar acesso temporário e status do jogo em operações da arbitragem.                                              | Sessão aberta antes do encerramento não consegue continuar alterando o jogo depois dele.                      | Confirmado |
+| RNF-003 | Revalidar acesso temporário, disponibilidade por data e status do jogo em operações da arbitragem.                    | Sessões invalidadas por encerramento, adiamento, cancelamento ou troca de senha não continuam operando.       | Confirmado |
 | RNF-004 | Impedir que o QR code da carteirinha conceda permissões administrativas ou substitua a autenticação da arbitragem.    | Possuir apenas o QR não permite credenciar terceiros nem alterar dados.                                       | Confirmado |
 | RNF-005 | Preservar integridade de vínculos, inscrições e participações, inclusive em operações simultâneas.                    | Não se criam dois clubes atuais para o atleta, dois técnicos no clube ou camisa repetida no mesmo clube/jogo. | Confirmado |
 | RNF-006 | Garantir consistência entre gol, placar e desempenho do atleta.                                                       | Uma gravação ou correção não deixa apenas parte dos totais atualizada.                                        | Confirmado |
@@ -240,7 +240,7 @@ O levantamento consolidado, incluindo casos específicos e ordem sugerida de res
 | PEN-005 | O presidente continuará incluindo os clubes no campeonato?                                                         | Operação provisória expressamente adotada; aguarda confirmação do cliente.      |
 | PEN-006 | Como tratar múltiplas suspensões, revisões posteriores e cancelamento de punições?                                 | Não definido; não presumir acumulação.                                          |
 | PEN-007 | Quais ações, autores, alterações e justificativas integram a auditoria completa?                                   | Necessidade reconhecida; detalhamento adiado por solicitação de Marcus.         |
-| PEN-008 | Quais campos compõem a ficha cadastral e quais são obrigatórios?                                                   | Não detalhado nas rodadas; atributos atuais são primeira proposta de modelagem. |
+| PEN-008 | Quais campos compõem a ficha cadastral e quais são obrigatórios?                                                   | Usar os campos mínimos essenciais provisoriamente; confirmar a ficha com o cliente. |
 
 A conclusão da primeira versão documental não significa que as funcionalidades com critérios
 pendentes estejam prontas para implementação completa.
@@ -273,3 +273,31 @@ A [arquitetura aprovada](arquitetura.md) consolida as decisões estruturais. Par
 
 Essas decisões complementam os requisitos existentes; a definição dos demais campos cadastrais,
 das métricas, das regras disciplinares e das metas operacionais permanece pendente.
+
+## 10. Acesso da arbitragem e início do desenvolvimento — 07/11/2026
+
+Decisões confirmadas por Marcus nesta rodada:
+
+- A arbitragem acessa somente no dia marcado para o jogo, por conta autenticada e designação
+  ou por nome completo e senha do jogo. Não há etapa manual de liberação. Credenciar antes
+  da partida e iniciar o jogo continuam sendo ações distintas.
+- Somente presidente pode adiar ou cancelar; ambas as ações invalidam imediatamente todas
+  as sessões temporárias do jogo. Adiar gera nova senha, e o acesso depende da nova data.
+- A primeira senha é automática. Somente presidente ou árbitro autenticado pela própria conta
+  e previamente designado para aquele jogo pode solicitar troca manual. Entrar por nome e senha
+  não concede essa permissão, mesmo para pessoa cadastrada.
+- Troca manual invalida todas as sessões abertas pela senha anterior, exigindo nova entrada;
+  preserva sessões por conta e designação. Não haverá retirada individual de acesso por senha.
+- Contas permanentes e acessos a outros jogos permanecem válidos nessas operações.
+- Fuso da data, partidas que atravessam meia-noite e distribuição da senha ainda precisam de
+  esclarecimento antes de implementar os comportamentos correspondentes (PEN-021).
+- Campos cadastrais mínimos necessários aos fluxos aprovados serão usados provisoriamente,
+  com confirmação posterior do cliente (PEN-008). Não acrescentar dados pessoais sem necessidade.
+- Serviço de e-mail e recuperação de senha estão adiados nesta etapa, incluindo sua prova;
+  a recuperação por link permanece prevista para implementação posterior.
+- Somente teste será provisionado agora. Produção será criada ao concluir a aplicação;
+  backup/restauração será detalhado posteriormente (PEN-026).
+
+Os contratos de API/eventos serão definidos tecnicamente em código, com API documentada em
+OpenAPI. Isso não autoriza decidir regras de produto ainda pendentes, como conflitos visíveis
+ao usuário (PEN-023). As escolhas de ferramentas e hospedagem estão na [arquitetura](arquitetura.md).

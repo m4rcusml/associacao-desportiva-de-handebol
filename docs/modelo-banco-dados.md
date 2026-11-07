@@ -1,15 +1,17 @@
 # Modelagem do banco — versão 1
 
-Consolidada em 04/11/2026. Fonte das decisões: revisão com Marcus. O [diagrama Mermaid](modelo-banco-dados.mmd) é a mesma
-fonte publicada no Miro. Esta entrega é modelagem lógica; não aplica migrações ao banco.
+Consolidada em 04/11/2026 e atualizada em 07/11/2026 com a PEN-030 e as regras de acesso da arbitragem.
+Fonte das decisões: revisão com Marcus e mediação autorizada. O [diagrama Mermaid](modelo-banco-dados.mmd)
+inclui o complemento técnico; a cópia anteriormente publicada no Miro ainda precisa ser sincronizada.
+Esta entrega é modelagem lógica; não aplica migrações ao banco.
 
 ## Convenções e implementação da herança
 
-`UUID` identifica registros; `datetime` corresponde a `timestamptz`,
+`UUID` identifica registros do domínio; `datetime` corresponde a `timestamptz`,
 `date` a data e `string` a texto. `Usuario` concentra identidade e
 ligação à identidade da biblioteca de autenticação por `authId` (único); não armazena senha
-da conta nesta entidade. A biblioteca e suas tabelas técnicas serão definidas conforme
-[a arquitetura](arquitetura.md). Isso não exige um provedor de autenticação externo. `perfil`
+da conta nesta entidade. Better Auth e suas tabelas técnicas complementam o domínio conforme
+[a arquitetura](arquitetura.md) e a seção técnica abaixo. Isso não exige um provedor de autenticação externo. `perfil`
 aceita atleta, tecnico ou presidente, exclusivamente. Cada `Usuario` tem exatamente uma
 extensão correspondente, com `usuarioId` como `PK` e `FK` para
 `Usuario`.`id`. A exclusividade entre as três extensões exige validação
@@ -119,8 +121,8 @@ com senha. Usuário autenticado e previamente designado para aquele jogo entra s
 isolado não autoriza acesso: os demais usam a senha compartilhada e informam `nome`
 completo. Para esses acessos, `designadoPorPresidenteId` e `designadoEm` podem estar ausentes: a
 autorização é a senha. Não guardar a senha em texto; `senhaHash` deve usar algoritmo próprio
-para senhas. `AcessoArbitragem` pode ser liberado antes do início formal para credenciamento e é
-revogado ao encerramento; toda requisição valida a liberação, o `status` do jogo e a
+para senhas. O acesso é permitido somente no dia marcado, sem liberação manual adicional, e é
+revogado ao encerramento; toda requisição valida a disponibilidade de acesso, o `status` do jogo e a
 operação solicitada. Antes de iniciar a partida, permitir credenciamento, mas não lançamentos de
 jogo em andamento. Retirar uma designação deve invalidar as sessões correspondentes de acesso sem
 senha. Para designados cadastrados que entram sem senha, impedir atleta/técnico de clube que disputa
@@ -128,9 +130,24 @@ o jogo; conferir também ao acessar. Quem entra pela senha compartilhada dispens
 vínculo, mesmo se tiver cadastro; essa exceção foi expressamente confirmada por Marcus. Para
 externos, confiar na autorização por senha, sem consultar vínculo. `visualizacao` aceita linha
 ou banco; muda somente a tela, não as permissões. Não há atribuição individual de lançamentos entre
-árbitros nesta versão. A página abre para credenciamento antes do início formal; a arbitragem inicia
-o jogo em ação posterior. `liberadoEm` registra a abertura do acesso, enquanto
-`Jogo`.`iniciadoEm` registra o início da partida.
+árbitros nesta versão. No dia marcado, a página permite credenciamento antes do início formal;
+a arbitragem inicia o jogo em ação posterior, registrada em `Jogo.iniciadoEm`.
+O campo `liberadoEm` foi retirado: não há uma operação de liberação manual.
+
+A primeira senha é gerada automaticamente. Somente presidente ou usuário autenticado pela
+própria conta e designado para aquele jogo pode solicitar troca manual. A sessão por nome e
+senha não concede essa permissão, mesmo que a pessoa possua cadastro. A troca atualiza
+`senhaHash` e revoga todas as `SessaoArbitragem` com `metodoEntrada = senha` na mesma transação,
+preservando as sessões por designação. Não haverá retirada individual de acesso por senha.
+
+Somente presidente adia ou cancela. Ambas as ações invalidam imediatamente todas as sessões
+temporárias do jogo, de ambos os métodos. Adiar também gera nova senha e o acesso fica sujeito
+à nova data; sem nova data, não há entrada. O mecanismo físico de reagendamento será detalhado
+na implementação, sem reutilizar sessões antigas nem acrescentar um novo status por suposição.
+Cancelar ou finalizar mantém o acesso bloqueado. Contas permanentes e outros jogos não são revogados.
+Aplicar as mudanças junto da invalidação das sessões, com controle de concorrência e notificações
+apenas após persistência. Fuso do dia do jogo, partidas que atravessam meia-noite e distribuição
+da senha continuam a esclarecer na PEN-021.
 
 ## Métricas provisórias, correções e histórico
 
@@ -186,5 +203,68 @@ regras automáticas ou auditoria completa estejam prontas para produção.
 
 Conforme a [arquitetura](arquitetura.md), somente fotos de atletas serão enviadas.
 A verificação esportiva não terá upload de documentos. A ficha cadastral continua pendente.
-A escolha da biblioteca de autenticação exigirá complementar o esquema com suas estruturas
-de identidade, sessões e recuperação de senha, sem duplicar senhas em Usuario.
+A escolha do Better Auth foi concluída na PEN-030; seu complemento lógico está abaixo.
+Para começar, os campos já modelados e essenciais aos fluxos serão usados provisoriamente,
+sem exigir dados adicionais até confirmação do cliente. E-mail e credencial pertencem à
+autenticação; atleta informa clube inicial e técnico pode ficar sem clube. Fotos usam Supabase
+Storage na franquia gratuita, com limites e permissões ainda a definir.
+
+## Complemento técnico de autenticação — PEN-030
+
+Decisão de planejamento de 07/11/2026; integração e esquema físico ainda não validados.
+Os nomes `Auth*` identificam responsabilidades lógicas, mapeáveis aos modelos nativos.
+Gerar o esquema da configuração/versão fixada, revisar e usar migrações Prisma; esta lista
+não substitui o esquema completo da biblioteca nem fixa tipos físicos de seus IDs.
+As convenções gerais de UUID e sufixo `Id` não substituem o contrato nativo: `providerId` e
+`accountId`, por exemplo, são identificadores de autenticação, não FKs do domínio.
+
+| Registro | Responsabilidade e vínculo |
+| --- | --- |
+| `AuthUser` (`user`) | Identidade de login, e-mail único, nome e campos técnicos. `emailVerified` não representa aprovação esportiva. |
+| `AuthAccount` (`account`) | Credencial ligada por `userId` a `AuthUser`; hash de senha gerido pela biblioteca. |
+| `AuthSession` (`session`) | Sessão por dispositivo ligada a `AuthUser`, com token único e expiração; revogação pelo mecanismo nativo. |
+| `AuthVerification` (`verification`) | Identificador, valor e expiração para recuperação/verificação; não torna a confirmação de e-mail obrigatória. |
+
+`Usuario.authId` continua `UNIQUE`, opaco e **sem FK**, associado a `AuthUser.id` pela aplicação.
+Não há exclusão automática do histórico esportivo ao remover uma identidade técnica.
+E-mail de login pertence a `AuthUser`; `Usuario.nomeCompleto` é a referência do nome no domínio.
+Se `AuthUser.name` o reproduzir, a atualização deve ser controlada pelo backend, sem edição
+independente. Cadastro e rotas nativas não podem contornar perfil, vínculo inicial ou aprovação.
+Garantir tratamento de falhas/repetições entre identidade e domínio; hooks após criação, sozinhos,
+não garantem transação compartilhada. Identidade sem cadastro válido não recebe autorização esportiva.
+
+### `SessaoArbitragem`
+
+Registro técnico próprio, separado da sessão de conta e da configuração `AcessoArbitragem`.
+Um registro de `Arbitragem` pode ter várias sessões, sem criar um perfil permanente de juiz.
+
+| Campo | Restrição lógica |
+| --- | --- |
+| `id` | UUID, PK. |
+| `arbitragemId` | FK obrigatória para `Arbitragem.id`; o jogo é obtido por esse vínculo. |
+| `authSessionId` | Referência à `AuthSession.id`, obrigatória na entrada por designação e ausente na entrada por senha. |
+| `metodoEntrada` | `designacao` ou `senha`; determina a regra de autorização. |
+| `tokenHash` | UNIQUE, obrigatório; somente hash de token opaco aleatório, nunca o token em texto. |
+| `criadaEm`, `expiraEm` | Obrigatórios; expiração técnica não substitui revogação ao encerrar. |
+| `revogadaEm` | Opcional; presente quando a sessão foi revogada. |
+
+Na designação, revalidar sessão de conta de origem, `Usuario.ativo`, designação e impedimento
+de clube. Remoção/expiração/revogação da sessão de origem invalida o acesso por designação;
+o tratamento físico de exclusão dessa referência será definido no esquema gerado, sem permitir
+que a ausência da sessão converta a entrada em acesso por senha. Na entrada por senha, não
+exigir sessão de conta nem conferir vínculo com clubes (RN-025).
+
+Reutilizar `Arbitragem` existente quando houver `usuarioId` para o mesmo jogo, preservando
+`UNIQUE(jogoId, usuarioId)` e os dados da designação. Não presumir identificação de externos
+pelo nome nem duplicar `visualizacao` na sessão; linha/banco continuam sem diferença de permissão.
+O cookie temporário não sobrescreve o da conta; sua abrangência deve alcançar REST e Socket.IO.
+
+Encerrar o jogo atualiza o estado, revoga `AcessoArbitragem` e suas sessões na mesma transação.
+Escritas concorrentes precisam de controle transacional que impeça autorização anterior ao
+encerramento de permitir gravação posterior. Preservar sessões da conta e acessos a outros jogos.
+Notificações só chegam a destinatários ainda autorizados, inclusive em conexões já abertas.
+
+As regras de dia de acesso, adiamento e troca de senha estão definidas na seção de arbitragem;
+PEN-022 resolvida. A PEN-021 conserva apenas os detalhes operacionais ali indicados.
+Recuperação de senha e sua prova estão adiadas nesta etapa; as estruturas nativas permanecem previstas.
+Não introduzir tabela de tentativas, metadados pessoais ou retenção como obrigação nesta rodada.

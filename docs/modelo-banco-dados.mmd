@@ -1,6 +1,7 @@
 classDiagram
     direction TB
-    %% Modelo logico v1 - 2026-11-04. Chaves, nulabilidade e restricoes: modelo-banco-dados.md.
+    %% Modelo logico v1 + PEN-030 - 2026-11-07. Chaves, nulabilidade e restricoes: modelo-banco-dados.md.
+    %% Auth*: recorte logico; esquema fisico completo depende da versao gerada. Copia no Miro pendente.
     Usuario <|-- Atleta
     Usuario <|-- Presidente
     Usuario <|-- Tecnico
@@ -11,6 +12,41 @@ classDiagram
         string perfil
         boolean ativo
         datetime criadoEm
+    }
+    class AuthUser {
+        string id
+        string email
+        string name
+        boolean emailVerified
+    }
+    class AuthAccount {
+        string id
+        string userId
+        string providerId
+        string accountId
+        string password
+    }
+    class AuthSession {
+        string id
+        string userId
+        string token
+        datetime expiresAt
+    }
+    class AuthVerification {
+        string id
+        string identifier
+        string value
+        datetime expiresAt
+    }
+    class SessaoArbitragem {
+        uuid id
+        uuid arbitragemId
+        string authSessionId
+        string metodoEntrada
+        string tokenHash
+        datetime criadaEm
+        datetime expiraEm
+        datetime revogadaEm
     }
     class Atleta {
         uuid usuarioId
@@ -101,7 +137,6 @@ classDiagram
     class AcessoArbitragem {
         uuid jogoId
         string senhaHash
-        datetime liberadoEm
         datetime revogadoEm
     }
     class Arbitragem {
@@ -162,6 +197,11 @@ classDiagram
         uuid jogoId
         datetime registradoEm
     }
+    Usuario "0..1" .. "1" AuthUser : authId unico sem FK
+    AuthUser "1" -- "0..*" AuthAccount : possui credenciais
+    AuthUser "1" -- "0..*" AuthSession : possui sessoes
+    Arbitragem "1" -- "0..*" SessaoArbitragem : autoriza por dispositivo
+    AuthSession "0..1" -- "0..*" SessaoArbitragem : sustenta entrada por designacao
     Atleta "1" -- "1..*" VinculoClube : pertence ao clube durante periodo
     Clube "1" -- "0..*" VinculoClube : recebe atleta
     Clube "0..1" -- "0..1" Tecnico : tem tecnico
@@ -173,7 +213,7 @@ classDiagram
     Jogo "1" -- "0..*" Participacao : registra atletas
     VinculoClube "1" -- "0..*" Participacao : preserva clube representado
     Tecnico "0..1" -- "0..*" Participacao : escolhe atleta
-    Jogo "1" -- "0..1" AcessoArbitragem : libera acesso temporario
+    Jogo "1" -- "0..1" AcessoArbitragem : configura acesso temporario
     Jogo "1" -- "0..*" Arbitragem : recebe arbitros
     Usuario "0..1" -- "0..*" Arbitragem : pode atuar como arbitro
     Jogo "1" -- "0..*" LancamentoJogo : registra ocorrencias

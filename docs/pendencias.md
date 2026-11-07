@@ -1,6 +1,6 @@
 # Pendências — gestão de handebol
 
-Atualizado em 06/11/2026.
+Atualizado em 07/11/2026.
 
 Resumo das confirmações com o cliente, lacunas de requisitos e casos específicos ainda sem decisão.
 Referências: [requisitos](requisitos.md) e [modelagem](modelo-banco-dados.md).
@@ -16,7 +16,7 @@ obrigações de implementar. Os responsáveis indicados são sugestões para con
 | PEN-003 | Confirmar métricas por jogo e atleta: quais dados registrar, definições e forma de cálculo.                                                               | Manter os campos provisórios com prefixo temp_. Placar, gols, cartões amarelos/vermelhos e exclusões de dois minutos são a proposta atual, não a lista definitiva. RF-037.                     |
 | PEN-004 | Definir regras de suspensão automática: penalidades consideradas, limites, período de acumulação, quantidade de jogos e eventual reinício da contagem.    | A funcionalidade foi solicitada, mas os critérios não podem ser inventados. Regras automáticas permanecem inativas até confirmação. RF-039 e RN-041/RN-042.                                    |
 | PEN-005 | Confirmar se o presidente continuará incluindo os clubes participantes dos campeonatos.                                                                   | É o procedimento provisoriamente adotado. Se houver inscrição pelo próprio clube, definir quem solicita, quem aprova e os prazos. RF-014.                                                      |
-| PEN-008 | Definir ficha cadastral e dados obrigatórios de atletas, técnicos, clubes e competições; dados exibidos na carteirinha e elementos usados na verificação. | Os atributos atuais são a primeira proposta. Sem envio de documentos; somente fotos de atletas. Confirmar demais dados, quem pode editar e se mudanças exigem nova aprovação. RF-001 a RF-005. |
+| PEN-008 | Definir ficha cadastral e dados obrigatórios de atletas, técnicos, clubes e competições; dados exibidos na carteirinha e elementos usados na verificação. | Usar provisoriamente os campos mínimos essenciais aos fluxos já definidos e confirmar depois com o cliente. Sem documentos; somente fotos de atletas. Edição e efeitos na aprovação continuam pendentes. RF-001 a RF-005. |
 
 ## 2. Regras disciplinares e efeitos posteriores
 
@@ -51,8 +51,8 @@ Condução sugerida: Marcus com o cliente para as regras; equipe técnica para o
 | ------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PEN-019 | Credenciamento incorreto ou número da camisa errado, inclusive após entrada em quadra ou encerramento. | Definir correção/estorno, responsáveis e preservação do histórico. A unicidade da camisa por clube e jogo continua obrigatória.                                                                                                         |
 | PEN-020 | QR code copiado, identificação perdida ou necessidade de substituir a carteirinha.                     | Definir conferência de identidade na entrada, possibilidade de trocar o código e tratamento da credencial antiga. A leitura automática para atleta válido já foi aprovada; não introduzir conferência manual obrigatória por suposição. |
-| PEN-021 | Abertura antecipada da página da arbitragem.                                                           | Definir quem libera o acesso, com quanta antecedência, quem distribui a senha e o que ocorre se o jogo for adiado/cancelado após a abertura. Abrir antes e iniciar a partida depois já está aprovado.                                   |
-| PEN-022 | Senha compartilhada precisa ser substituída ou acesso de árbitro removido antes do encerramento.       | Definir quem troca a senha, efeito sobre sessões abertas e se há retirada individual de acesso por senha. A expiração ao encerrar já está aprovada.                                                                                     |
+| PEN-021 | Disponibilidade da página da arbitragem.                                                              | Parcialmente resolvido: acesso apenas no dia marcado, sem liberação manual. Só presidente adia/cancela, invalidando todas as sessões; adiamento gera nova senha e acesso depende da nova data. Faltam fuso do dia, partidas atravessando meia-noite e distribuição da senha. |
+| PEN-022 | Troca da senha compartilhada e retirada de acesso.                                                    | Resolvido em 07/11/2026: primeira senha automática; troca manual por presidente ou conta autenticada e designada. Entrada por nome/senha não permite troca. Trocar revoga todas as sessões por senha, preserva designadas; sem retirada individual. |
 | PEN-023 | Vários árbitros tentam iniciar/encerrar o jogo ou corrigir o mesmo lançamento simultaneamente.         | Definir comportamento visível para conflito e confirmação de encerramento. A solução técnica deve evitar perda/duplicação; não criar hierarquia entre linha e banco sem nova decisão.                                                   |
 
 ## 5. Auditoria e requisitos técnicos a detalhar
@@ -62,7 +62,7 @@ Condução sugerida: Marcus com o cliente para as regras; equipe técnica para o
 | PEN-007 | Auditoria completa das ações manuais e administrativas. | Definir ações auditadas, autoria, valores anteriores/novos, justificativas, consulta e retenção. Necessidade reconhecida, detalhamento adiado. Não reabrir a decisão de dispensar identificação individual de lançamentos entre árbitros. Marcus + equipe técnica.        |
 | PEN-024 | Aceitação dos 12 RNFs.                                  | Resolvido: RNF-001 a RNF-012 aprovados por Marcus em 04/11/2026. As metas operacionais não definidas continuam em PEN-025/PEN-026.                                                                                                                                        |
 | PEN-025 | Condições de uso e metas de qualidade.                  | Celular prioritário, câmera para QR, internet obrigatória e tempo real aprovados; modo offline descartado. Definir navegadores, acessibilidade, capacidade, tempo de resposta e disponibilidade. Não há metas numéricas acordadas. Cliente + equipe técnica.              |
-| PEN-026 | Dados pessoais e recuperação operacional.               | Definir quem consulta cada informação, retenção/remoção de dados, tratamento do histórico após desativação e política de backup/restauração. Não há prazos ou metas de recuperação acordados. Marcus + equipe técnica.                                                    |
+| PEN-026 | Dados pessoais e recuperação operacional.               | Definir acesso, retenção/remoção de dados e histórico após desativação. Backup/restauração adiado por Marcus nesta etapa; não bloqueia início local. Não há prazos ou metas de recuperação acordados. Marcus + equipe técnica. |
 
 ## 6. Itens das anotações iniciais ainda sem escopo confirmado
 
@@ -79,7 +79,8 @@ aprovados.
 
 1. Confirmar métricas e critérios automáticos (PEN-003/PEN-004), ficha cadastral e inclusão de clubes (PEN-008/PEN-005).
 2. Fechar exceções disciplinares (PEN-006 e PEN-009 a PEN-012), principalmente impedimento após credenciamento.
-3. Definir operação de abertura do acesso, troca de senha e correção de credenciamento (PEN-019 a PEN-023).
+3. Resolver correção de credenciamento, detalhes residuais de data/distribuição e conflitos
+   (PEN-019 a PEN-021 e PEN-023). Troca de senha (PEN-022) esclarecida.
 4. Resolver ciclo de contas e clubes (PEN-013 a PEN-018).
 5. Detalhar auditoria e condições operacionais (PEN-007, PEN-025 e PEN-026); a aprovação dos RNFs está concluída.
 6. Decidir o escopo dos pedidos históricos (PEN-027 a PEN-029).
@@ -92,6 +93,8 @@ continuar as partes já acordadas.
 Não são pendências:
 
 - PEN-024: os 12 RNFs foram aprovados por Marcus em 04/11/2026.
+- PEN-022: geração e troca de senha, permissões e revogação definidas em 07/11/2026;
+  detalhes em [requisitos, seção 10](requisitos.md#10-acesso-da-arbitragem-e-início-do-desenvolvimento--07112026).
 
 - PEN-001: a página abre antes da partida para credenciamento, e a arbitragem inicia o jogo depois.
 - PEN-002: entrada por senha dispensa conferir vínculo com os clubes, inclusive para pessoa cadastrada.
@@ -109,17 +112,36 @@ Não são pendências:
 Decisões registradas em [arquitetura.md](arquitetura.md):
 
 - PEN-008 parcialmente esclarecida: apenas fotos de atletas; nenhum documento será enviado
-  para verificação. Os demais campos e critérios de aprovação continuam em aberto.
+  para verificação. Em 07/11/2026, autorizado usar campos mínimos provisórios até confirmação
+  com o cliente; os demais campos e critérios de aprovação continuam em aberto.
 - PEN-025 parcialmente esclarecida: interface responsiva, celular prioritário, QR por câmera,
   internet obrigatória e atualizações imediatas. Não há modo offline. Múltiplos dispositivos
   são permitidos. Capacidade, navegadores suportados e metas operacionais ainda não foram definidos.
-- Há somente dois ambientes, teste e produção; teste terá implantação online para demonstrações.
+- Há somente dois ambientes planejados, teste e produção; teste terá implantação online para
+  demonstrações. Criar somente teste agora; produção ao concluir a aplicação.
 
 As menções anteriores a documentos e eventual modo offline são perguntas agora resolvidas,
-não opções ainda em avaliação. As decisões de infraestrutura ainda abertas são:
+não opções ainda em avaliação. Situação atualizada das decisões técnicas em 07/11/2026:
 
-- PEN-030: selecionar a biblioteca de autenticação e complementar as tabelas técnicas.
-- PEN-031: selecionar hospedagem, banco, envio de e-mail e armazenamento de fotos, considerando
-  teste gratuito e recursos de produção adequados, com suporte ao tempo real.
-- PEN-032: detalhar versões, comandos de desenvolvimento/build/teste e implantação.
-- PEN-033: detalhar contrato da API, eventos, conflitos, reconexão e publicação após a transação.
+- PEN-030: escolha documental concluída em 07/11/2026 — Better Auth com Prisma/PostgreSQL,
+  tabelas `AuthUser`, `AuthAccount`, `AuthSession`, `AuthVerification` e `SessaoArbitragem` própria.
+  Integração ainda não validada: fixar matriz de versões (PEN-032) e comprovar cadastro consistente,
+  cookies/CSRF/SSR e revogação HTTP/Socket.IO antes do aceite técnico. Recuperação e prova de reset
+  adiadas nesta etapa; retomá-las posteriormente. A escolha está encerrada; a PEN-030 permanece
+  parcialmente aberta para validação. Regras atuais da arbitragem substituem as pendências
+  históricas da conclusão: PEN-022 resolvida; PEN-021 com detalhes residuais.
+- PEN-031 parcialmente resolvida: Vercel para frontend, Render para backend e Supabase para banco
+  e fotos; usar franquia gratuita de armazenamento nesta etapa, conferindo limites antes de provisionar.
+  Serviço de e-mail adiado. Faltam limites/permissões das fotos e configurações de implantação;
+  produção e custos correspondentes serão avaliados posteriormente.
+- PEN-032 parcialmente resolvida: npm e lockfile versionado, versões estáveis recentes compatíveis,
+  preferência por Node.js LTS e scripts convencionais. Estrutura mínima de `client/` e `server/`
+  criada em 07/11/2026, com pacotes/lockfiles independentes e matriz na arquitetura. PostgreSQL
+  17.11 iniciado e consultado em Docker Compose, com volume persistente. Scripts de desenvolvimento,
+  lint, tipos e build definidos no README. Prisma, migrações e seed ainda serão implementados;
+  a escolha é versionar migrações e aplicá-las na publicação, com seed fictício reproduzível.
+  Conexão hospedada direta ou Session Pooler conforme rede. Faltam prova da autenticação,
+  alinhamento à versão do Supabase provisionado e detalhes de implantação; produção permanece adiada.
+- PEN-033: equipe define os contratos em código/OpenAPI e detalha eventos, reconexão, publicação
+  após transação e conflitos. Não exige questionário técnico ao usuário; decisões de comportamento
+  ainda indefinidas, inclusive PEN-023, precisam ser esclarecidas.
