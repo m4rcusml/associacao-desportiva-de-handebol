@@ -5,6 +5,7 @@ import { PrismaService } from "./infrastructure/prisma.service.js";
 import { AuthService } from "./modules/autenticacao/auth.service.js";
 import { AuthController } from "./modules/autenticacao/auth.controller.js";
 import { SessionGuard } from "./modules/autenticacao/session.guard.js";
+import { AutorizacaoService } from "./modules/autorizacao/autorizacao.service.js";
 
 @Module({
   imports: [ThrottlerModule.forRoot({
@@ -13,6 +14,6 @@ import { SessionGuard } from "./modules/autenticacao/session.guard.js";
     errorMessage: "Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.",
   })],
   controllers: [HealthController, AuthController],
-  providers: [PrismaService, AuthService, SessionGuard],
+  providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService],
 })
 export class AppModule {}

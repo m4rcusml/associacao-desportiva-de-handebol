@@ -195,6 +195,13 @@ Não foram criados recursos online. PEN-030 continua parcialmente aberta: arbitr
 Socket.IO, concorrência com operações esportivas, implantação e futura recuperação/reset não
 foram implementados nem validados. Os patches-alvo de Node/npm da matriz não foram executados.
 
+Validação local da MAR-54 em 07/11/2026: lint, tipos/build e 22 testes de integração aprovados,
+incluindo cinco novos de autorização por HTTP (atleta/técnico pendente, rejeitado e aprovado,
+presidente, inativo, identidade sem domínio, cruzamento de clubes, parâmetros forjados e
+transferência) e revalidação em transação concorrente com desativação. Nenhuma dependência nova.
+Revisão da MAR-54: comparação de UUID de clube sem distinção entre maiúsculas e minúsculas;
+regressão HTTP para atleta/técnico no próprio clube e em outro clube. Lint, tipos/build e 22 testes revalidados.
+
 ## Caminho feliz
 
 1. **Preparação pelo presidente:** o presidente pré-cadastrado cria os clubes. Atletas e

@@ -4,6 +4,7 @@ import type { IncomingHttpHeaders } from "node:http";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { PrismaService } from "../../infrastructure/prisma.service.js";
+import { type Ator, carregarAtor, exigirRequisito } from "../autorizacao/ator.js";
 
 @Injectable()
 export class AuthService {
@@ -44,15 +45,17 @@ export class AuthService {
     });
   }
 
+  /** Ator do domínio para a sessão persistida; null quando não há sessão ou cadastro ativo. */
+  async ator(headers: IncomingHttpHeaders): Promise<Ator | null> {
+    const session = await this.auth.api.getSession({ headers: fromNodeHeaders(headers) });
+    if (!session) throw new UnauthorizedException("Entre para continuar");
+    return carregarAtor(this.prisma, { authId: session.user.id });
+  }
+
   async sessao(headers: IncomingHttpHeaders) {
     const session = await this.auth.api.getSession({ headers: fromNodeHeaders(headers) });
     if (!session) throw new UnauthorizedException("Entre para continuar");
-    const usuario = await this.prisma.usuario.findUnique({ where: { authId: session.user.id }, select: {
-      id: true, nomeCompleto: true, perfil: true, ativo: true,
-      atleta: { select: { statusVerificacao: true } }, tecnico: { select: { statusVerificacao: true } }, presidente: { select: { usuarioId: true } },
-    } });
-    if (!usuario?.ativo || !usuario[usuario.perfil]) throw new UnauthorizedException("Cadastro indisponível");
-    return { usuario: { id: usuario.id, nomeCompleto: usuario.nomeCompleto, perfil: usuario.perfil,
-      statusVerificacao: usuario.atleta?.statusVerificacao ?? usuario.tecnico?.statusVerificacao ?? null }, expiresAt: session.session.expiresAt };
+    const { usuarioId, nomeCompleto, perfil, statusVerificacao, aprovado, clubeId } = exigirRequisito(await carregarAtor(this.prisma, { authId: session.user.id }));
+    return { usuario: { id: usuarioId, nomeCompleto, perfil, statusVerificacao, aprovado, clubeId }, expiresAt: session.session.expiresAt };
   }
 }
