@@ -24,11 +24,19 @@ carteirinha com o QR vigente e o presidente a consulta, invalida, reativa e subs
 histórico; a leitura do QR devolve identificação mínima, por ora só ao presidente (a arbitragem entra
 com o credenciamento, MAR-67). Desde a MAR-59, cada conta altera o próprio nome sem nova aprovação;
 e-mail e senha continuam sem edição. Desde a MAR-62, o presidente agenda jogos (hora local e fuso
-IANA do local) e designa a arbitragem; acesso e sessões da arbitragem continuam na MAR-65.
+IANA do local) e designa a arbitragem.
 Desde a MAR-63, o presidente transfere atletas entre clubes e consulta o histórico de vínculos.
 Desde a MAR-64, o técnico aprovado atual escala atletas do próprio clube até o início do jogo; a
 escalação é preliminar e credenciamento e entrada em quadra continuam na MAR-67.
-Recuperação, arbitragem em quadra e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
+Desde a MAR-65, a arbitragem entra no dia do jogo (fuso do local) pela conta designada ou por nome e
+senha do jogo, com sessão temporária própria; presidente e contas designadas consultam e trocam a senha.
+As operações esportivas da arbitragem (credenciamento, lançamentos, início/encerramento) continuam nas
+MAR-67 a MAR-69.
+Escolhas técnicas da implementação (MAR-65), ainda não confirmadas por Marcus: a primeira senha é gerada na primeira consulta pelo presidente
+ou por conta designada; antes disso não há entrada por senha. Ela ignora maiúsculas, espaços e hífens.
+Cada entrada por senha gera um registro próprio com o nome informado, sem presumir identidade. A sessão
+temporária expira tecnicamente em 24 horas, além das revogações previstas.
+Recuperação, operações da arbitragem em quadra e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 
 | Situação   | Significado                                                                        |

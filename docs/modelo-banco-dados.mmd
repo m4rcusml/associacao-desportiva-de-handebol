@@ -47,6 +47,7 @@ classDiagram
         datetime criadaEm
         datetime expiraEm
         datetime revogadaEm
+        string motivoRevogacao
     }
     class Atleta {
         uuid usuarioId
@@ -157,6 +158,7 @@ classDiagram
         uuid jogoId
         string senhaHash
         string senhaCifrada
+        datetime geradaEm
         datetime revogadoEm
     }
     class Arbitragem {

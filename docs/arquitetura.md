@@ -43,7 +43,7 @@ server/
       clubes/
       competicoes/
       participacoes/     # Escalação (MAR-64); credenciamento na MAR-67
-      arbitragem/
+      arbitragem/        # Acesso temporário e senha do jogo (MAR-65)
       resultados/
       disciplina/
     infrastructure/      # Banco, e-mail e armazenamento
@@ -226,6 +226,24 @@ desativação aguardam ou são vistas) e a carteirinha (`FOR SHARE`: invalidaç�
 técnico → jogo → atleta → carteirinha, sem ciclo com campeonato → atleta das transferências. A inclusão usa `INSERT ... ON CONFLICT DO NOTHING` e a retirada escritas condicionais:
 pedidos repetidos em paralelo terminam com `alterado: false`, sem 409 nem histórico duplicado. O trigger
 repete as regras no banco.
+Arbitragem (MAR-65): `modules/arbitragem` implementa a entrada por designação (rota com `SessionGuard`, que
+passa a anexar também o id da `AuthSession`) e por nome/senha (`ThrottlerGuard`, limite `arbitragem` de 10 por
+IP a cada 10 minutos, em memória como o do cadastro). O token opaco de 32 bytes vai no cookie
+`handebol.arbitragem.{jogoId}` (`__Host-` e Secure em produção; HttpOnly, Lax, `Path=/`), um por jogo, sem
+tocar no cookie da conta; o banco guarda o SHA-256. A senha é gerada no servidor (10 caracteres sem ambíguos),
+verificada por scrypt (`better-auth/crypto`) e guardada também cifrada com AES-256-GCM, chave
+`ARBITRAGEM_SENHA_CHAVE` (32 bytes hex, obrigatória na inicialização) e o `jogoId` como dado autenticado.
+A senha só aparece na resposta da consulta/troca; `Cache-Control: no-store` vale para toda a API.
+O dia do jogo é comparado no banco: `now()` e `inicioPrevistoEm` convertidos ao `fusoHorario` do jogo.
+`revalidarArbitragem(tx, jogoId, token)` é a autorização para as escritas esportivas: bloqueia, em
+`FOR SHARE` e nesta ordem, jogo → sessão temporária → conta designada → sessão de conta de origem, e confere
+revogação, expiração, status/dia, conta ativa e aprovada, impedimento de clube e sessão de origem. Troca de
+senha (acesso `FOR UPDATE`, depois sessões), retirada da designação (exclusão em cascata), desativação
+(conta `FOR UPDATE`) e logout aguardam a transação autorizada ou são vistos por ela, sem ciclo de bloqueios.
+`revalidarArbitragemOuEncerramento` reconhece o reenvio de quem teve a sessão revogada pelo próprio
+encerramento (`jogo_encerrado`) sem autorizar outra operação. `encerrarAcessoArbitragem` (encerramento e
+cancelamento) e `renovarSenha` (troca e adiamento) ficam prontos para a MAR-69; o cancelamento do campeonato
+já revoga, na mesma transação, os acessos dos jogos que cancela.
 Conta própria (MAR-59): `PATCH /api/conta` altera somente o nome da conta da sessão. A transação
 bloqueia a linha `Usuario` com `FOR UPDATE`, recusa conta já desativada (401) e grava
 `Usuario.nomeCompleto` e `AuthUser.name` juntos; falha em qualquer gravação desfaz as duas. As rotas
@@ -348,8 +366,8 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 
 ## Decisões ainda necessárias
 
-1. Completar a prova da PEN-030 com arbitragem temporária e revogação concorrente HTTP/Socket.IO
-   quando esse fluxo for implementado. Contas permanentes, migrações, seed e prova local de
+1. Completar a prova da PEN-030 com as escritas esportivas da arbitragem (MAR-67 a 69) e a revogação
+   Socket.IO (MAR-73); a sessão temporária e a revogação HTTP concorrente foram validadas na MAR-65. Contas permanentes, migrações, seed e prova local de
    cadastro/logout já foram validados; comandos no [README](../README.md#desenvolvimento-local).
 2. Detalhar e validar implantação de teste, encaminhamento, cookies, segredos, IP real do cliente
    para os limites de tentativa (`trust proxy` e `advanced.ipAddress`) e verificações;

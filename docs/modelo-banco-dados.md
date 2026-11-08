@@ -112,6 +112,18 @@ credencia; e recusa excluir participação credenciada. `AlteracaoEscalacao` é 
 vínculo; preserva a autoria após substituição do técnico ou retirada da escolha. Jogo removido leva
 participações e histórico em cascata (somente fixtures; a aplicação não exclui jogos). Demais regras do
 credenciamento (status do jogo, carteirinha ativa, suspensão) ficam para a MAR-67.
+A migração `sessoes_arbitragem` (MAR-65) acrescenta `Arbitragem.visualizacao` (linha/banco) e
+`acessouEm`, `AcessoArbitragem` (`senhaHash` scrypt, `senhaCifrada` AES-256-GCM com prefixo `v1.`,
+`geradaEm`, `revogadoEm`; PK/FK `jogoId`) e `SessaoArbitragem` (`metodoEntrada`, `tokenHash` SHA-256 único,
+`criadaEm`/`expiraEm`, `revogadaEm` com `motivoRevogacao`: saida, troca_senha, jogo_encerrado, jogo_adiado ou
+jogo_cancelado). `authSessionId` é texto **sem FK**, obrigatório somente na entrada por designação (CHECK):
+logout e desativação apagam a `AuthSession` sem tocar na sessão temporária, que deixa de ser válida na
+revalidação, e a ausência dela nunca vira entrada por senha. Cada entrada por senha cria uma `Arbitragem` sem
+conta nem designação; por designação, a sessão só nasce em `Arbitragem` de conta. Triggers: sessão nasce
+válida com o jogo agendado ou em andamento (`FOR SHARE` de `Jogo`); identificação, origem e prazos são
+imutáveis; revogação é definitiva. Em `AcessoArbitragem`, o jogo é imutável, hash/cópia/data mudam juntos e o
+acesso revogado não volta. Retirar a designação exclui suas sessões em cascata, na mesma transação; registros
+de entrada por senha não são retirados um a um.
 
 ## Convenções e implementação da herança
 
