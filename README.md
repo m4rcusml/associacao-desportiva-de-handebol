@@ -147,6 +147,11 @@ geradas pelo build. `build` gera o cliente Prisma antes de compilar. Um único `
 1. Abra `http://localhost:3000/cadastro`; informe nome completo, e-mail, senha de 8 a 128
    caracteres e perfil atleta ou técnico. Atleta deve selecionar clube; técnico começa sem clube.
 2. O cadastro solicita verificação e fica pendente; não há confirmação de e-mail nem autoaprovação.
+   O presidente consulta as solicitações (`GET /api/verificacoes`) e aprova ou rejeita
+   (`POST /api/verificacoes/{usuarioId}/aprovacao` ou `/rejeicao`, corpo vazio). Aprovar atleta
+   confirma o vínculo e emite a carteirinha na mesma transação; técnico não recebe carteirinha.
+   Rejeitado solicita nova análise pela própria conta (`POST /api/verificacoes/solicitacao`).
+   Não há retirada de aprovação; contas desativadas não recebem decisão (409).
 3. Entre em `/login`. A página inicial consulta `/api/sessao` e permite verificar `/api/protegida`.
 4. Recarregue para confirmar a sessão persistida. “Sair da conta” revoga somente a sessão atual
    no PostgreSQL e remove o cookie; outros dispositivos continuam autenticados.
@@ -277,6 +282,17 @@ para conta desativada, rota pública sem técnico; e técnico atribuído com con
 e desvinculado pelo presidente, com nova atribuição de técnico inativo recusada. Lint e tipos/build aprovados.
 Após integrar a MAR-60 da `main`: lint, tipos/build e 38 testes de integração aprovados em banco
 recém-criado; a migração `tecnico_clube_aprovado` foi renomeada para depois de `sessao_conta_ativa`.
+
+Validação local da MAR-57 em 08/11/2026: lint, tipos/build e 44 testes de integração aprovados,
+incluindo seis novos: consulta e aprovação de atleta com vínculo confirmado e carteirinha única
+(código/token opacos, sem `tokenQr` ou e-mail na resposta) e repetição sem duplicar; aprovação de técnico
+sem carteirinha; rejeição sem motivo, nova solicitação na mesma conta e aprovação posterior (atleta e
+técnico); cinco rodadas de aprovações simultâneas (inclusive por dois presidentes) e de aprovação contra
+rejeição, com uma única decisão/carteirinha; falha simulada no commit da emissão desfazendo aprovação,
+vínculo e carteirinha, com nova tentativa concluída, e restrições do banco acionadas diretamente; acesso
+indevido (sem sessão, atleta/técnico aprovados ou pendentes, autoaprovação, sem origem, corpo/filtros
+forjados, inexistente, conta desativada e presidente desativado). Fixtures que aprovam atletas
+diretamente no banco passaram a criar carteirinha. Uma migração nova; nenhuma dependência nova.
 
 ## Caminho feliz
 

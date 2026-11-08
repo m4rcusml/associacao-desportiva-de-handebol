@@ -44,8 +44,18 @@ verificação aprovada; a unicidade de `clubeId` já limita a um técnico por cl
 Presidente cria/edita clubes e atribui, substitui ou desvincula técnicos; `clubeId` do técnico é
 somente a atribuição atual, sem tabela de períodos, conforme a modelagem abaixo.
 Testes comprovam rollback também quando a falha ocorre no commit e acesso negado para identidade
-sem domínio. Aprovações, transferências e edição não estão implementadas; revalidar suas regras
+sem domínio. Transferências e edição não estão implementadas; revalidar suas regras
 transacionais ao introduzir essas operações.
+A migração `carteirinha` (MAR-57) cria `Carteirinha` com campos mínimos provisórios (`codigo` e
+`tokenQr` opacos e únicos, `status` ativa/invalidada, `emitidaEm`, `emitidaPorPresidenteId`) e
+`UNIQUE(atletaId)`; a FK para `Atleta` impede carteirinha de técnico. Triggers diferidos garantem
+atleta aprovado ⇔ carteirinha existente, verificado no commit: aprovação sem carteirinha, carteirinha
+sem aprovação e retirada de aprovação são recusadas pelo banco. A aprovação bloqueia a linha `Usuario`
+do solicitante (FOR UPDATE), grava presidente/data, confirma o vínculo aberto (`definidoPorPresidenteId`)
+e emite a carteirinha na mesma transação; repetição devolve a mesma carteirinha. Rejeição registra
+presidente/data sem motivo; nova solicitação da própria conta volta a pendente, com nova data, e limpa
+a decisão anterior (sem histórico de decisões: PEN-007). Invalidação, reativação e substituição do QR
+com `statusAlteradoEm`/`statusAlteradoPorPresidenteId` e histórico ficam para a MAR-58.
 
 ## Convenções e implementação da herança
 

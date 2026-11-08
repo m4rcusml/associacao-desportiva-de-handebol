@@ -18,8 +18,9 @@ Implementação local em 07/11/2026: cadastro mínimo de atleta/técnico com sol
 vínculo inicial obrigatório do atleta, login por e-mail/senha sem confirmação de e-mail,
 consulta de sessão, rota autenticada de demonstração e logout revogável. Persistência em
 PostgreSQL/Prisma validada com testes de falha e concorrência do cadastro e repetição do cookie
-após logout. Aprovação esportiva, carteirinhas, recuperação, arbitragem e demais fluxos continuam
-planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
+após logout. Desde a MAR-57, presidente consulta, aprova ou rejeita solicitações; a aprovação do
+atleta emite a carteirinha na mesma transação. Gestão da carteirinha/QR (MAR-58), recuperação,
+arbitragem e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 
 | Situação   | Significado                                                                        |

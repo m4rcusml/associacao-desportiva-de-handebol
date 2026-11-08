@@ -5,6 +5,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { setTimeout as esperar } from "node:timers/promises";
 import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
+import { carteirinhaFicticia } from "./support/carteirinha.ts";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
 import { alterarAtivacao, bloquearAtivacao, contaAtiva } from "../dist/modules/contas/contas.js";
@@ -70,6 +71,7 @@ after(async () => {
     const identities = await tx.authUser.findMany({ where: { email: { in: emails } }, select: { id: true } });
     const ids = (await tx.usuario.findMany({ where: { authId: { in: identities.map(i => i.id) } }, select: { id: true } })).map(u => u.id);
     await tx.vinculoClube.deleteMany({ where: { atletaId: { in: ids } } });
+    await tx.carteirinha.deleteMany({ where: { atletaId: { in: ids } } });
     await tx.atleta.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.tecnico.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.clube.deleteMany({ where: { id: clubeId } });
@@ -85,7 +87,7 @@ test("desativação revoga sessões e bloqueia login; histórico preservado; rea
   const atleta = await cadastrar("atleta");
   const tecnico = await cadastrar("tecnico");
   const aprovado = { statusVerificacao: "aprovado" as const, verificadoPorPresidenteId: presidentes.a.id, verificadoEm: new Date() };
-  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: aprovado });
+  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: { ...aprovado, ...carteirinhaFicticia(presidentes.a.id) } });
   await prisma.tecnico.update({ where: { usuarioId: tecnico.id }, data: { ...aprovado, clubeId } });
   const cookieAtleta = await login(atleta.email);
   const dispositivosTecnico = [await login(tecnico.email), await login(tecnico.email)];
@@ -138,7 +140,7 @@ test("acesso indevido: sem sessão, atleta, técnico aprovado, própria conta, o
   const presidente = await login(presidentes.a.email);
   const atleta = await cadastrar("atleta");
   const alvo = await cadastrar("atleta");
-  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: { statusVerificacao: "aprovado", verificadoPorPresidenteId: presidentes.a.id, verificadoEm: new Date() } });
+  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: { statusVerificacao: "aprovado", verificadoPorPresidenteId: presidentes.a.id, verificadoEm: new Date(), ...carteirinhaFicticia(presidentes.a.id) } });
   const tecnico = await cadastrar("tecnico");
   await prisma.tecnico.update({ where: { usuarioId: tecnico.id }, data: { statusVerificacao: "aprovado", verificadoPorPresidenteId: presidentes.a.id, verificadoEm: new Date() } });
   const cookieAtleta = await login(atleta.email);

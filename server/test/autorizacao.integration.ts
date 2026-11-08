@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 import { randomInt, randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
+import { carteirinhaFicticia } from "./support/carteirinha.ts";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
 import { AutorizacaoService } from "../dist/modules/autorizacao/autorizacao.service.js";
@@ -65,6 +66,7 @@ after(async () => {
     const identities = await tx.authUser.findMany({ where: { email: { in: emails } }, select: { id: true } });
     const ids = (await tx.usuario.findMany({ where: { authId: { in: identities.map(i => i.id) } }, select: { id: true } })).map(u => u.id);
     await tx.vinculoClube.deleteMany({ where: { atletaId: { in: ids } } });
+    await tx.carteirinha.deleteMany({ where: { atletaId: { in: ids } } });
     await tx.atleta.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.tecnico.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.clube.deleteMany({ where: { id: { in: [clubeA, clubeB] } } });
@@ -93,7 +95,7 @@ test("pendente e rejeitado autenticam, mas não obtêm privilégios esportivos",
 test("atleta e técnico aprovados acessam somente o próprio clube; presidente acessa qualquer clube", async () => {
   const atleta = await cadastrar("atleta", clubeA);
   const tecnico = await cadastrar("tecnico");
-  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: aprovacao });
+  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: { ...aprovacao, ...carteirinhaFicticia(presidenteId) } });
   await prisma.tecnico.update({ where: { usuarioId: tecnico.id }, data: aprovacao });
   // Aprovado sem clube: acessa rotas esportivas gerais, mas nenhum clube.
   assert.equal(await status("/protegida/aprovado", tecnico.cookie), 200);
@@ -119,7 +121,7 @@ test("atleta e técnico aprovados acessam somente o próprio clube; presidente a
 
 test("transferência registrada passa a valer na requisição seguinte", async () => {
   const atleta = await cadastrar("atleta", clubeA);
-  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: aprovacao });
+  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: { ...aprovacao, ...carteirinhaFicticia(presidenteId) } });
   await prisma.$transaction(async tx => {
     await tx.vinculoClube.updateMany({ where: { atletaId: atleta.id, fim: null }, data: { fim: new Date() } });
     await tx.vinculoClube.create({ data: { atletaId: atleta.id, clubeId: clubeB, inicio: new Date(Date.now() + 1), definidoPorPresidenteId: presidenteId } });
@@ -147,7 +149,7 @@ test("inativo e identidade sem domínio são recusados com 401 em todas as rotas
 
 test("transação sensível revalida acesso e aguarda desativação concorrente", async () => {
   const atleta = await cadastrar("atleta", clubeA);
-  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: aprovacao });
+  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: { ...aprovacao, ...carteirinhaFicticia(presidenteId) } });
   const ator = { usuarioId: atleta.id };
   assert.equal((await prisma.$transaction(tx => autorizacao.revalidarClube(tx, ator, clubeA))).clubeId, clubeA);
   await assert.rejects(prisma.$transaction(tx => autorizacao.revalidarClube(tx, ator, clubeB)), { status: 403 });

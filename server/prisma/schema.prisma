@@ -78,6 +78,11 @@ enum StatusVerificacao {
   rejeitado
 }
 
+enum StatusCarteirinha {
+  ativa
+  invalidada
+}
+
 model Usuario {
   id           String      @id @default(uuid()) @db.Uuid
   authId       String      @unique
@@ -102,6 +107,7 @@ model Presidente {
   atletasVerificados    Atleta[]
   tecnicosVerificados   Tecnico[]
   vinculosDefinidos     VinculoClube[]
+  carteirinhasEmitidas  Carteirinha[]
 }
 
 model Atleta {
@@ -114,6 +120,7 @@ model Atleta {
   verificadoPor             Presidente?       @relation(fields: [verificadoPorPresidenteId], references: [usuarioId])
   verificadoEm              DateTime?         @db.Timestamptz
   vinculos                  VinculoClube[]
+  carteirinha               Carteirinha?
 }
 
 model Tecnico {
@@ -150,4 +157,21 @@ model VinculoClube {
   definidoPor             Presidente? @relation(fields: [definidoPorPresidenteId], references: [usuarioId])
 
   @@index([clubeId])
+}
+
+/// Identificação permanente do atleta (RN-011), emitida na mesma transação da aprovação (MAR-57).
+/// Campos mínimos provisórios (PEN-008). Trigger diferido da migração `carteirinha` exige
+/// atleta aprovado ⇔ carteirinha existente. Técnico não possui carteirinha (RN-012).
+model Carteirinha {
+  id                     String            @id @default(uuid()) @db.Uuid
+  atletaId               String            @unique @db.Uuid
+  atleta                 Atleta            @relation(fields: [atletaId], references: [usuarioId])
+  /// Código opaco legível para conferência manual; não concede permissões.
+  codigo                 String            @unique
+  /// Token opaco aleatório lido do QR; identifica a carteirinha, nunca autoriza operações (RNF-004).
+  tokenQr                String            @unique
+  status                 StatusCarteirinha @default(ativa)
+  emitidaEm              DateTime          @db.Timestamptz
+  emitidaPorPresidenteId String            @db.Uuid
+  emitidaPor             Presidente        @relation(fields: [emitidaPorPresidenteId], references: [usuarioId])
 }

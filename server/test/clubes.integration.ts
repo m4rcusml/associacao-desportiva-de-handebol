@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 import { randomInt, randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
+import { carteirinhaFicticia } from "./support/carteirinha.ts";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
 
@@ -80,6 +81,7 @@ after(async () => {
     const identities = await tx.authUser.findMany({ where: { email: { in: emails } }, select: { id: true } });
     const ids = (await tx.usuario.findMany({ where: { authId: { in: identities.map(i => i.id) } }, select: { id: true } })).map(u => u.id);
     await tx.vinculoClube.deleteMany({ where: { atletaId: { in: ids } } });
+    await tx.carteirinha.deleteMany({ where: { atletaId: { in: ids } } });
     await tx.atleta.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.tecnico.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.clube.deleteMany({ where: { id: { in: clubes } } });
@@ -236,7 +238,7 @@ test("acessos indevidos às operações de clubes são recusados sem efeitos", a
   assert.equal((await atribuir(clube.id, tecnicoDoClube.id)).status, 200);
   const outroTecnico = await tecnicoAprovado();
   const atletaAprovado = await cadastrar("atleta", clube.id);
-  await prisma.atleta.update({ where: { usuarioId: atletaAprovado.id }, data: { statusVerificacao: "aprovado", verificadoPorPresidenteId: presidente.id, verificadoEm: new Date() } });
+  await prisma.atleta.update({ where: { usuarioId: atletaAprovado.id }, data: { statusVerificacao: "aprovado", verificadoPorPresidenteId: presidente.id, verificadoEm: new Date(), ...carteirinhaFicticia(presidente.id) } });
   const tecnicoPendente = await cadastrar("tecnico");
 
   const operacoes: [Metodo, string, unknown?][] = [
