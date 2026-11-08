@@ -52,7 +52,7 @@ async function cadastrar(perfil: "atleta" | "tecnico", clubeId?: string) {
 }
 
 let presidente: Awaited<ReturnType<typeof criarPresidente>>;
-type Campeonato = { id: string; status: string; inscricoes: { id: string; clube: { id: string } }[]; jogos: Record<string, number> };
+type Campeonato = { id: string; inicio: string | null; fim: string | null; status: string; inscricoes: { id: string; clube: { id: string } }[]; jogos: Record<string, number> };
 
 async function criarClube(nome = "Clube de campeonato") {
   const clube = await prisma.clube.create({ data: { nome, criadoPorPresidenteId: presidente.id } });
