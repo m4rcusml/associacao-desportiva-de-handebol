@@ -26,6 +26,8 @@ com o credenciamento, MAR-67). Desde a MAR-59, cada conta altera o próprio nome
 e-mail e senha continuam sem edição. Desde a MAR-62, o presidente agenda jogos (hora local e fuso
 IANA do local) e designa a arbitragem; acesso e sessões da arbitragem continuam na MAR-65.
 Desde a MAR-63, o presidente transfere atletas entre clubes e consulta o histórico de vínculos.
+Desde a MAR-64, o técnico aprovado atual escala atletas do próprio clube até o início do jogo; a
+escalação é preliminar e credenciamento e entrada em quadra continuam na MAR-67.
 Recuperação, arbitragem em quadra e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 

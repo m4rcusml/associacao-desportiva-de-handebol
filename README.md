@@ -152,6 +152,19 @@ anteriores não mudam. Repetir a transferência devolve `alterado: false`; orige
 pendente/rejeitado ou campeonato em andamento respondem 409. O histórico fica em
 `GET /api/atletas/{atletaId}/vinculos`. A carteirinha não muda.
 
+#### Escalação preliminar (MAR-64)
+
+O técnico aprovado atual escala atletas do próprio clube em jogo agendado do clube:
+`POST /api/jogos/{jogoId}/escalacao` (`atletaId`) inclui e `DELETE /api/jogos/{jogoId}/escalacao/{atletaId}`
+retira. Só entram atletas aprovados com vínculo atual no clube; depois do início do jogo, ou com o jogo
+finalizado/cancelado, a escalação responde 409. Repetir devolve `alterado: false`. `GET` na mesma rota
+mostra ao técnico o próprio clube e ao presidente os dois: escolhidos (com o técnico que escolheu e
+`vinculoAtual`), histórico de inclusões/retiradas e atletas que podem ser escolhidos. O novo técnico vê e
+altera a lista do anterior; confirmar atleta já escolhido mantém a autoria original. Presidente não
+escala; clube sem técnico apto fica sem escalação, e a arbitragem credenciará diretamente (MAR-67).
+Escalar não credencia nem confirma entrada em quadra. Depois de uma transferência, a escolha antiga
+aparece com `vinculoAtual: false` e não serve para credenciar pelo clube anterior.
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -395,6 +408,19 @@ pendente e campeonato em andamento); rollback após encerrar o vínculo; concorr
 do mesmo atleta e de transferência × início do campeonato, em ambas as ordens; acesso indevido e
 contrato OpenAPI. O teste de autorização que simulava transferência passou a usar vínculo sem lacuna.
 Uma migração nova; nenhuma dependência nova.
+
+Validação local da MAR-64 em 08/11/2026: lint, tipos/build e 89 testes de integração aprovados,
+incluindo oito novos: escalação pelo técnico do próprio clube sem credenciamento, camisa nem entrada,
+repetição sem efeito, retirada com histórico e recusa de atleta de outro clube, pendente, rejeitado ou
+inexistente; técnico substituído sem acesso imediato, novo técnico vendo e alterando a lista com a autoria
+anterior preservada, técnico desativado ou desvinculado e presidente sem escalação; início do jogo
+concorrente com a alteração, nas duas ordens, e jogo iniciado/cancelado; transferência com a escolha
+antiga marcada como vínculo encerrado, recusada no credenciamento pelo banco e aceita pelo vínculo atual,
+retirada pelo clube anterior e credenciamento preservado quando só a escolha sai; transferência concorrente
+com a escolha, nas duas ordens; inclusões e retiradas simultâneas sem duplicar participação ou histórico;
+restrições SQL diretas (clube fora do jogo, vínculo/atleta/técnico divergentes, etapas, camisa única por
+clube, credenciamento único por atleta, identificação e histórico imutáveis); acesso indevido e contrato
+OpenAPI. Uma migração nova; nenhuma dependência nova.
 
 ## Caminho feliz
 
