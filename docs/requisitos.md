@@ -364,6 +364,10 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   Iniciar exige ao menos dois clubes inscritos; encerrar exige todos os jogos finalizados ou
   cancelados; cancelar exige ausência de jogo em andamento e cancela os jogos ainda agendados.
   O bloqueio de transferências acompanha o status do campeonato.
+  Detalhe aprovado por Marcus (MAR-61): inscrições são incluídas ou retiradas somente com o
+  campeonato planejado; depois de iniciado, o conjunto de clubes fica fixo. Na implementação,
+  encerrar parte de campeonato em andamento, cancelar parte de planejado ou em andamento, e
+  encerrado/cancelado são estados finais.
 - O backend determina o dia do jogo no fuso do local da partida; conversão para o fuso de quem
   consulta é apresentação no frontend e não altera autorização.
 - Se o jogo já começou, acessos existentes e novas entradas de arbitragem continuam permitidos

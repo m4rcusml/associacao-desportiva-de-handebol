@@ -64,6 +64,20 @@ evento, sem colunas `statusAlterado*`. Um trigger recusa alterar atleta, código
 novo `tokenQr` com avanço de exatamente uma versão; outro recusa alterar ou remover eventos enquanto a
 carteirinha existir. As operações bloqueiam a linha da carteirinha (`FOR UPDATE`) e gravam o evento
 na mesma transação; o credenciamento (MAR-67) deve lê-la com `FOR SHARE`.
+A migração `campeonatos` (MAR-61) cria `Campeonato` (`nome`, `edicao`, `categoria`, `inicio`/`fim`
+opcionais do tipo data, `status`, `criadoPorPresidenteId`), `InscricaoClube` (`incluidaPorPresidenteId`,
+`incluidaEm`; `UNIQUE(campeonatoId, clubeId)` e `UNIQUE(id, campeonatoId)`) e a persistência mínima de
+`Jogo` (inscrições A/B, `fusoHorario`, `local`, `inicioPrevistoEm`, `iniciadoEm`, `encerradoEm`,
+`status`, `criadoPorPresidenteId`). FKs compostas `(inscricaoClubeXId, campeonatoId)` garantem as duas
+inscrições no campeonato do jogo; CHECKs exigem clubes distintos e horários coerentes com o status
+(agendado sem horários; em andamento com início e sem fim; finalizado com fim; cancelado sem fim).
+Triggers: o campeonato nasce planejado e só segue planejado → em_andamento (ao menos duas inscrições),
+em_andamento → encerrado e planejado/em_andamento → cancelado (nenhum jogo agendado ou em andamento);
+encerrado e cancelado não mudam. Inscrições são imutáveis e só entram ou saem com o campeonato
+planejado; a FK de `Jogo` impede retirar inscrição com jogos. Jogo não muda de campeonato, e campeonato
+encerrado/cancelado não recebe jogo agendado ou em andamento. Os triggers de inscrição e jogo bloqueiam
+a linha do campeonato (`FOR SHARE`), serializando-os com as transições. `resultadoExcepcional`,
+vencedor e demais colunas de jogo ficam para as tarefas correspondentes.
 
 ## Convenções e implementação da herança
 

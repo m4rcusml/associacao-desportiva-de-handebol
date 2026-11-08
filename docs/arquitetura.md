@@ -195,6 +195,14 @@ Carteirinhas (MAR-58): `modules/carteirinhas` expõe a consulta própria do atle
 presidente, revalidado na transação. O token do QR só trafega no corpo (`POST /carteirinhas/leitura`),
 nunca na URL, e não é aceito como sessão. Substituir exige informar `versaoQr`, a versão que deve
 deixar de valer: reenvio ou pedido simultâneo da mesma versão devolve o QR já substituído (`alterado: false`).
+Campeonatos (MAR-61): `modules/campeonatos` expõe criação, consulta, inscrições e ciclo somente ao
+presidente, revalidado na transação. Cada operação bloqueia a linha `Campeonato` (`FOR UPDATE`);
+os triggers de inscrição e jogo bloqueiam a mesma linha com `FOR SHARE`, de modo que transições,
+inscrições e jogos concorrentes se serializam e o trigger do campeonato confere as pré-condições
+com as alterações confirmadas. Repetir uma transição devolve `alterado: false`. O ponto de
+integração do término com saldos de suspensão (MAR-66/MAR-79), revogação da arbitragem dos jogos
+cancelados (MAR-65) e notificações (MAR-73) está marcado em `transicionarCampeonato`; esse fluxo
+ainda não está integrado.
 Conta própria (MAR-59): `PATCH /api/conta` altera somente o nome da conta da sessão. A transação
 bloqueia a linha `Usuario` com `FOR UPDATE`, recusa conta já desativada (401) e grava
 `Usuario.nomeCompleto` e `AuthUser.name` juntos; falha em qualquer gravação desfaz as duas. As rotas
