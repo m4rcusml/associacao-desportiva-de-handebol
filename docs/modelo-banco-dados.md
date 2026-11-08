@@ -46,8 +46,7 @@ verificação aprovada; a unicidade de `clubeId` já limita a um técnico por cl
 Presidente cria/edita clubes e atribui, substitui ou desvincula técnicos; `clubeId` do técnico é
 somente a atribuição atual, sem tabela de períodos, conforme a modelagem abaixo.
 Testes comprovam rollback também quando a falha ocorre no commit e acesso negado para identidade
-sem domínio. Transferências e edição não estão implementadas; revalidar suas regras
-transacionais ao introduzir essas operações.
+sem domínio. Transferências seguem a migração `transferencia_atletas` (MAR-63), descrita abaixo.
 A migração `carteirinha` (MAR-57) cria `Carteirinha` com campos mínimos provisórios (`codigo` e
 `tokenQr` opacos e únicos, `status` ativa/invalidada, `emitidaEm`, `emitidaPorPresidenteId`) e
 `UNIQUE(atletaId)`; a FK para `Atleta` impede carteirinha de técnico. Triggers diferidos garantem
@@ -88,6 +87,15 @@ ou remoção fora de jogo agendado/em andamento (bloqueio `FOR SHARE` da linha `
 ativa e impedimento de clube ficam na aplicação, com a linha `Usuario` bloqueada. `visualizacao`,
 `acessouEm`, `AcessoArbitragem` e `SessaoArbitragem` vêm com o acesso (MAR-65); a retirada atual
 exclui a designação, e a MAR-65 deve revogar suas sessões na mesma transação.
+A migração `transferencia_atletas` (MAR-63) acrescenta dois triggers a `VinculoClube`. Em alteração:
+atleta, clube e início não mudam; `definidoPorPresidenteId` só é preenchido uma vez; vínculo encerrado
+não muda; encerrar o vínculo aberto exige atleta aprovado e nenhum campeonato em andamento com o clube
+do vínculo inscrito, bloqueando os campeonatos planejados/em andamento desse clube com `FOR SHARE`
+(o início concorrente aguarda ou é visto). Em inclusão, havendo vínculo anterior encerrado (transferência),
+o novo começa exatamente no fim do último, em outro clube e com `definidoPorPresidenteId`; o primeiro
+vínculo (cadastro inicial) não muda de regra. Com o índice parcial, a exclusão GiST e o trigger diferido
+existentes, não há sobreposição, lacuna nem atleta sem vínculo atual. Vínculos não são excluídos pela
+aplicação; registros futuros (`Participacao`) continuam apontando para o vínculo da época.
 
 ## Convenções e implementação da herança
 

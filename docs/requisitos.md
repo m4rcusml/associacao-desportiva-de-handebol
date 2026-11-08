@@ -25,6 +25,7 @@ histórico; a leitura do QR devolve identificação mínima, por ora só ao pres
 com o credenciamento, MAR-67). Desde a MAR-59, cada conta altera o próprio nome sem nova aprovação;
 e-mail e senha continuam sem edição. Desde a MAR-62, o presidente agenda jogos (hora local e fuso
 IANA do local) e designa a arbitragem; acesso e sessões da arbitragem continuam na MAR-65.
+Desde a MAR-63, o presidente transfere atletas entre clubes e consulta o histórico de vínculos.
 Recuperação, arbitragem em quadra e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 
@@ -352,6 +353,9 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   só é permitido quando ela não possui jogos. Não haverá desativação nem exclusão de clubes
   nesta versão. Não foi aprovada exceção de transferência para clube eliminado/desistente:
   permanece o bloqueio enquanto seu campeonato estiver em andamento.
+  Detalhe aprovado por Marcus (MAR-63): somente atleta aprovado é transferido, com conta ativa ou
+  desativada; pendente ou rejeitado mantém o vínculo inicial do cadastro, que não é transferência.
+  O clube de destino não sofre bloqueio por campeonato (como no cadastro inicial, RN-007).
 - Novo técnico aprovado do clube consulta/altera a escalação anterior até o início do jogo,
   preservando autoria histórica. Sem técnico, arbitragem credencia diretamente; presidente
   não ganha uma operação de escalação substituta.

@@ -210,6 +210,14 @@ local é convertida em instante por `Intl` no fuso IANA do jogo (`fuso.ts`), con
 `Usuario` da conta (`FOR SHARE`), de modo que aprovação, desativação, atribuição de técnico e futura
 transferência (`FOR UPDATE`) são vistas de forma consistente. `clubeImpeditivo` fica exportado para a
 revalidação no acesso por designação (MAR-65).
+Transferências (MAR-63): `modules/atletas` expõe ao presidente o histórico de vínculos e a
+transferência. A transação revalida o presidente, lê o clube atual, bloqueia com `FOR SHARE` os
+campeonatos planejados/em andamento desse clube e depois a linha `Usuario` do atleta (`FOR UPDATE`),
+na mesma ordem campeonato → conta dos fluxos de jogos. Relido o vínculo, recusa atleta não aprovado,
+`clubeAtualId` divergente e campeonato em andamento; então encerra o vínculo e abre o seguinte com o
+mesmo `now()` da transação. O trigger do banco repete a verificação do campeonato. Repetir a mesma
+transferência devolve `alterado: false`; transferências simultâneas para destinos diferentes resultam
+em uma concluída e outra com 409.
 Conta própria (MAR-59): `PATCH /api/conta` altera somente o nome da conta da sessão. A transação
 bloqueia a linha `Usuario` com `FOR UPDATE`, recusa conta já desativada (401) e grava
 `Usuario.nomeCompleto` e `AuthUser.name` juntos; falha em qualquer gravação desfaz as duas. As rotas
