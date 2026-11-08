@@ -203,6 +203,13 @@ com as alterações confirmadas. Repetir uma transição devolve `alterado: fals
 integração do término com saldos de suspensão (MAR-66/MAR-79), revogação da arbitragem dos jogos
 cancelados (MAR-65) e notificações (MAR-73) está marcado em `transicionarCampeonato`; esse fluxo
 ainda não está integrado.
+Jogos (MAR-62): `modules/jogos` agenda jogos e designa a arbitragem, somente ao presidente. A hora
+local é convertida em instante por `Intl` no fuso IANA do jogo (`fuso.ts`), conferido também em
+`pg_timezone_names`; o fuso do navegador não participa. Agendar bloqueia a linha `Campeonato`
+(`FOR UPDATE`), serializando com as transições. Designar bloqueia o jogo (`FOR SHARE`) e a linha
+`Usuario` da conta (`FOR SHARE`), de modo que aprovação, desativação, atribuição de técnico e futura
+transferência (`FOR UPDATE`) são vistas de forma consistente. `clubeImpeditivo` fica exportado para a
+revalidação no acesso por designação (MAR-65).
 Conta própria (MAR-59): `PATCH /api/conta` altera somente o nome da conta da sessão. A transação
 bloqueia a linha `Usuario` com `FOR UPDATE`, recusa conta já desativada (401) e grava
 `Usuario.nomeCompleto` e `AuthUser.name` juntos; falha em qualquer gravação desfaz as duas. As rotas

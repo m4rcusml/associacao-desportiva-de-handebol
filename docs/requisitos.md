@@ -23,7 +23,9 @@ atleta emite a carteirinha na mesma transação. Desde a MAR-58, o atleta consul
 carteirinha com o QR vigente e o presidente a consulta, invalida, reativa e substitui o QR, com
 histórico; a leitura do QR devolve identificação mínima, por ora só ao presidente (a arbitragem entra
 com o credenciamento, MAR-67). Desde a MAR-59, cada conta altera o próprio nome sem nova aprovação;
-e-mail e senha continuam sem edição. Recuperação, arbitragem e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
+e-mail e senha continuam sem edição. Desde a MAR-62, o presidente agenda jogos (hora local e fuso
+IANA do local) e designa a arbitragem; acesso e sessões da arbitragem continuam na MAR-65.
+Recuperação, arbitragem em quadra e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 
 | Situação   | Significado                                                                        |
@@ -370,6 +372,13 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   encerrado/cancelado são estados finais.
 - O backend determina o dia do jogo no fuso do local da partida; conversão para o fuso de quem
   consulta é apresentação no frontend e não altera autorização.
+  Detalhes aprovados por Marcus (MAR-62): o presidente informa a hora local do início e o fuso IANA
+  do local; o backend calcula o instante e recusa horário inexistente ou ambíguo por horário de verão.
+  Jogos são agendados com o campeonato planejado ou em andamento. Nesta tarefa não há edição do jogo:
+  mudar data é adiamento (MAR-69). Pela conta, só atleta ou técnico aprovado e ativo é designado
+  (presidente não); atleta/técnico de um dos clubes do jogo é recusado já na designação, e o acesso
+  (MAR-65) revalida o impedimento. Externos são designados só pelo nome. Designações entram ou saem
+  com o jogo agendado ou em andamento.
 - Se o jogo já começou, acessos existentes e novas entradas de arbitragem continuam permitidos
   após meia-noite até encerramento. Se não começou até a virada do dia local, o acesso termina
   e depende de reagendamento pelo presidente. Cancelar/adiar continua revogando os acessos.
