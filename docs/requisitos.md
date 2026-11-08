@@ -32,7 +32,7 @@ Desde a MAR-65, a arbitragem entra no dia do jogo (fuso do local) pela conta des
 senha do jogo, com sessão temporária própria; presidente e contas designadas consultam e trocam a senha.
 As operações esportivas da arbitragem (credenciamento, lançamentos, início/encerramento) continuam nas
 MAR-67 a MAR-69.
-Escolhas técnicas da implementação (MAR-65), ainda não confirmadas por Marcus: a primeira senha é gerada na primeira consulta pelo presidente
+Detalhes aprovados por Marcus (MAR-65): a primeira senha é gerada na primeira consulta pelo presidente
 ou por conta designada; antes disso não há entrada por senha. Ela ignora maiúsculas, espaços e hífens.
 Cada entrada por senha gera um registro próprio com o nome informado, sem presumir identidade. A sessão
 temporária expira tecnicamente em 24 horas, além das revogações previstas.
