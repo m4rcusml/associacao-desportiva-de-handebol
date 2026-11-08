@@ -122,9 +122,11 @@ test("atleta e técnico aprovados acessam somente o próprio clube; presidente a
 test("transferência registrada passa a valer na requisição seguinte", async () => {
   const atleta = await cadastrar("atleta", clubeA);
   await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: { ...aprovacao, ...carteirinhaFicticia(presidenteId) } });
+  // Sem lacuna: o vínculo seguinte começa no fim do anterior (MAR-63).
+  const agora = new Date();
   await prisma.$transaction(async tx => {
-    await tx.vinculoClube.updateMany({ where: { atletaId: atleta.id, fim: null }, data: { fim: new Date() } });
-    await tx.vinculoClube.create({ data: { atletaId: atleta.id, clubeId: clubeB, inicio: new Date(Date.now() + 1), definidoPorPresidenteId: presidenteId } });
+    await tx.vinculoClube.updateMany({ where: { atletaId: atleta.id, fim: null }, data: { fim: agora } });
+    await tx.vinculoClube.create({ data: { atletaId: atleta.id, clubeId: clubeB, inicio: agora, definidoPorPresidenteId: presidenteId } });
   });
   assert.equal(await status(`/protegida/clubes/${clubeA}`, atleta.cookie), 403);
   assert.equal(await status(`/protegida/clubes/${clubeB}`, atleta.cookie), 200);
