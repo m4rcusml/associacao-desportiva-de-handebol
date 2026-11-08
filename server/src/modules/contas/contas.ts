@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import type { Prisma } from "../../generated/prisma/client.js";
 
 /**
@@ -56,4 +56,23 @@ export async function alterarAtivacao(tx: Prisma.TransactionClient, presidenteId
 /** Primeiro comando da transação de ativação/desativação. */
 export async function bloquearAtivacao(tx: Prisma.TransactionClient) {
   await tx.$queryRawUnsafe(`SELECT pg_advisory_xact_lock(${LOCK_ATIVACAO_CONTAS})::text`);
+}
+
+/**
+ * A própria conta altera o nome (único dado cadastral editável por ora; PEN-008). Nome de domínio e
+ * `AuthUser.name` mudam na mesma transação: se uma gravação falhar, nenhuma vale. Aprovação, perfil,
+ * clube, ativação e carteirinha não são tocados, e a edição não abre nova análise (seção 11).
+ * Bloqueia a linha `Usuario` com FOR UPDATE: edições simultâneas e desativação concorrente são serializadas.
+ */
+export async function editarNomeProprio(tx: Prisma.TransactionClient, usuarioId: string, nomeCompleto: string) {
+  const [linha] = await tx.$queryRaw<{ authId: string; nomeCompleto: string; ativo: boolean }[]>`
+    SELECT "authId", "nomeCompleto", ativo FROM "Usuario" WHERE id = ${usuarioId}::uuid FOR UPDATE`;
+  // Conta desativada após a autenticação da requisição: mesmo efeito de sessão revogada.
+  if (!linha?.ativo) throw new UnauthorizedException("Cadastro indisponível");
+  const alterado = linha.nomeCompleto !== nomeCompleto;
+  if (alterado) {
+    await tx.usuario.update({ where: { id: usuarioId }, data: { nomeCompleto } });
+    await tx.authUser.update({ where: { id: linha.authId }, data: { name: nomeCompleto } });
+  }
+  return { usuario: { id: usuarioId, nomeCompleto }, alterado };
 }

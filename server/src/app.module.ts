@@ -7,6 +7,7 @@ import { AuthController } from "./modules/autenticacao/auth.controller.js";
 import { SessionGuard } from "./modules/autenticacao/session.guard.js";
 import { AutorizacaoService } from "./modules/autorizacao/autorizacao.service.js";
 import { ContasController } from "./modules/contas/contas.controller.js";
+import { ContaPropriaController } from "./modules/contas/conta-propria.controller.js";
 import { PresidentesController } from "./modules/presidentes/presidentes.controller.js";
 import { ClubesController } from "./modules/clubes/clubes.controller.js";
 import { VerificacoesController } from "./modules/verificacoes/verificacoes.controller.js";
@@ -18,7 +19,7 @@ import { CarteirinhasController } from "./modules/carteirinhas/carteirinhas.cont
     throttlers: [{ name: "cadastro", ttl: minutes(15), limit: 5 }],
     errorMessage: "Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.",
   })],
-  controllers: [HealthController, AuthController, PresidentesController, ContasController, ClubesController, VerificacoesController, CarteirinhasController],
+  controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController],
   providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService],
 })
 export class AppModule {}
