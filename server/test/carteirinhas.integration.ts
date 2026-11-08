@@ -305,7 +305,8 @@ test("acesso indevido à carteirinha é recusado sem efeitos; QR não autentica"
   assert.notEqual((await propria(outroAtleta.cookie)).tokenQr, tokenQr);
 
   // O token do QR não serve como sessão ou credencial.
-  for (const extras of [{ Authorization: `Bearer ${tokenQr}` }, { Cookie: `better-auth.session_token=${tokenQr}` }]) {
+  const credenciaisForjadas: Record<string, string>[] = [{ Authorization: `Bearer ${tokenQr}` }, { Cookie: `better-auth.session_token=${tokenQr}` }];
+  for (const extras of credenciaisForjadas) {
     assert.equal((await request("GET", "/carteirinhas/minha", "", undefined, true, extras)).status, 401);
     assert.equal((await request("POST", "/carteirinhas/leitura", "", { tokenQr }, true, extras)).status, 401);
   }
