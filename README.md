@@ -94,6 +94,12 @@ revoga as sessões já abertas; reativar exige novo login. Histórico e vínculo
 há exclusão de conta nem troca de perfil. O último presidente ativo com credencial não pode ser
 desativado, inclusive em solicitações simultâneas (MAR-60).
 
+Qualquer conta autenticada e ativa altera o próprio nome com `PATCH /api/conta` (somente
+`nomeCompleto`). A conta vem da sessão; não há rota para editar terceiros. O nome do domínio e o
+`AuthUser.name` mudam na mesma transação, sem nova aprovação: perfil, clube, verificação, ativação,
+carteirinha, e-mail e senha não são aceitos no corpo nem alterados. As rotas nativas do Better Auth
+para nome, e-mail e senha continuam bloqueadas (MAR-59).
+
 #### Clubes e técnicos (MAR-56)
 
 Somente presidente ativo autenticado administra clubes: `POST /api/clubes` (`nome`, `cidade`
@@ -311,6 +317,15 @@ pendente, QR como cookie/bearer, token na URL, sem origem, corpo forjado, sem ca
 desativado). O teste da MAR-57 que alterava código/atleta diretamente passou a esperar a recusa do
 trigger. Participações ainda não existem: a preservação dos credenciamentos é estrutural (nenhuma
 operação toca outras tabelas) e deve ser provada na MAR-67. Uma migração nova; nenhuma dependência nova.
+
+Validação local da MAR-59 em 08/11/2026: lint, tipos/build e 58 testes de integração aprovados,
+incluindo seis novos: edição do próprio nome por atleta aprovado, técnico rejeitado, atleta pendente
+e presidente, com domínio e identidade iguais e aprovação, verificação, vínculo, carteirinha e e-mail
+preservados (o rejeitado depois solicita nova análise); recusa de nome inválido e de campos
+administrativos, e-mail e senha sem alterar nada; acesso indevido (sem sessão, sem origem, outra conta,
+conta desativada e rotas nativas `update-user`, `change-email`, `change-password`); rollback por falha
+na transação e por identidade ausente; edições simultâneas; e contrato OpenAPI. Sem migração nem
+dependência nova.
 
 ## Caminho feliz
 

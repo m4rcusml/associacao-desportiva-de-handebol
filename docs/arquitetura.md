@@ -195,6 +195,11 @@ Carteirinhas (MAR-58): `modules/carteirinhas` expõe a consulta própria do atle
 presidente, revalidado na transação. O token do QR só trafega no corpo (`POST /carteirinhas/leitura`),
 nunca na URL, e não é aceito como sessão. Substituir exige informar `versaoQr`, a versão que deve
 deixar de valer: reenvio ou pedido simultâneo da mesma versão devolve o QR já substituído (`alterado: false`).
+Conta própria (MAR-59): `PATCH /api/conta` altera somente o nome da conta da sessão. A transação
+bloqueia a linha `Usuario` com `FOR UPDATE`, recusa conta já desativada (401) e grava
+`Usuario.nomeCompleto` e `AuthUser.name` juntos; falha em qualquer gravação desfaz as duas. As rotas
+nativas do Better Auth (`update-user`, `change-email`, `change-password`) seguem fora da lista
+permitida em `app.ts`; e-mail e senha só mudarão com contrato aprovado.
 
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,

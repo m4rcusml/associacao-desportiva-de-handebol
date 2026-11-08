@@ -31,6 +31,8 @@ nunca conta como presidente ativo e não deve receber credencial. Se isso mudar,
 do último presidente ativo (MAR-60) e o procedimento `presidente:inicial` (MAR-55).
 O presidente inicial com credencial vem do procedimento restrito descrito no README; os seguintes
 são criados por presidente ativo, com `criadoPorPresidenteId` preenchido (MAR-55).
+`Usuario.nomeCompleto` e `AuthUser.name` guardam o mesmo nome; a edição pela própria conta altera os
+dois na mesma transação, sem tocar verificação, vínculos ou carteirinha (MAR-59).
 Presidente desativa/reativa outras contas alterando `Usuario.ativo`, incrementando
 `Usuario.versaoAtivacao` e revogando as `AuthSession` da conta (MAR-60); extensões, vínculos,
 `Tecnico.clubeId`, aprovações, credencial e autoria são mantidos. `AuthSession.versaoAtivacao` guarda

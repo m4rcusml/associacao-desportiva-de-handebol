@@ -22,7 +22,8 @@ após logout. Desde a MAR-57, presidente consulta, aprova ou rejeita solicitaç�
 atleta emite a carteirinha na mesma transação. Desde a MAR-58, o atleta consulta a própria
 carteirinha com o QR vigente e o presidente a consulta, invalida, reativa e substitui o QR, com
 histórico; a leitura do QR devolve identificação mínima, por ora só ao presidente (a arbitragem entra
-com o credenciamento, MAR-67). Recuperação, arbitragem e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
+com o credenciamento, MAR-67). Desde a MAR-59, cada conta altera o próprio nome sem nova aprovação;
+e-mail e senha continuam sem edição. Recuperação, arbitragem e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 
 | Situação   | Significado                                                                        |
