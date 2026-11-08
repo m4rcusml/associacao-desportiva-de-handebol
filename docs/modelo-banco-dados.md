@@ -78,6 +78,16 @@ planejado; a FK de `Jogo` impede retirar inscrição com jogos. Jogo não muda d
 encerrado/cancelado não recebe jogo agendado ou em andamento. Os triggers de inscrição e jogo bloqueiam
 a linha do campeonato (`FOR SHARE`), serializando-os com as transições. `resultadoExcepcional`,
 vencedor e demais colunas de jogo ficam para as tarefas correspondentes.
+A migração `jogos_arbitragem` (MAR-62) valida `Jogo.fusoHorario` contra `pg_timezone_names` (nome
+IANA, sem offsets soltos) e torna inscrições e autoria do jogo imutáveis. `inicioPrevistoEm` guarda o
+instante; a hora local é calculada no fuso do jogo. Cria `Arbitragem` com `usuarioId` **ou**
+`nomeCompleto` (nome de conta lido de `Usuario`, sem cópia), `designadoPorPresidenteId`/`designadoEm`
+juntos e obrigatórios para conta, `UNIQUE(jogoId, usuarioId)` e FK em cascata somente com a remoção do
+próprio jogo. Triggers recusam alterar a designação, conta que não seja de atleta/técnico e inclusão
+ou remoção fora de jogo agendado/em andamento (bloqueio `FOR SHARE` da linha `Jogo`). Aprovação, conta
+ativa e impedimento de clube ficam na aplicação, com a linha `Usuario` bloqueada. `visualizacao`,
+`acessouEm`, `AcessoArbitragem` e `SessaoArbitragem` vêm com o acesso (MAR-65); a retirada atual
+exclui a designação, e a MAR-65 deve revogar suas sessões na mesma transação.
 
 ## Convenções e implementação da herança
 

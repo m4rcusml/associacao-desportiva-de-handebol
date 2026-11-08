@@ -74,7 +74,21 @@ async function comInscricoes(quantidade: number) {
   for (let i = 0; i < quantidade; i++) assert.equal((await inscrever(campeonato.id, await criarClube(`Clube inscrito ${i}`))).status, 201);
   return consultar(campeonato.id);
 }
-/** Fixture direta: o agendamento de jogos pela API fica na MAR-62. */
+/** Agenda pela API (MAR-62), a partir das inscrições; devolve a resposta HTTP. */
+async function agendar(campeonatoId: string, inscricaoA: string, inscricaoB: string) {
+  const { inscricoes } = await consultar(campeonatoId);
+  const clube = (inscricaoId: string) => inscricoes.find(i => i.id === inscricaoId)!.clube.id;
+  return request("POST", `/campeonatos/${campeonatoId}/jogos`, presidente.cookie, { clubeAId: clube(inscricaoA), clubeBId: clube(inscricaoB), inicioPrevisto: "2026-12-05T19:00", fusoHorario: "America/Recife" });
+}
+async function agendarJogo(campeonatoId: string, inscricaoA: string, inscricaoB: string): Promise<{ id: string }> {
+  const response = await agendar(campeonatoId, inscricaoA, inscricaoB);
+  assert.equal(response.status, 201, await response.clone().text());
+  return response.json();
+}
+/** Status além de agendado ainda por fixture direta: início/encerramento do jogo vêm na MAR-69. */
+const avancarJogo = (jogo: { id: string }, dados: { status: "em_andamento" | "finalizado" | "cancelado"; iniciadoEm?: Date; encerradoEm?: Date }) =>
+  prisma.jogo.update({ where: { id: jogo.id }, data: dados });
+/** Fixture direta para testar as restrições do banco sem passar pela aplicação. */
 function criarJogo(campeonatoId: string, inscricaoA: string, inscricaoB: string, dados: { status?: "agendado" | "em_andamento" | "finalizado" | "cancelado"; iniciadoEm?: Date; encerradoEm?: Date } = {}) {
   return prisma.jogo.create({ data: { campeonatoId, inscricaoClubeAId: inscricaoA, inscricaoClubeBId: inscricaoB, fusoHorario: "America/Recife", criadoPorPresidenteId: presidente.id, ...dados } });
 }
@@ -161,7 +175,7 @@ test("inscrição única por clube e campeonato; retirada somente sem jogos", as
   assert.equal((await inscrever(campeonato.id, b)).status, 201);
   const comC = await (await inscrever(campeonato.id, c)).json() as Campeonato;
   const [ia, ib, ic] = [a, b, c].map(id => comC.inscricoes.find(i => i.clube.id === id)!.id);
-  await criarJogo(campeonato.id, ia, ib);
+  await agendarJogo(campeonato.id, ia, ib);
 
   // Inscrição com jogo não sai; sem jogo, sai e o clube continua existindo.
   assert.equal((await request("DELETE", `/campeonatos/${campeonato.id}/inscricoes/${ia}`, presidente.cookie)).status, 409);
@@ -197,7 +211,9 @@ test("ciclo: iniciar exige dois clubes, encerrar exige jogos concluídos; repeti
   assert.equal((await inscrever(campeonato.id, await criarClube())).status, 409);
   assert.equal((await request("DELETE", `/campeonatos/${campeonato.id}/inscricoes/${ia}`, presidente.cookie)).status, 409);
 
-  const jogos = [await criarJogo(campeonato.id, ia, ib), await criarJogo(campeonato.id, ib, ia, emAndamento()), await criarJogo(campeonato.id, ia, ib, { status: "cancelado" })];
+  const jogos = [await agendarJogo(campeonato.id, ia, ib), await agendarJogo(campeonato.id, ib, ia), await agendarJogo(campeonato.id, ia, ib)];
+  await avancarJogo(jogos[1], emAndamento());
+  await avancarJogo(jogos[2], { status: "cancelado" });
   assert.equal((await transicao(campeonato.id, "encerrar")).status, 409);
   await prisma.jogo.update({ where: { id: jogos[0].id }, data: finalizado() });
   assert.equal((await transicao(campeonato.id, "encerrar")).status, 409);
@@ -219,7 +235,7 @@ test("cancelar exige nenhum jogo em andamento e cancela os agendados na mesma tr
   // Planejado pode ser cancelado diretamente.
   const planejado = await comInscricoes(2);
   const [pa, pb] = planejado.inscricoes.map(i => i.id);
-  await criarJogo(planejado.id, pa, pb);
+  await agendarJogo(planejado.id, pa, pb);
   const cancelado = await (await transicao(planejado.id, "cancelar")).json();
   assert.equal(cancelado.alterado, true);
   assert.equal(cancelado.campeonato.status, "cancelado");
@@ -232,8 +248,9 @@ test("cancelar exige nenhum jogo em andamento e cancela os agendados na mesma tr
   const campeonato = await comInscricoes(2);
   const [ia, ib] = campeonato.inscricoes.map(i => i.id);
   assert.equal((await transicao(campeonato.id, "iniciar")).status, 200);
-  const emJogo = await criarJogo(campeonato.id, ia, ib, emAndamento());
-  const agendados = [await criarJogo(campeonato.id, ia, ib), await criarJogo(campeonato.id, ib, ia)];
+  const emJogo = await agendarJogo(campeonato.id, ia, ib);
+  await avancarJogo(emJogo, emAndamento());
+  const agendados = [await agendarJogo(campeonato.id, ia, ib), await agendarJogo(campeonato.id, ib, ia)];
   assert.equal((await transicao(campeonato.id, "cancelar")).status, 409);
   assert.equal(await prisma.jogo.count({ where: { campeonatoId: campeonato.id, status: "agendado" } }), 2);
   await prisma.jogo.update({ where: { id: emJogo.id }, data: { status: "finalizado", encerradoEm: new Date() } });
@@ -330,9 +347,10 @@ test("operações concorrentes no mesmo campeonato não repetem efeitos nem viol
     const comJogos = await comInscricoes(2);
     const [ja, jb] = comJogos.inscricoes.map(i => i.id);
     assert.equal((await transicao(comJogos.id, "iniciar")).status, 200);
-    const [novoJogo, encerramento] = await Promise.allSettled([criarJogo(comJogos.id, ja, jb), transicao(comJogos.id, "encerrar")]);
-    const encerrou = encerramento.status === "fulfilled" && encerramento.value.status === 200;
-    assert.notEqual(novoJogo.status === "fulfilled", encerrou, "exatamente um entre criar jogo e encerrar conclui");
+    const [novoJogo, encerramento] = await Promise.all([agendar(comJogos.id, ja, jb), transicao(comJogos.id, "encerrar")]);
+    const encerrou = encerramento.status === 200;
+    assert.notEqual(novoJogo.status === 201, encerrou, "exatamente um entre agendar jogo e encerrar conclui");
+    assert.equal(encerrou ? novoJogo.status : encerramento.status, 409);
     const situacao = await consultar(comJogos.id);
     assert.equal(situacao.status, encerrou ? "encerrado" : "em_andamento");
     assert.equal(situacao.jogos.agendado, encerrou ? 0 : 1);

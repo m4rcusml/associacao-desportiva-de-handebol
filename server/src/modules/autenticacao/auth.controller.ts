@@ -16,6 +16,7 @@ import { openapiVerificacoes } from "../verificacoes/verificacoes.openapi.js";
 import { openapiCarteirinhas } from "../carteirinhas/carteirinhas.openapi.js";
 import { openapiContaPropria } from "../contas/contas.openapi.js";
 import { openapiCampeonatos } from "../campeonatos/campeonatos.openapi.js";
+import { openapiJogos } from "../jogos/jogos.openapi.js";
 const cadastroSchema = z.discriminatedUnion("perfil", [
   camposConta.extend({ perfil: z.literal("atleta"), clubeId: z.uuid() }),
   camposConta.extend({ perfil: z.literal("tecnico") }),
@@ -39,6 +40,7 @@ export class AuthController {
         ...openapiCarteirinhas,
         ...openapiContaPropria,
         ...openapiCampeonatos,
+        ...openapiJogos,
         "/cadastros": { post: { summary: "Cadastro público com solicitação de verificação pendente", requestBody: { required: true, ...json(z.toJSONSchema(cadastroSchema)) }, responses: {
           "201": resposta("Usuário e perfil criados atomicamente; faça login em seguida"), "400": resposta("Cadastro ou clube inválido"), "403": resposta("Origem não autorizada"), "409": resposta("E-mail já cadastrado ou conflito com restrições do cadastro"), "429": resposta("Limite de 5 tentativas por IP a cada 15 minutos"),
         } } },

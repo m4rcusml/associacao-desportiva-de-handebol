@@ -127,8 +127,20 @@ inscrição sem jogos em `DELETE /api/campeonatos/{campeonatoId}/inscricoes/{ins
 O ciclo é manual: `POST .../iniciar` (planejado, ao menos dois clubes), `POST .../encerrar` (em
 andamento, todos os jogos finalizados ou cancelados) e `POST .../cancelar` (planejado ou em andamento,
 sem jogo em andamento; cancela os agendados). Repetir a transição já aplicada devolve o estado com
-`alterado: false`; transição inválida ou sem pré-condição responde 409. Não há exclusão de campeonatos
-nem rotas de jogos: o agendamento vem na MAR-62.
+`alterado: false`; transição inválida ou sem pré-condição responde 409. Não há exclusão de campeonatos.
+
+#### Jogos e arbitragem (MAR-62)
+
+Somente presidente ativo agenda jogos em `POST /api/campeonatos/{campeonatoId}/jogos` (`clubeAId` e
+`clubeBId` distintos e inscritos no campeonato planejado ou em andamento, `inicioPrevisto` como hora
+local `AAAA-MM-DDTHH:mm`, `fusoHorario` IANA do local e `local` opcional). O backend calcula o
+instante (`inicioPrevistoEm`, UTC) e devolve também `inicioPrevistoLocal`; fuso desconhecido ou hora
+inexistente/ambígua por horário de verão respondem 400. Agendar não inicia o jogo. Consulta em
+`GET /api/campeonatos/{campeonatoId}/jogos` e `GET /api/jogos/{jogoId}`. A arbitragem é designada em
+`POST /api/jogos/{jogoId}/arbitragens` com `usuarioId` (atleta/técnico aprovado, ativo, sem vínculo
+com os clubes do jogo, uma vez por jogo) ou `nomeCompleto` (pessoa sem cadastro) e retirada em
+`DELETE /api/jogos/{jogoId}/arbitragens/{arbitragemId}`, ambas com o jogo agendado ou em andamento.
+Designar não abre acesso: senha e sessões vêm na MAR-65; adiamento, início e cancelamento do jogo, na MAR-69.
 
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
@@ -351,6 +363,17 @@ transições e inscrições fora de planejado, campeonato terminado sem jogos at
 inscrições, inícios, encerrar × cancelar, iniciar × retirar e criar jogo × encerrar; acesso indevido
 e contrato OpenAPI. Jogos entram por fixtures diretas no banco até a MAR-62. Uma migração nova;
 nenhuma dependência nova.
+
+Validação local da MAR-62 em 08/11/2026: lint, tipos/build e 72 testes de integração aprovados,
+incluindo sete novos: agendamento com hora local e fuso IANA (dia local diferente do UTC), sem iniciar
+o jogo; recusa de corpo forjado, clubes iguais, offset/fuso desconhecido, data inexistente e horário
+pulado/repetido no horário de verão; clube de outro campeonato ou não inscrito e campeonato cancelado;
+designação de externos e de atleta/técnico, com recusa de conta duplicada, de clube do jogo, presidente,
+pendente, desativada ou inexistente; retirada e jogo finalizado/cancelado; restrições SQL diretas
+(fuso, clubes/autoria imutáveis, identificação e designação); concorrência de designações iguais,
+agendar × cancelar campeonato e designar × cancelar; acesso indevido e contrato OpenAPI. Os testes
+do ciclo do campeonato passaram a agendar jogos pela API; início/encerramento seguem por fixture até a
+MAR-69. Uma migração nova; nenhuma dependência nova.
 
 ## Caminho feliz
 

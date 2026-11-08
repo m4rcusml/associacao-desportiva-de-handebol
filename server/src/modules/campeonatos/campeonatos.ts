@@ -59,10 +59,11 @@ export async function criarCampeonato(tx: Tx, presidenteId: string, { inicio, fi
 }
 
 /**
- * Serializa as operações administrativas do mesmo campeonato (lock da linha). Inscrições e jogos
+ * Serializa as operações administrativas do mesmo campeonato (lock da linha), inclusive o agendamento
+ * de jogos (MAR-62). Inscrições e jogos
  * também bloqueiam essa linha nos triggers da migração `campeonatos`.
  */
-async function bloquearCampeonato(tx: Tx, campeonatoId: string): Promise<StatusCampeonato> {
+export async function bloquearCampeonato(tx: Tx, campeonatoId: string): Promise<StatusCampeonato> {
   const [linha] = await tx.$queryRaw<{ status: StatusCampeonato }[]>`SELECT status FROM "Campeonato" WHERE id = ${campeonatoId}::uuid FOR UPDATE`;
   if (!linha) throw new NotFoundException("Campeonato não encontrado");
   return linha.status;
