@@ -16,7 +16,7 @@ const uuidPipe = new ParseUUIDPipe();
 /**
  * Campeonatos e inscrições (RF-013/014, RN-022, MAR-61): somente o presidente cria, consulta e
  * conduz o ciclo. Visibilidade para outros perfis será definida com as tarefas que dependem dela
- * (MAR-64/MAR-74). Não há exclusão de campeonatos; agendamento de jogos fica na MAR-62.
+ * (MAR-64/MAR-74). Não há exclusão de campeonatos; jogos e arbitragem ficam em `modules/jogos` (MAR-62).
  */
 @Controller("campeonatos")
 @UseGuards(SessionGuard)

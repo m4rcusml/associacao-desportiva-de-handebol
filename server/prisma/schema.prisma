@@ -115,6 +115,7 @@ model Usuario {
   atleta       Atleta?
   tecnico      Tecnico?
   presidente   Presidente?
+  arbitragens  Arbitragem[]
 }
 
 model Presidente {
@@ -132,6 +133,7 @@ model Presidente {
   campeonatosCriados    Campeonato[]
   inscricoesIncluidas   InscricaoClube[]
   jogosCriados          Jogo[]
+  arbitragensDesignadas Arbitragem[]
 }
 
 model Atleta {
@@ -258,9 +260,10 @@ model InscricaoClube {
   @@index([clubeId])
 }
 
-/// Persistência mínima do jogo para as transições do campeonato (MAR-61); agendamento, designação,
-/// início/encerramento e resultados excepcionais vêm nas tarefas seguintes. Clubes A e B são
-/// inscrições distintas do próprio campeonato (RN-022). `fusoHorario` é o IANA do local da partida.
+/// Jogo agendado pelo presidente (MAR-62) entre inscrições distintas do próprio campeonato (RN-022).
+/// `inicioPrevistoEm` é o instante (UTC) e `fusoHorario` o nome IANA do local, validado pelo trigger da
+/// migração `jogos_arbitragem`; o dia do jogo é calculado nesse fuso, nunca no do navegador.
+/// Agendar não inicia o jogo: `iniciadoEm`/`encerradoEm`, adiamento e resultados vêm nas tarefas seguintes.
 model Jogo {
   id                    String         @id @default(uuid()) @db.Uuid
   campeonatoId          String         @db.Uuid
@@ -277,8 +280,28 @@ model Jogo {
   status                StatusJogo     @default(agendado)
   criadoPorPresidenteId String         @db.Uuid
   criadoPor             Presidente     @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
+  arbitragens           Arbitragem[]
 
   @@index([campeonatoId, status])
   @@index([inscricaoClubeAId, campeonatoId])
   @@index([inscricaoClubeBId, campeonatoId])
+}
+
+/// Arbitragem do jogo (RF-024, RN-024): atribuição na partida, não perfil. Designada pelo presidente
+/// (MAR-62) por conta de atleta/técnico (`usuarioId`, nome lido de `Usuario`) ou externa (`nomeCompleto`).
+/// Designação não é sessão: acesso, senha e `SessaoArbitragem` vêm na MAR-65, que revalida o impedimento
+/// de clube (RN-025). Triggers da migração `jogos_arbitragem` limitam mudanças ao jogo agendado/em andamento.
+model Arbitragem {
+  id                       String      @id @default(uuid()) @db.Uuid
+  jogoId                   String      @db.Uuid
+  jogo                     Jogo        @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  usuarioId                String?     @db.Uuid
+  usuario                  Usuario?    @relation(fields: [usuarioId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  nomeCompleto             String?
+  designadoPorPresidenteId String?     @db.Uuid
+  designadoPor             Presidente? @relation(fields: [designadoPorPresidenteId], references: [usuarioId], onDelete: Restrict)
+  designadoEm              DateTime?   @db.Timestamptz
+
+  @@unique([jogoId, usuarioId])
+  @@index([jogoId])
 }
