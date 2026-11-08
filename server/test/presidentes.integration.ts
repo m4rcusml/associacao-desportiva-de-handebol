@@ -75,6 +75,7 @@ after(async () => {
     const identities = await tx.authUser.findMany({ where: { email: { in: emails } }, select: { id: true } });
     const ids = (await tx.usuario.findMany({ where: { authId: { in: identities.map(i => i.id) } }, select: { id: true } })).map(u => u.id);
     await tx.vinculoClube.deleteMany({ where: { atletaId: { in: ids } } });
+    await tx.carteirinha.deleteMany({ where: { atletaId: { in: ids } } });
     await tx.atleta.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.tecnico.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.clube.deleteMany({ where: { id: clubeId } });

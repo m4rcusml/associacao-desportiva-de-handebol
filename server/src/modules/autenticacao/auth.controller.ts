@@ -12,6 +12,7 @@ import { AutorizacaoService } from "../autorizacao/autorizacao.service.js";
 import { z } from "zod";
 import { camposConta, criarIdentidade, traduzirErroIdentidade } from "./identidade.js";
 import { openapiClubes } from "../clubes/clubes.openapi.js";
+import { openapiVerificacoes } from "../verificacoes/verificacoes.openapi.js";
 const cadastroSchema = z.discriminatedUnion("perfil", [
   camposConta.extend({ perfil: z.literal("atleta"), clubeId: z.uuid() }),
   camposConta.extend({ perfil: z.literal("tecnico") }),
@@ -31,6 +32,7 @@ export class AuthController {
       components: { securitySchemes: { sessionCookie: { type: "apiKey", in: "cookie", name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}better-auth.session_token` } } },
       paths: {
         ...openapiClubes,
+        ...openapiVerificacoes,
         "/cadastros": { post: { summary: "Cadastro público com solicitação de verificação pendente", requestBody: { required: true, ...json(z.toJSONSchema(cadastroSchema)) }, responses: {
           "201": resposta("Usuário e perfil criados atomicamente; faça login em seguida"), "400": resposta("Cadastro ou clube inválido"), "403": resposta("Origem não autorizada"), "409": resposta("E-mail já cadastrado ou conflito com restrições do cadastro"), "429": resposta("Limite de 5 tentativas por IP a cada 15 minutos"),
         } } },

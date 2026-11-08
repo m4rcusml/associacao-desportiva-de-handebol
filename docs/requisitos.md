@@ -18,8 +18,9 @@ Implementação local em 07/11/2026: cadastro mínimo de atleta/técnico com sol
 vínculo inicial obrigatório do atleta, login por e-mail/senha sem confirmação de e-mail,
 consulta de sessão, rota autenticada de demonstração e logout revogável. Persistência em
 PostgreSQL/Prisma validada com testes de falha e concorrência do cadastro e repetição do cookie
-após logout. Aprovação esportiva, carteirinhas, recuperação, arbitragem e demais fluxos continuam
-planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
+após logout. Desde a MAR-57, presidente consulta, aprova ou rejeita solicitações; a aprovação do
+atleta emite a carteirinha na mesma transação. Gestão da carteirinha/QR (MAR-58), recuperação,
+arbitragem e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 
 | Situação   | Significado                                                                        |
@@ -319,6 +320,10 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
 
 - Rejeição de atleta/técnico não exige motivo. A mesma conta pode corrigir seus dados e solicitar
   nova análise; rejeitado continua sem aprovação esportiva até nova aprovação.
+  Detalhes aprovados por Marcus (MAR-57): conta desativada não recebe aprovação nem rejeição
+  (continua listada, indicando a conta inativa); a decisão ocorre após a reativação. A nova
+  solicitação volta a pendente com nova data e limpa o presidente/data da rejeição anterior;
+  o histórico das decisões fica para a auditoria completa (PEN-007).
 - Edição de dados cadastrais permitidos não exige nova aprovação. Isso não permite ao usuário
   alterar perfil, clube, aprovação ou outros atributos administrativos por conta própria.
 - Não existe retirada de aprovação nesta versão. Invalidar carteirinha continua sendo operação
