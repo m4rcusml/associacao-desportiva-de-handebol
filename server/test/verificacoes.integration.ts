@@ -2,11 +2,16 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { randomInt, randomUUID } from "node:crypto";
+import { setTimeout as esperar } from "node:timers/promises";
 import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { carteirinhaFicticia } from "./support/carteirinha.ts";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
+import type { Prisma } from "../dist/generated/prisma/client.js";
+import { AutorizacaoService } from "../dist/modules/autorizacao/autorizacao.service.js";
+import { alterarAtivacao, bloquearAtivacao } from "../dist/modules/contas/contas.js";
+import { aprovar, solicitarNovamente as reapresentar } from "../dist/modules/verificacoes/verificacoes.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
@@ -60,6 +65,40 @@ async function listar(query = "") {
   const response = await request("GET", `/verificacoes${query}`, presidente.cookie);
   assert.equal(response.status, 200, await response.clone().text());
   return await response.json() as Record<string, unknown>[];
+}
+
+// Retém o commit da primeira operação até comprovar no PostgreSQL que a concorrente aguarda seu lock.
+async function concorrer<T>(primeira: (tx: Prisma.TransactionClient) => Promise<T>, segunda: () => Promise<Response>) {
+  let sinalizarPronta!: (pid: number) => void;
+  let falhar!: (error: unknown) => void;
+  let liberar!: () => void;
+  const pronta = new Promise<number>((resolve, reject) => { sinalizarPronta = resolve; falhar = reject; });
+  const liberacao = new Promise<void>(resolve => { liberar = resolve; });
+  const transacao = prisma.$transaction(async tx => {
+    const resultado = await primeira(tx);
+    const [conexao] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+    sinalizarPronta(conexao.pid);
+    await liberacao;
+    return resultado;
+  });
+  void transacao.catch(falhar);
+  const pid = await pronta;
+  const concorrente = segunda();
+  try {
+    const limite = Date.now() + 2_000;
+    let bloqueada = false;
+    while (!bloqueada && Date.now() < limite) {
+      const [estado] = await prisma.$queryRaw<{ bloqueada: boolean }[]>`
+        SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE ${pid}::int = ANY(pg_blocking_pids(pid))) AS bloqueada`;
+      bloqueada = estado.bloqueada;
+      if (!bloqueada) await esperar(10);
+    }
+    assert.equal(bloqueada, true, "a operação concorrente deve aguardar o commit da primeira");
+  } finally {
+    liberar();
+    await Promise.all([transacao, concorrente]);
+  }
+  return { primeira: await transacao, segunda: await concorrente };
 }
 
 before(async () => {
@@ -215,6 +254,46 @@ test("aprovações e decisões simultâneas não duplicam carteirinha nem deixam
   const carteirinhas = await prisma.carteirinha.findMany({ where: { atletaId: { in: atletas.map(a => a.id) } } });
   assert.equal(new Set(carteirinhas.map(c => c.codigo)).size, 4);
   assert.equal(new Set(carteirinhas.map(c => c.tokenQr)).size, 4);
+});
+
+test("reapresentações concorrentes preservam uma única solicitação, para atleta e técnico", async () => {
+  for (const perfil of ["atleta", "tecnico"] as const) {
+    const pessoa = await cadastrar(perfil);
+    assert.equal((await decidir("rejeicao", pessoa.id)).status, 200);
+    const { primeira, segunda } = await concorrer(tx => reapresentar(tx, pessoa.id), () => solicitarNovamente(pessoa.cookie));
+    assert.equal(primeira.alterado, true);
+    assert.equal(segunda.status, 200, await segunda.clone().text());
+    const repetida = await segunda.json();
+    assert.deepEqual(repetida, { ...primeira, verificacaoSolicitadaEm: primeira.verificacaoSolicitadaEm!.toISOString(), alterado: false });
+    const listada = (await listar()).find(s => s.usuarioId === pessoa.id)!;
+    assert.deepEqual([listada.statusVerificacao, listada.verificadoPorPresidenteId, listada.verificadoEm], ["pendente", null, null]);
+    assert.equal(await prisma.carteirinha.count({ where: { atletaId: pessoa.id } }), 0);
+    assert.equal(await statusAprovado(pessoa.cookie), 403);
+  }
+});
+
+test("aprovação e desativação concorrentes respeitam ambas as ordens de commit", async () => {
+  const autorizacao = app.get(AutorizacaoService);
+  for (const aprovacaoPrimeiro of [true, false]) {
+    const atleta = await cadastrar("atleta");
+    const { segunda } = await concorrer(async tx => {
+      if (!aprovacaoPrimeiro) await bloquearAtivacao(tx);
+      await autorizacao.revalidar(tx, { usuarioId: presidente.id }, { perfis: ["presidente"] });
+      if (aprovacaoPrimeiro) return aprovar(tx, presidente.id, atleta.id);
+      return alterarAtivacao(tx, presidente.id, atleta.id, false);
+    }, () => aprovacaoPrimeiro
+      ? request("POST", `/contas/${atleta.id}/desativacao`, presidente.cookie, {})
+      : decidir("aprovacao", atleta.id));
+    assert.equal(segunda.status, aprovacaoPrimeiro ? 200 : 409, await segunda.clone().text());
+    const estado = await estadoAtleta(atleta.id);
+    assert.equal((await prisma.usuario.findUniqueOrThrow({ where: { id: atleta.id } })).ativo, false);
+    assert.equal(estado.statusVerificacao, aprovacaoPrimeiro ? "aprovado" : "pendente");
+    assert.equal(estado.carteirinha !== null, aprovacaoPrimeiro);
+    assert.equal(estado.verificadoPorPresidenteId, aprovacaoPrimeiro ? presidente.id : null);
+    assert.equal(estado.verificadoEm !== null, aprovacaoPrimeiro);
+    assert.equal(estado.vinculos[0].definidoPorPresidenteId, aprovacaoPrimeiro ? presidente.id : null);
+    assert.equal(await statusAprovado(atleta.cookie), 401);
+  }
 });
 
 test("falha no commit desfaz aprovação, vínculo e carteirinha; banco exige aprovado com carteirinha", async () => {
