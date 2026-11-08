@@ -83,6 +83,20 @@ enum StatusCarteirinha {
   invalidada
 }
 
+enum StatusCampeonato {
+  planejado
+  em_andamento
+  encerrado
+  cancelado
+}
+
+enum StatusJogo {
+  agendado
+  em_andamento
+  finalizado
+  cancelado
+}
+
 enum TipoEventoCarteirinha {
   invalidacao
   reativacao
@@ -115,6 +129,9 @@ model Presidente {
   vinculosDefinidos     VinculoClube[]
   carteirinhasEmitidas  Carteirinha[]
   eventosCarteirinha    EventoCarteirinha[]
+  campeonatosCriados    Campeonato[]
+  inscricoesIncluidas   InscricaoClube[]
+  jogosCriados          Jogo[]
 }
 
 model Atleta {
@@ -150,6 +167,7 @@ model Clube {
   criadoPor             Presidente     @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
   tecnico               Tecnico?
   vinculos              VinculoClube[]
+  inscricoes            InscricaoClube[]
 }
 
 model VinculoClube {
@@ -199,4 +217,68 @@ model EventoCarteirinha {
   ocorridoEm    DateTime              @db.Timestamptz
 
   @@index([carteirinhaId, ocorridoEm])
+}
+
+/// Edição de campeonato com uma categoria textual (RF-013, RN-022), sem validação de idade/sexo.
+/// Ciclo manual pelo presidente (MAR-61): planejado → em_andamento → encerrado, ou planejado/em_andamento
+/// → cancelado. Datas são informativas. O trigger da migração `campeonatos` valida as transições e
+/// suas pré-condições; encerrado e cancelado não mudam mais.
+model Campeonato {
+  id                    String           @id @default(uuid()) @db.Uuid
+  nome                  String
+  edicao                String
+  categoria             String
+  inicio                DateTime?        @db.Date
+  fim                   DateTime?        @db.Date
+  status                StatusCampeonato @default(planejado)
+  criadoPorPresidenteId String           @db.Uuid
+  criadoPor             Presidente       @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
+  inscricoes            InscricaoClube[]
+  jogos                 Jogo[]
+}
+
+/// Inclusão de clube no campeonato pelo presidente (RF-014, provisório: PEN-005). Única por
+/// campeonato/clube; incluída ou retirada somente com o campeonato planejado e retirada somente
+/// sem jogos (FK de `Jogo`). Imutável após a inclusão.
+model InscricaoClube {
+  id                      String     @id @default(uuid()) @db.Uuid
+  campeonatoId            String     @db.Uuid
+  campeonato              Campeonato @relation(fields: [campeonatoId], references: [id], onDelete: Cascade)
+  clubeId                 String     @db.Uuid
+  clube                   Clube      @relation(fields: [clubeId], references: [id])
+  incluidaPorPresidenteId String     @db.Uuid
+  incluidaPor             Presidente @relation(fields: [incluidaPorPresidenteId], references: [usuarioId])
+  incluidaEm              DateTime   @default(now()) @db.Timestamptz
+  jogosComoA              Jogo[]     @relation("inscricaoA")
+  jogosComoB              Jogo[]     @relation("inscricaoB")
+
+  @@unique([campeonatoId, clubeId])
+  /// Alvo das FKs compostas de `Jogo`: garante as duas inscrições no mesmo campeonato do jogo.
+  @@unique([id, campeonatoId])
+  @@index([clubeId])
+}
+
+/// Persistência mínima do jogo para as transições do campeonato (MAR-61); agendamento, designação,
+/// início/encerramento e resultados excepcionais vêm nas tarefas seguintes. Clubes A e B são
+/// inscrições distintas do próprio campeonato (RN-022). `fusoHorario` é o IANA do local da partida.
+model Jogo {
+  id                    String         @id @default(uuid()) @db.Uuid
+  campeonatoId          String         @db.Uuid
+  campeonato            Campeonato     @relation(fields: [campeonatoId], references: [id])
+  inscricaoClubeAId     String         @db.Uuid
+  inscricaoClubeA       InscricaoClube @relation("inscricaoA", fields: [inscricaoClubeAId, campeonatoId], references: [id, campeonatoId], onDelete: Restrict, onUpdate: Restrict)
+  inscricaoClubeBId     String         @db.Uuid
+  inscricaoClubeB       InscricaoClube @relation("inscricaoB", fields: [inscricaoClubeBId, campeonatoId], references: [id, campeonatoId], onDelete: Restrict, onUpdate: Restrict)
+  fusoHorario           String
+  local                 String?
+  inicioPrevistoEm      DateTime?      @db.Timestamptz
+  iniciadoEm            DateTime?      @db.Timestamptz
+  encerradoEm           DateTime?      @db.Timestamptz
+  status                StatusJogo     @default(agendado)
+  criadoPorPresidenteId String         @db.Uuid
+  criadoPor             Presidente     @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
+
+  @@index([campeonatoId, status])
+  @@index([inscricaoClubeAId, campeonatoId])
+  @@index([inscricaoClubeBId, campeonatoId])
 }

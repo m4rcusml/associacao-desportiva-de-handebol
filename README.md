@@ -116,6 +116,20 @@ técnico atual) e `DELETE /api/clubes/{clubeId}/tecnico/{tecnicoId}`, deixando o
 Só técnico aprovado e com conta ativa é atribuído; técnico já atribuído a outro clube, vaga ocupada
 sem indicar o técnico atual e atribuições concorrentes à mesma vaga respondem 409.
 
+#### Campeonatos e inscrições (MAR-61)
+
+Somente presidente ativo autenticado cria, lista e consulta campeonatos: `POST /api/campeonatos`
+(`nome`, `edicao`, `categoria` textual e, opcionalmente, `inicio`/`fim` em AAAA-MM-DD, apenas
+informativos), `GET /api/campeonatos` e `GET /api/campeonatos/{campeonatoId}` (inscrições e
+contagem de jogos por status). Com o campeonato planejado, inscreve clubes em
+`POST /api/campeonatos/{campeonatoId}/inscricoes` (`clubeId`; uma inscrição por clube) e retira
+inscrição sem jogos em `DELETE /api/campeonatos/{campeonatoId}/inscricoes/{inscricaoId}`.
+O ciclo é manual: `POST .../iniciar` (planejado, ao menos dois clubes), `POST .../encerrar` (em
+andamento, todos os jogos finalizados ou cancelados) e `POST .../cancelar` (planejado ou em andamento,
+sem jogo em andamento; cancela os agendados). Repetir a transição já aplicada devolve o estado com
+`alterado: false`; transição inválida ou sem pré-condição responde 409. Não há exclusão de campeonatos
+nem rotas de jogos: o agendamento vem na MAR-62.
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -326,6 +340,17 @@ administrativos, e-mail e senha sem alterar nada; acesso indevido (sem sessão, 
 conta desativada e rotas nativas `update-user`, `change-email`, `change-password`); rollback por falha
 na transação e por identidade ausente; edições simultâneas; e contrato OpenAPI. Sem migração nem
 dependência nova.
+
+Validação local da MAR-61 em 08/11/2026: lint, tipos/build e 65 testes de integração aprovados,
+incluindo sete novos: criação, listagem e consulta com campos mínimos, datas opcionais que não mudam
+o status e recusa de corpo forjado/período invertido; inscrição única, clube/campeonato inexistentes,
+retirada com e sem jogos e inscrição de outro campeonato; ciclo com pré-condições, repetição com
+`alterado: false` e estados finais; cancelamento dos agendados preservando finalizados; restrições SQL
+diretas (clubes distintos e do próprio campeonato, horários por status, inscrição duplicada/imutável,
+transições e inscrições fora de planejado, campeonato terminado sem jogos ativos); concorrência de
+inscrições, inícios, encerrar × cancelar, iniciar × retirar e criar jogo × encerrar; acesso indevido
+e contrato OpenAPI. Jogos entram por fixtures diretas no banco até a MAR-62. Uma migração nova;
+nenhuma dependência nova.
 
 ## Caminho feliz
 

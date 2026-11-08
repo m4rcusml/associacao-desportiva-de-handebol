@@ -12,6 +12,7 @@ import { PresidentesController } from "./modules/presidentes/presidentes.control
 import { ClubesController } from "./modules/clubes/clubes.controller.js";
 import { VerificacoesController } from "./modules/verificacoes/verificacoes.controller.js";
 import { CarteirinhasController } from "./modules/carteirinhas/carteirinhas.controller.js";
+import { CampeonatosController } from "./modules/campeonatos/campeonatos.controller.js";
 
 @Module({
   imports: [ThrottlerModule.forRoot({
@@ -19,7 +20,7 @@ import { CarteirinhasController } from "./modules/carteirinhas/carteirinhas.cont
     throttlers: [{ name: "cadastro", ttl: minutes(15), limit: 5 }],
     errorMessage: "Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.",
   })],
-  controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController],
+  controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController, CampeonatosController],
   providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService],
 })
 export class AppModule {}
