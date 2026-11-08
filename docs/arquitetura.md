@@ -42,7 +42,7 @@ server/
       usuarios/
       clubes/
       competicoes/
-      participacoes/
+      participacoes/     # Escalação (MAR-64); credenciamento na MAR-67
       arbitragem/
       resultados/
       disciplina/
@@ -218,6 +218,14 @@ na mesma ordem campeonato → conta dos fluxos de jogos. Relido o vínculo, recu
 mesmo `now()` da transação. O trigger do banco repete a verificação do campeonato. Repetir a mesma
 transferência devolve `alterado: false`; transferências simultâneas para destinos diferentes resultam
 em uma concluída e outra com 409.
+Escalação (MAR-64): `modules/participacoes` expõe a consulta (técnico do clube do jogo e presidente) e a
+inclusão/retirada pelo técnico aprovado atual. A transação revalida o técnico (`FOR SHARE` da conta:
+substituição, desvinculação e desativação aguardam ou são vistas), bloqueia o jogo (`FOR SHARE`: o início,
+que altera a linha, aguarda ou é visto), a conta do atleta (`FOR SHARE`: transferência, aprovação e
+desativação aguardam ou são vistas) e a carteirinha (`FOR SHARE`: invalidação aguarda ou é vista), na ordem
+técnico → jogo → atleta → carteirinha, sem ciclo com campeonato → atleta das transferências. A inclusão usa `INSERT ... ON CONFLICT DO NOTHING` e a retirada escritas condicionais:
+pedidos repetidos em paralelo terminam com `alterado: false`, sem 409 nem histórico duplicado. O trigger
+repete as regras no banco.
 Conta própria (MAR-59): `PATCH /api/conta` altera somente o nome da conta da sessão. A transação
 bloqueia a linha `Usuario` com `FOR UPDATE`, recusa conta já desativada (401) e grava
 `Usuario.nomeCompleto` e `AuthUser.name` juntos; falha em qualquer gravação desfaz as duas. As rotas

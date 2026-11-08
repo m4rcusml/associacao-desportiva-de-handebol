@@ -137,12 +137,21 @@ classDiagram
         uuid jogoId
         uuid inscricaoClubeId
         uuid vinculoClubeId
+        uuid atletaId
         uuid escolhidaPorTecnicoId
         datetime escolhidaEm
         uuid carteirinhaId
         datetime credenciadoEm
         int numeroCamisa
         datetime entrouEmQuadraEm
+    }
+    class AlteracaoEscalacao {
+        uuid id
+        uuid jogoId
+        uuid vinculoClubeId
+        string tipo
+        uuid tecnicoId
+        datetime ocorridoEm
     }
     class AcessoArbitragem {
         uuid jogoId
@@ -225,6 +234,8 @@ classDiagram
     Jogo "1" -- "0..*" Participacao : registra atletas
     VinculoClube "1" -- "0..*" Participacao : preserva clube representado
     Tecnico "0..1" -- "0..*" Participacao : escolhe atleta
+    Jogo "1" -- "0..*" AlteracaoEscalacao : historico da escalacao
+    Tecnico "1" -- "0..*" AlteracaoEscalacao : inclui ou retira
     Jogo "1" -- "0..1" AcessoArbitragem : configura acesso temporario
     Jogo "1" -- "0..*" Arbitragem : recebe arbitros
     Usuario "0..1" -- "0..*" Arbitragem : pode atuar como arbitro

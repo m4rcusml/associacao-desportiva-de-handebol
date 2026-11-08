@@ -97,6 +97,11 @@ enum StatusJogo {
   cancelado
 }
 
+enum TipoAlteracaoEscalacao {
+  inclusao
+  remocao
+}
+
 enum TipoEventoCarteirinha {
   invalidacao
   reativacao
@@ -147,6 +152,7 @@ model Atleta {
   verificadoEm              DateTime?         @db.Timestamptz
   vinculos                  VinculoClube[]
   carteirinha               Carteirinha?
+  participacoes             Participacao[]
 }
 
 model Tecnico {
@@ -159,6 +165,8 @@ model Tecnico {
   verificadoPorPresidenteId String?           @db.Uuid
   verificadoPor             Presidente?       @relation(fields: [verificadoPorPresidenteId], references: [usuarioId])
   verificadoEm              DateTime?         @db.Timestamptz
+  escolhas                  Participacao[]
+  alteracoesEscalacao       AlteracaoEscalacao[]
 }
 
 model Clube {
@@ -182,6 +190,8 @@ model VinculoClube {
   fim                     DateTime?   @db.Timestamptz
   definidoPorPresidenteId String?     @db.Uuid
   definidoPor             Presidente? @relation(fields: [definidoPorPresidenteId], references: [usuarioId])
+  participacoes           Participacao[]
+  alteracoesEscalacao     AlteracaoEscalacao[]
 
   @@index([clubeId])
 }
@@ -204,6 +214,7 @@ model Carteirinha {
   emitidaPorPresidenteId String            @db.Uuid
   emitidaPor             Presidente        @relation(fields: [emitidaPorPresidenteId], references: [usuarioId])
   eventos                EventoCarteirinha[]
+  participacoes          Participacao[]
 }
 
 /// Histórico somente de inclusão: invalidação, reativação e substituição do QR, com responsável e data (MAR-58).
@@ -253,6 +264,7 @@ model InscricaoClube {
   incluidaEm              DateTime   @default(now()) @db.Timestamptz
   jogosComoA              Jogo[]     @relation("inscricaoA")
   jogosComoB              Jogo[]     @relation("inscricaoB")
+  participacoes           Participacao[]
 
   @@unique([campeonatoId, clubeId])
   /// Alvo das FKs compostas de `Jogo`: garante as duas inscrições no mesmo campeonato do jogo.
@@ -281,6 +293,8 @@ model Jogo {
   criadoPorPresidenteId String         @db.Uuid
   criadoPor             Presidente     @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
   arbitragens           Arbitragem[]
+  participacoes         Participacao[]
+  alteracoesEscalacao   AlteracaoEscalacao[]
 
   @@index([campeonatoId, status])
   @@index([inscricaoClubeAId, campeonatoId])
@@ -304,4 +318,53 @@ model Arbitragem {
 
   @@unique([jogoId, usuarioId])
   @@index([jogoId])
+}
+
+/// Participação do atleta no jogo (RF-016 a RF-023, RN-014/019/020): escolha preliminar do técnico,
+/// credenciamento e entrada em quadra são etapas separadas no mesmo registro, sem criar equipe.
+/// Aponta para o vínculo e a inscrição da época: transferência posterior não reescreve o registro.
+/// MAR-64 grava somente a escolha (`escolhidaPorTecnicoId`/`escolhidaEm`, autoria da escolha vigente);
+/// credenciamento, camisa e entrada vêm na MAR-67, já com as restrições da migração `escalacao`.
+model Participacao {
+  id                    String         @id @default(uuid()) @db.Uuid
+  jogoId                String         @db.Uuid
+  jogo                  Jogo           @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  /// Clube do atleta no jogo: inscrição de um dos dois clubes, do mesmo clube do vínculo.
+  inscricaoClubeId      String         @db.Uuid
+  inscricaoClube        InscricaoClube @relation(fields: [inscricaoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  vinculoClubeId        String         @db.Uuid
+  vinculoClube          VinculoClube   @relation(fields: [vinculoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Cópia do atleta do vínculo (conferida pelo trigger) para a unicidade de credenciamento por jogo.
+  atletaId              String         @db.Uuid
+  atleta                Atleta         @relation(fields: [atletaId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  escolhidaPorTecnicoId String?        @db.Uuid
+  escolhidaPorTecnico   Tecnico?       @relation(fields: [escolhidaPorTecnicoId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  escolhidaEm           DateTime?      @db.Timestamptz
+  carteirinhaId         String?        @db.Uuid
+  carteirinha           Carteirinha?   @relation(fields: [carteirinhaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  credenciadoEm         DateTime?      @db.Timestamptz
+  numeroCamisa          Int?
+  entrouEmQuadraEm      DateTime?      @db.Timestamptz
+
+  @@unique([jogoId, vinculoClubeId])
+  @@unique([jogoId, inscricaoClubeId, numeroCamisa])
+  @@index([vinculoClubeId])
+  @@index([atletaId])
+}
+
+/// Histórico somente de inclusão das alterações da escalação (MAR-64): quem incluiu ou retirou cada
+/// atleta e quando, preservando a autoria mesmo após a substituição do técnico ou a retirada da escolha.
+model AlteracaoEscalacao {
+  id             String                 @id @default(uuid()) @db.Uuid
+  jogoId         String                 @db.Uuid
+  jogo           Jogo                   @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  vinculoClubeId String                 @db.Uuid
+  vinculoClube   VinculoClube           @relation(fields: [vinculoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  tipo           TipoAlteracaoEscalacao
+  tecnicoId      String                 @db.Uuid
+  tecnico        Tecnico                @relation(fields: [tecnicoId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  ocorridoEm     DateTime               @db.Timestamptz
+
+  @@index([jogoId, ocorridoEm])
+  @@index([vinculoClubeId])
 }

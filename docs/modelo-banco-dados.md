@@ -96,6 +96,22 @@ o novo começa exatamente no fim do último, em outro clube e com `definidoPorPr
 vínculo (cadastro inicial) não muda de regra. Com o índice parcial, a exclusão GiST e o trigger diferido
 existentes, não há sobreposição, lacuna nem atleta sem vínculo atual. Vínculos não são excluídos pela
 aplicação; registros futuros (`Participacao`) continuam apontando para o vínculo da época.
+A migração `escalacao` (MAR-64) cria `Participacao` e `AlteracaoEscalacao`. `Participacao` guarda o
+vínculo, a inscrição do clube no jogo e `atletaId` (cópia conferida do vínculo), além das três etapas.
+CHECKs: escolha com autor e data juntos; carteirinha, data do credenciamento e camisa (inteiro não
+negativo) juntos; entrada exige credenciamento; registro sem escolha nem credenciamento não existe.
+Índices únicos: jogo + vínculo; jogo + inscrição + camisa (RN-019); jogo + atleta entre os credenciados.
+O trigger de `Participacao` torna imutáveis jogo, inscrição, vínculo e atleta; exige inscrição de um
+dos clubes do jogo e do clube do vínculo; só deixa a escolha entrar, mudar ou sair com o jogo agendado
+(`FOR SHARE` da linha `Jogo`); exige para nova escolha vínculo aberto (`FOR SHARE`), atleta aprovado com
+conta e carteirinha ativas (`FOR SHARE` em `Usuario` e `Carteirinha`) e técnico aprovado, ativo e
+atribuído ao clube (`FOR SHARE` em `Tecnico`); exige para novo credenciamento
+vínculo aberto e carteirinha do próprio atleta, de modo que escolha anterior a uma transferência não
+credencia; e recusa excluir participação credenciada. `AlteracaoEscalacao` é somente de inclusão
+(inclusão/remoção, vínculo, técnico e data), feita com o jogo agendado pelo técnico aprovado do clube do
+vínculo; preserva a autoria após substituição do técnico ou retirada da escolha. Jogo removido leva
+participações e histórico em cascata (somente fixtures; a aplicação não exclui jogos). Demais regras do
+credenciamento (status do jogo, carteirinha ativa, suspensão) ficam para a MAR-67.
 
 ## Convenções e implementação da herança
 
@@ -164,7 +180,8 @@ clubes. Nome de campeonato/edição também não é uma chave de identidade.
   Fora desse impedimento, encerrar vínculo e abrir o seguinte ocorre na mesma transação.
 - `clubeId` do técnico é atribuição atual. O técnico que escolheu cada atleta fica identificado
   na `Participacao` mesmo após substituição. Novo técnico aprovado consulta/altera escalação
-  anterior até o início; a modelagem física deve preservar autoria das escolhas/alterações.
+  anterior até o início; a autoria da escolha vigente fica em `Participacao` e todas as inclusões e
+  retiradas ficam em `AlteracaoEscalacao` (MAR-64).
   Não há carteirinha nem credenciamento de técnico. Sem técnico, arbitragem credencia diretamente.
 
 ## `Carteirinha`

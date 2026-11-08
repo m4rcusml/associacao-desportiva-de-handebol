@@ -26,6 +26,8 @@ com o credenciamento, MAR-67). Desde a MAR-59, cada conta altera o próprio nome
 e-mail e senha continuam sem edição. Desde a MAR-62, o presidente agenda jogos (hora local e fuso
 IANA do local) e designa a arbitragem; acesso e sessões da arbitragem continuam na MAR-65.
 Desde a MAR-63, o presidente transfere atletas entre clubes e consulta o histórico de vínculos.
+Desde a MAR-64, o técnico aprovado atual escala atletas do próprio clube até o início do jogo; a
+escalação é preliminar e credenciamento e entrada em quadra continuam na MAR-67.
 Recuperação, arbitragem em quadra e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 
@@ -359,6 +361,13 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
 - Novo técnico aprovado do clube consulta/altera a escalação anterior até o início do jogo,
   preservando autoria histórica. Sem técnico, arbitragem credencia diretamente; presidente
   não ganha uma operação de escalação substituta.
+  Detalhes aprovados por Marcus (MAR-64): não se escolhe quem seria barrado no credenciamento.
+  A escolha exige atleta aprovado, com vínculo atual no clube, conta ativa e carteirinha ativa
+  (suspensões entram com a MAR-66). Atleta com conta desativada também não pode ser credenciado
+  nem entrar em quadra, o que a MAR-67 deve aplicar. Escolha já feita não é apagada se o atleta
+  ficar inapto depois: o credenciamento o barra. Retirar a escolha de atleta já credenciado retira
+  só a escolha; o credenciamento continua independente, inclusive de atleta não escolhido.
+  A consulta da escalação lista os atletas que podem ser escolhidos.
 - Listagem e consulta de clubes com o técnico atual (id e nome) são visíveis a qualquer conta
   autenticada e ativa, inclusive com aprovação pendente; somente o presidente vê também se a conta
   do técnico está ativa. A listagem pública usada no cadastro continua mínima (id, nome e cidade),
