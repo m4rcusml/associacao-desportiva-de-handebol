@@ -54,8 +54,14 @@ sem aprovação e retirada de aprovação são recusadas pelo banco. A aprovaç�
 do solicitante (FOR UPDATE), grava presidente/data, confirma o vínculo aberto (`definidoPorPresidenteId`)
 e emite a carteirinha na mesma transação; repetição devolve a mesma carteirinha. Rejeição registra
 presidente/data sem motivo; nova solicitação da própria conta volta a pendente, com nova data, e limpa
-a decisão anterior (sem histórico de decisões: PEN-007). Invalidação, reativação e substituição do QR
-com `statusAlteradoEm`/`statusAlteradoPorPresidenteId` e histórico ficam para a MAR-58.
+a decisão anterior (sem histórico de decisões: PEN-007).
+A migração `gestao_carteirinha` (MAR-58) acrescenta `Carteirinha.versaoQr` (começa em 1) e
+`EventoCarteirinha` (`tipo` invalidacao, reativacao ou substituicao_qr; `versaoQr`; `presidenteId`;
+`ocorridoEm`), histórico somente de inclusão: o responsável e a data do status atual são os do último
+evento, sem colunas `statusAlterado*`. Um trigger recusa alterar atleta, código e emissão e só aceita
+novo `tokenQr` com avanço de exatamente uma versão; outro recusa alterar ou remover eventos enquanto a
+carteirinha existir. As operações bloqueiam a linha da carteirinha (`FOR UPDATE`) e gravam o evento
+na mesma transação; o credenciamento (MAR-67) deve lê-la com `FOR SHARE`.
 
 ## Convenções e implementação da herança
 
@@ -90,6 +96,7 @@ administrativas não geram linhas adicionais.
 | `Clube`                | `PK` `id`                                                                                                                  | `cidade`                                                                                                                         |
 | `VinculoClube`         | `PK` `id`; um vínculo aberto por atleta; períodos sem sobreposição                                                         | `fim`; `definidoPorPresidenteId` no vínculo inicial solicitado pelo atleta                                                       |
 | `Carteirinha`          | `PK` `id`; `UNIQUE` `atletaId`, `codigo`, `tokenQr`                                                                        | Nenhum após emissão                                                                                                              |
+| `EventoCarteirinha`    | `PK` `id`; `FK` `carteirinhaId`; somente inclusão                                                                          | Nenhum                                                                                                                           |
 | `Campeonato`           | `PK` `id`                                                                                                                  | `inicio`, `fim` enquanto não agendado                                                                                            |
 | `InscricaoClube`       | `PK` `id`; `UNIQUE` `campeonatoId` + `clubeId`                                                                             | Nenhum                                                                                                                           |
 | `Jogo`                 | `PK` `id`; clubes A e B distintos e inscritos no mesmo campeonato                                                          | `inicioPrevistoEm`, `iniciadoEm`, `encerradoEm`, `local`, `resultadoExcepcional`, `inscricaoClubeVencedorId`                                                                         |
@@ -135,6 +142,8 @@ reativar, registrando data e responsável. Invalidar não bloqueia login e afeta
 credenciamentos futuros, preservando jogos já credenciados. Dados da carteirinha e aprovação não são
 graváveis pelo próprio atleta. Presidente pode substituir `tokenQr`, invalidando o anterior,
 sem criar outra carteirinha nem reescrever participações. Preservar histórico de substituições.
+Invalidação, reativação e substituição ficam em `EventoCarteirinha`; `versaoQr` identifica o QR
+vigente e torna a repetição da mesma substituição reconhecível. Tokens anteriores não são guardados.
 
 ## `Campeonato` e jogo
 

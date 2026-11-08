@@ -19,8 +19,10 @@ vínculo inicial obrigatório do atleta, login por e-mail/senha sem confirmaçã
 consulta de sessão, rota autenticada de demonstração e logout revogável. Persistência em
 PostgreSQL/Prisma validada com testes de falha e concorrência do cadastro e repetição do cookie
 após logout. Desde a MAR-57, presidente consulta, aprova ou rejeita solicitações; a aprovação do
-atleta emite a carteirinha na mesma transação. Gestão da carteirinha/QR (MAR-58), recuperação,
-arbitragem e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
+atleta emite a carteirinha na mesma transação. Desde a MAR-58, o atleta consulta a própria
+carteirinha com o QR vigente e o presidente a consulta, invalida, reativa e substitui o QR, com
+histórico; a leitura do QR devolve identificação mínima, por ora só ao presidente (a arbitragem entra
+com o credenciamento, MAR-67). Recuperação, arbitragem e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 
 | Situação   | Significado                                                                        |

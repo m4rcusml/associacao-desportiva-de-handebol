@@ -191,6 +191,10 @@ Atribuição e desvinculação bloqueiam a linha `Clube` (`FOR UPDATE`) e depois
 dos técnicos envolvidos, em ordem fixa, seguindo a convenção acima. Substituir exige informar o
 técnico atual, de modo que operações simultâneas na mesma vaga não se sobrescrevem: a segunda recebe 409.
 A unicidade de `Tecnico.clubeId` e o CHECK de técnico aprovado garantem as regras também no banco.
+Carteirinhas (MAR-58): `modules/carteirinhas` expõe a consulta própria do atleta e as operações do
+presidente, revalidado na transação. O token do QR só trafega no corpo (`POST /carteirinhas/leitura`),
+nunca na URL, e não é aceito como sessão. Substituir exige informar `versaoQr`, a versão que deve
+deixar de valer: reenvio ou pedido simultâneo da mesma versão devolve o QR já substituído (`alterado: false`).
 
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,
