@@ -19,8 +19,10 @@ vínculo inicial obrigatório do atleta, login por e-mail/senha sem confirmaçã
 consulta de sessão, rota autenticada de demonstração e logout revogável. Persistência em
 PostgreSQL/Prisma validada com testes de falha e concorrência do cadastro e repetição do cookie
 após logout. Desde a MAR-57, presidente consulta, aprova ou rejeita solicitações; a aprovação do
-atleta emite a carteirinha na mesma transação. Gestão da carteirinha/QR (MAR-58), recuperação,
-arbitragem e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
+atleta emite a carteirinha na mesma transação. Desde a MAR-58, o atleta consulta a própria
+carteirinha com o QR vigente e o presidente a consulta, invalida, reativa e substitui o QR, com
+histórico; a leitura do QR devolve identificação mínima, por ora só ao presidente (a arbitragem entra
+com o credenciamento, MAR-67). Recuperação, arbitragem e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
 Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
 
 | Situação   | Significado                                                                        |
@@ -386,6 +388,11 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   com histórico. O procedimento dessas correções complexas ainda precisa ser detalhado (PEN-019).
 - Presidente pode substituir o código QR da mesma carteirinha, invalidando o anterior e
   preservando credenciamentos existentes. Leitura automática não ganha conferência manual obrigatória.
+  Detalhes aprovados por Marcus (MAR-58): o histórico de invalidações, reativações e substituições
+  fica em registros próprios, e o responsável/data do status atual são os do último registro. QR
+  substituído não é guardado nem identificado como tal: responde como QR não reconhecido. Substituir
+  não reativa carteirinha invalidada. A substituição informa a versão do QR a invalidar, para que
+  reenvio ou pedido simultâneo não gere outro QR. Até o credenciamento (MAR-67), só o presidente lê o QR.
 - Foto do atleta é opcional, JPEG/PNG/WebP, até 5 MB por arquivo. Atleta e presidente podem
   enviar/substituir. Consulta somente pelo próprio atleta, presidentes, técnico atual do clube
   e arbitragem autorizada do jogo em que esteja escalado ou credenciado. QR sozinho não expõe foto.

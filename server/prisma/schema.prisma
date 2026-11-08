@@ -83,6 +83,12 @@ enum StatusCarteirinha {
   invalidada
 }
 
+enum TipoEventoCarteirinha {
+  invalidacao
+  reativacao
+  substituicao_qr
+}
+
 model Usuario {
   id           String      @id @default(uuid()) @db.Uuid
   authId       String      @unique
@@ -108,6 +114,7 @@ model Presidente {
   tecnicosVerificados   Tecnico[]
   vinculosDefinidos     VinculoClube[]
   carteirinhasEmitidas  Carteirinha[]
+  eventosCarteirinha    EventoCarteirinha[]
 }
 
 model Atleta {
@@ -170,8 +177,26 @@ model Carteirinha {
   codigo                 String            @unique
   /// Token opaco aleatório lido do QR; identifica a carteirinha, nunca autoriza operações (RNF-004).
   tokenQr                String            @unique
+  /// Versão do QR atual: começa em 1 e só avança de um em um a cada substituição (MAR-58).
+  versaoQr               Int               @default(1)
   status                 StatusCarteirinha @default(ativa)
   emitidaEm              DateTime          @db.Timestamptz
   emitidaPorPresidenteId String            @db.Uuid
   emitidaPor             Presidente        @relation(fields: [emitidaPorPresidenteId], references: [usuarioId])
+  eventos                EventoCarteirinha[]
+}
+
+/// Histórico somente de inclusão: invalidação, reativação e substituição do QR, com responsável e data (MAR-58).
+model EventoCarteirinha {
+  id            String                @id @default(uuid()) @db.Uuid
+  carteirinhaId String                @db.Uuid
+  carteirinha   Carteirinha           @relation(fields: [carteirinhaId], references: [id], onDelete: Cascade)
+  tipo          TipoEventoCarteirinha
+  /// Na substituição, versão do QR criada; nos demais eventos, versão vigente.
+  versaoQr      Int
+  presidenteId  String                @db.Uuid
+  presidente    Presidente            @relation(fields: [presidenteId], references: [usuarioId])
+  ocorridoEm    DateTime              @db.Timestamptz
+
+  @@index([carteirinhaId, ocorridoEm])
 }

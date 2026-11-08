@@ -323,9 +323,10 @@ test("falha no commit desfaz aprovação, vínculo e carteirinha; banco exige ap
   const outra = await cadastrar("atleta");
   await prisma.atleta.update({ where: { usuarioId: outra.id }, data: { ...aprovacao, ...carteirinhaFicticia(presidente.id) } });
   const { codigo, tokenQr } = (await estadoAtleta(atleta.id)).carteirinha!;
-  await assert.rejects(prisma.carteirinha.update({ where: { atletaId: outra.id }, data: { codigo } }), { code: "P2002" });
-  await assert.rejects(prisma.carteirinha.update({ where: { atletaId: outra.id }, data: { tokenQr } }), { code: "P2002" });
-  await assert.rejects(prisma.carteirinha.update({ where: { atletaId: outra.id }, data: { atletaId: atleta.id } }), { code: "P2002" });
+  // Código e atleta são imutáveis após a emissão (MAR-58); o token só muda com nova versão e continua único.
+  await assert.rejects(prisma.carteirinha.update({ where: { atletaId: outra.id }, data: { codigo } }));
+  await assert.rejects(prisma.carteirinha.update({ where: { atletaId: outra.id }, data: { tokenQr, versaoQr: { increment: 1 } } }), { code: "P2002" });
+  await assert.rejects(prisma.carteirinha.update({ where: { atletaId: outra.id }, data: { atletaId: atleta.id } }));
   assert.equal((await estadoAtleta(pendente.id)).statusVerificacao, "pendente");
 });
 

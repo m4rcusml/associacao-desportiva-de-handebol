@@ -152,6 +152,11 @@ geradas pelo build. `build` gera o cliente Prisma antes de compilar. Um único `
    confirma o vínculo e emite a carteirinha na mesma transação; técnico não recebe carteirinha.
    Rejeitado solicita nova análise pela própria conta (`POST /api/verificacoes/solicitacao`).
    Não há retirada de aprovação; contas desativadas não recebem decisão (409).
+   O atleta aprovado consulta a própria carteirinha e o QR vigente (`GET /api/carteirinhas/minha`).
+   O presidente consulta a carteirinha e o histórico (`GET /api/carteirinhas/atleta/{atletaId}`),
+   invalida ou reativa (`POST .../invalidacao` ou `.../reativacao`, corpo vazio) e substitui o QR
+   (`POST .../substituicao-qr` com `versaoQr`, a versão a invalidar). `POST /api/carteirinhas/leitura`
+   (`tokenQr` no corpo) devolve só carteirinha, código, status e nome; QR substituído responde 404.
 3. Entre em `/login`. A página inicial consulta `/api/sessao` e permite verificar `/api/protegida`.
 4. Recarregue para confirmar a sessão persistida. “Sair da conta” revoga somente a sessão atual
    no PostgreSQL e remove o cookie; outros dispositivos continuam autenticados.
@@ -293,6 +298,19 @@ vínculo e carteirinha, com nova tentativa concluída, e restrições do banco a
 indevido (sem sessão, atleta/técnico aprovados ou pendentes, autoaprovação, sem origem, corpo/filtros
 forjados, inexistente, conta desativada e presidente desativado). Fixtures que aprovam atletas
 diretamente no banco passaram a criar carteirinha. Uma migração nova; nenhuma dependência nova.
+
+Validação local da MAR-58 em 08/11/2026: lint, tipos/build e 52 testes de integração aprovados,
+incluindo seis novos: consulta própria do atleta e leitura do QR com identificação mínima (sem e-mail,
+código manual não serve como token); invalidação e reativação com histórico e responsável, repetição
+sem novo evento, login, sessão e aprovação preservados; substituição do QR na mesma carteirinha
+(mesmo código e status, token anterior não reconhecido, novo token na consulta do atleta, reenvio da
+mesma versão sem novo QR, versão futura 409); três rodadas de substituições e invalidações retidas no
+commit contra concorrentes e de pedidos HTTP paralelos, com um único efeito; restrições do banco
+(identificação, versão e histórico imutáveis); e acesso indevido (sem sessão, atleta, técnico,
+pendente, QR como cookie/bearer, token na URL, sem origem, corpo forjado, sem carteirinha e presidente
+desativado). O teste da MAR-57 que alterava código/atleta diretamente passou a esperar a recusa do
+trigger. Participações ainda não existem: a preservação dos credenciamentos é estrutural (nenhuma
+operação toca outras tabelas) e deve ser provada na MAR-67. Uma migração nova; nenhuma dependência nova.
 
 ## Caminho feliz
 

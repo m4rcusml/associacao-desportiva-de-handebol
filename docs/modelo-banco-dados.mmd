@@ -89,9 +89,16 @@ classDiagram
         string tokenQr
         string status
         datetime emitidaEm
+        int versaoQr
         uuid emitidaPorPresidenteId
-        datetime statusAlteradoEm
-        uuid statusAlteradoPorPresidenteId
+    }
+    class EventoCarteirinha {
+        uuid id
+        uuid carteirinhaId
+        string tipo
+        int versaoQr
+        uuid presidenteId
+        datetime ocorridoEm
     }
     class Campeonato {
         uuid id
@@ -210,6 +217,7 @@ classDiagram
     Clube "1" -- "0..*" VinculoClube : recebe atleta
     Clube "0..1" -- "0..1" Tecnico : tem tecnico
     Atleta "1" -- "0..1" Carteirinha : identifica-se com
+    Carteirinha "1" -- "0..*" EventoCarteirinha : registra historico
     Campeonato "1" -- "0..*" InscricaoClube : recebe inscricao
     Clube "1" -- "0..*" InscricaoClube : participa do campeonato
     Campeonato "1" -- "0..*" Jogo : inclui
