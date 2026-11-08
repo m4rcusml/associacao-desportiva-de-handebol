@@ -221,9 +221,9 @@ em uma concluída e outra com 409.
 Escalação (MAR-64): `modules/participacoes` expõe a consulta (técnico do clube do jogo e presidente) e a
 inclusão/retirada pelo técnico aprovado atual. A transação revalida o técnico (`FOR SHARE` da conta:
 substituição, desvinculação e desativação aguardam ou são vistas), bloqueia o jogo (`FOR SHARE`: o início,
-que altera a linha, aguarda ou é visto) e depois a conta do atleta (`FOR SHARE`: transferência e aprovação
-aguardam ou são vistas), na ordem técnico → jogo → atleta, sem ciclo com campeonato → atleta das
-transferências. A inclusão usa `INSERT ... ON CONFLICT DO NOTHING` e a retirada escritas condicionais:
+que altera a linha, aguarda ou é visto), a conta do atleta (`FOR SHARE`: transferência, aprovação e
+desativação aguardam ou são vistas) e a carteirinha (`FOR SHARE`: invalidação aguarda ou é vista), na ordem
+técnico → jogo → atleta → carteirinha, sem ciclo com campeonato → atleta das transferências. A inclusão usa `INSERT ... ON CONFLICT DO NOTHING` e a retirada escritas condicionais:
 pedidos repetidos em paralelo terminam com `alterado: false`, sem 409 nem histórico duplicado. O trigger
 repete as regras no banco.
 Conta própria (MAR-59): `PATCH /api/conta` altera somente o nome da conta da sessão. A transação

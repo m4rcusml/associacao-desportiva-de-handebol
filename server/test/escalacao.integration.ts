@@ -97,7 +97,7 @@ async function cenario() {
 type Pessoa = { id: string; nomeCompleto: string };
 type Escalado = { participacaoId: string; atleta: Pessoa; vinculoClubeId: string; vinculoAtual: boolean; escolhidaPorTecnico: Pessoa | null; escolhidaEm: string };
 type Alteracao = { tipo: "inclusao" | "remocao"; atleta: Pessoa; vinculoClubeId: string; tecnico: Pessoa; ocorridoEm: string };
-type ClubeEscalacao = { inscricaoId: string; clube: { id: string }; tecnico: Pessoa | null; escalados: Escalado[]; alteracoes: Alteracao[]; atletasDoClube: (Pessoa & { ativo: boolean })[] };
+type ClubeEscalacao = { inscricaoId: string; clube: { id: string }; tecnico: Pessoa | null; escalados: Escalado[]; alteracoes: Alteracao[]; atletasDoClube: Pessoa[] };
 type Escalacao = { jogo: { id: string; status: string; inicioPrevistoLocal: string }; clubes: ClubeEscalacao[]; alterado?: boolean };
 const escolher = (jogo: string, atletaId: string, cookie: string) => request("POST", `/jogos/${jogo}/escalacao`, cookie, { atletaId });
 const retirar = (jogo: string, atletaId: string, cookie: string) => request("DELETE", `/jogos/${jogo}/escalacao/${atletaId}`, cookie);
@@ -191,6 +191,54 @@ test("técnico aprovado escala atletas do próprio clube sem credenciar nem conf
     assert.equal((await request("POST", `/jogos/${jogo}/escalacao`, tecnicoA.cookie, body)).status, 400, JSON.stringify(body));
   }
   assert.equal(await prisma.participacao.count({ where: { jogoId: jogo } }), 2);
+});
+
+test("atleta com conta desativada ou carteirinha invalidada não é escolhido", async () => {
+  const { a, tecnicoA, campeonato, jogo } = await cenario();
+  const [ana, bruno, carla] = [await cadastrar("atleta", { clubeId: a, nome: "Ana" }), await cadastrar("atleta", { clubeId: a, nome: "Bruno" }), await cadastrar("atleta", { clubeId: a, nome: "Carla" })];
+  await ok(escolher(jogo, carla.id, tecnicoA.cookie));
+  const acao = (path: string) => request("POST", path, presidente.cookie, {}).then(r => assert.equal(r.status, 200, path));
+  await acao(`/contas/${ana.id}/desativacao`);
+  await acao(`/carteirinhas/atleta/${bruno.id}/invalidacao`);
+
+  for (const [atleta, motivo] of [[ana, /conta desativada/], [bruno, /carteirinha invalidada/]] as const) {
+    const recusada = await escolher(jogo, atleta.id, tecnicoA.cookie);
+    assert.equal(recusada.status, 409);
+    assert.match((await recusada.json()).message, motivo);
+  }
+  assert.deepEqual((await consultar(jogo, tecnicoA.cookie)).clubes[0].atletasDoClube.map(x => x.nomeCompleto), ["Carla"]);
+  // O banco recusa o atalho; a escolha feita antes continua registrada (o credenciamento barrará) e pode ser retirada.
+  const inscricaoA = (await prisma.inscricaoClube.findFirstOrThrow({ where: { campeonatoId: campeonato, clubeId: a } })).id;
+  for (const { id } of [ana, bruno]) {
+    const vinculo = await prisma.vinculoClube.findFirstOrThrow({ where: { atletaId: id, fim: null } });
+    await assert.rejects(prisma.participacao.create({ data: { jogoId: jogo, inscricaoClubeId: inscricaoA, vinculoClubeId: vinculo.id, atletaId: id, escolhidaPorTecnicoId: tecnicoA.id, escolhidaEm: new Date() } }));
+  }
+  await acao(`/carteirinhas/atleta/${carla.id}/invalidacao`);
+  assert.equal((await consultar(jogo, tecnicoA.cookie)).clubes[0].escalados.length, 1);
+  assert.equal((await escolher(jogo, carla.id, tecnicoA.cookie)).status, 409, "repetir não confirma quem ficou inapto");
+  assert.equal((await ok(retirar(jogo, carla.id, tecnicoA.cookie))).alterado, true);
+
+  // Reativadas conta e carteirinha, a escolha volta a ser permitida.
+  await acao(`/contas/${ana.id}/reativacao`);
+  await acao(`/carteirinhas/atleta/${bruno.id}/reativacao`);
+  await ok(escolher(jogo, ana.id, tecnicoA.cookie));
+  await ok(escolher(jogo, bruno.id, tecnicoA.cookie));
+
+  // Desativação ou invalidação em curso: a escolha aguarda o commit e é recusada.
+  for (const inapto of [
+    async (tx: typeof prisma, id: string) => { await tx.$executeRaw`UPDATE "Usuario" SET ativo = false WHERE id = ${id}::uuid`; },
+    async (tx: typeof prisma, id: string) => { await (await import("../dist/modules/carteirinhas/carteirinhas.js")).alterarStatus(tx, presidente.id, id, "invalidada"); },
+  ]) {
+    const atleta = await cadastrar("atleta", { clubeId: a });
+    let pedido: Promise<Response> | undefined;
+    await prisma.$transaction(async tx => {
+      await inapto(tx as typeof prisma, atleta.id);
+      pedido = escolher(jogo, atleta.id, tecnicoA.cookie);
+      await esperar(300);
+    });
+    assert.equal((await pedido!).status, 409);
+    assert.equal(await prisma.participacao.count({ where: { jogoId: jogo, atletaId: atleta.id } }), 0);
+  }
 });
 
 test("novo técnico consulta e altera a escalação anterior, preservando a autoria; clube sem técnico não escala", async () => {

@@ -5,7 +5,7 @@ const json = (schema: object) => ({ content: { "application/json": { schema } } 
 const resposta = (description: string) => ({ description });
 const security = [{ sessionCookie: [] }];
 const uuidParam = (name: string) => ({ name, in: "path", required: true, schema: { type: "string", format: "uuid" } });
-const escalacao = "jogo (id, campeonatoId, status, fusoHorario, inicioPrevistoEm, inicioPrevistoLocal) e clubes — o do técnico ou os dois para o presidente — com inscricaoId, clube, tecnico atual ({id, nomeCompleto} ou null), escalados (participacaoId, atleta, vinculoClubeId, vinculoAtual — false após transferência: não serve para credenciar —, escolhidaPorTecnico, escolhidaEm), alteracoes (tipo inclusao/remocao, atleta, vinculoClubeId, tecnico, ocorridoEm) e atletasDoClube (aprovados com vínculo atual: id, nomeCompleto, ativo). A escalação é preliminar: não credencia nem confirma entrada em quadra";
+const escalacao = "jogo (id, campeonatoId, status, fusoHorario, inicioPrevistoEm, inicioPrevistoLocal) e clubes — o do técnico ou os dois para o presidente — com inscricaoId, clube, tecnico atual ({id, nomeCompleto} ou null), escalados (participacaoId, atleta, vinculoClubeId, vinculoAtual — false após transferência: não serve para credenciar —, escolhidaPorTecnico, escolhidaEm), alteracoes (tipo inclusao/remocao, atleta, vinculoClubeId, tecnico, ocorridoEm) e atletasDoClube (escolhíveis: aprovados, com conta e carteirinha ativas e vínculo atual; id, nomeCompleto). A escalação é preliminar: não credencia nem confirma entrada em quadra";
 const alteracao = resposta(`${escalacao}; alterado false quando a escalação já estava assim`);
 const negado = { "400": resposta("UUID ou dados inválidos"), "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Perfil sem permissão, técnico sem clube, jogo de outro clube ou origem não autorizada") };
 const jogo = [uuidParam("jogoId")];
@@ -16,9 +16,9 @@ export const openapiEscalacao = {
     get: { summary: "Técnico aprovado consulta a escalação do próprio clube no jogo, inclusive escolhas do técnico anterior; presidente consulta os dois clubes", security, parameters: jogo, responses: {
       "200": resposta(escalacao), ...negado, "404": resposta("Jogo não encontrado"),
     } },
-    post: { summary: "Técnico aprovado atual inclui na escalação do próprio clube um atleta aprovado com vínculo atual no clube, até o início do jogo. Atleta já escolhido mantém a autoria original", security, parameters: jogo, requestBody: { required: true, ...json(z.toJSONSchema(escolhaSchema, { io: "input" })) }, responses: {
+    post: { summary: "Técnico aprovado atual inclui na escalação do próprio clube um atleta aprovado, com conta e carteirinha ativas e vínculo atual no clube, até o início do jogo. Atleta já escolhido mantém a autoria original", security, parameters: jogo, requestBody: { required: true, ...json(z.toJSONSchema(escolhaSchema, { io: "input" })) }, responses: {
       "200": alteracao, ...negado, "404": resposta("Jogo ou atleta não encontrados"),
-      "409": resposta("Jogo já iniciado, finalizado ou cancelado; atleta não aprovado ou sem vínculo atual com o clube do técnico; conflito concorrente"),
+      "409": resposta("Jogo já iniciado, finalizado ou cancelado; atleta não aprovado, com conta desativada, carteirinha invalidada ou sem vínculo atual com o clube do técnico; conflito concorrente"),
     } },
   },
   "/jogos/{jogoId}/escalacao/{atletaId}": {

@@ -156,7 +156,8 @@ pendente/rejeitado ou campeonato em andamento respondem 409. O histórico fica e
 
 O técnico aprovado atual escala atletas do próprio clube em jogo agendado do clube:
 `POST /api/jogos/{jogoId}/escalacao` (`atletaId`) inclui e `DELETE /api/jogos/{jogoId}/escalacao/{atletaId}`
-retira. Só entram atletas aprovados com vínculo atual no clube; depois do início do jogo, ou com o jogo
+retira. Só entram atletas aprovados, com vínculo atual no clube, conta ativa e carteirinha ativa: quem
+seria barrado no credenciamento não é escolhido. Depois do início do jogo, ou com o jogo
 finalizado/cancelado, a escalação responde 409. Repetir devolve `alterado: false`. `GET` na mesma rota
 mostra ao técnico o próprio clube e ao presidente os dois: escolhidos (com o técnico que escolheu e
 `vinculoAtual`), histórico de inclusões/retiradas e atletas que podem ser escolhidos. O novo técnico vê e
@@ -409,8 +410,10 @@ do mesmo atleta e de transferência × início do campeonato, em ambas as ordens
 contrato OpenAPI. O teste de autorização que simulava transferência passou a usar vínculo sem lacuna.
 Uma migração nova; nenhuma dependência nova.
 
-Validação local da MAR-64 em 08/11/2026: lint, tipos/build e 89 testes de integração aprovados,
-incluindo oito novos: escalação pelo técnico do próprio clube sem credenciamento, camisa nem entrada,
+Validação local da MAR-64 em 08/11/2026: lint, tipos/build e 90 testes de integração aprovados,
+incluindo nove novos: recusa de atleta com conta desativada ou carteirinha invalidada (inclusive pelo
+banco e com desativação/invalidação concorrentes), escolha anterior preservada e retirável, e escolha
+liberada após reativação; escalação pelo técnico do próprio clube sem credenciamento, camisa nem entrada,
 repetição sem efeito, retirada com histórico e recusa de atleta de outro clube, pendente, rejeitado ou
 inexistente; técnico substituído sem acesso imediato, novo técnico vendo e alterando a lista com a autoria
 anterior preservada, técnico desativado ou desvinculado e presidente sem escalação; início do jogo

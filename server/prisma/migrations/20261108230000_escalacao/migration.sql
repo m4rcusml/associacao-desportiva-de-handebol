@@ -98,7 +98,8 @@ CREATE UNIQUE INDEX "Participacao_credenciamento_atleta_key" ON "Participacao"("
 -- Jogo, inscrição, vínculo e atleta não mudam. Na inclusão, a inscrição é de um dos clubes do jogo e do
 -- mesmo clube do vínculo, e o atleta é o do vínculo. A escolha só entra, muda ou sai com o jogo agendado
 -- (bloqueio FOR SHARE da linha `Jogo`: o início concorrente aguarda ou já é visto). Nova escolha exige
--- vínculo aberto (FOR SHARE: transferência concorrente aguarda ou é vista), atleta aprovado e técnico
+-- vínculo aberto (FOR SHARE: transferência concorrente aguarda ou é vista), atleta aprovado com conta e
+-- carteirinha ativas (FOR SHARE: desativação e invalidação concorrentes aguardam ou são vistas) e técnico
 -- aprovado, ativo e atribuído ao clube da inscrição. Novo credenciamento também exige vínculo aberto e a
 -- carteirinha do próprio atleta: a escolha anterior a uma transferência não basta para credenciar.
 -- Participação credenciada não é excluída (correções do credenciamento: MAR-71).
@@ -158,6 +159,14 @@ BEGIN
     END IF;
     IF NOT EXISTS(SELECT 1 FROM "Atleta" WHERE "usuarioId" = NEW."atletaId" AND "statusVerificacao" = 'aprovado') THEN
       RAISE EXCEPTION 'Somente atleta aprovado pode ser escolhido' USING ERRCODE = '23514';
+    END IF;
+    PERFORM 1 FROM "Usuario" WHERE id = NEW."atletaId" AND ativo FOR SHARE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Atleta com conta desativada não pode ser escolhido' USING ERRCODE = '23514';
+    END IF;
+    PERFORM 1 FROM "Carteirinha" WHERE "atletaId" = NEW."atletaId" AND status = 'ativa' FOR SHARE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Atleta com carteirinha invalidada não pode ser escolhido' USING ERRCODE = '23514';
     END IF;
     PERFORM 1 FROM "Tecnico" t
       JOIN "InscricaoClube" i ON i."clubeId" = t."clubeId"

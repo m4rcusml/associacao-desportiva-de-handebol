@@ -11,6 +11,7 @@ type Tx = Prisma.TransactionClient;
 type Leitura = Pick<Tx, "jogo" | "participacao" | "alteracaoEscalacao" | "vinculoClube" | "tecnico">;
 
 const pessoa = { select: { usuario: { select: { id: true, nomeCompleto: true } } } } as const;
+const pessoaDoAtleta = { atleta: pessoa } as const;
 const nome = ({ usuario }: { usuario: { id: string; nomeCompleto: string } }) => usuario;
 
 /**
@@ -18,7 +19,7 @@ const nome = ({ usuario }: { usuario: { id: string; nomeCompleto: string } }) =>
  * entrada em quadra. O técnico vê só o próprio clube; o presidente, os dois. Cada escolha mostra o vínculo
  * usado (`vinculoAtual: false` depois de uma transferência: não serve para credenciar pelo clube anterior)
  * e quem a fez; `alteracoes` preserva todas as inclusões e retiradas, com o técnico responsável.
- * `atletasDoClube` são os atletas aprovados com vínculo atual no clube, os que podem ser escolhidos.
+ * `atletasDoClube` são os que podem ser escolhidos: aprovados, com conta e carteirinha ativas e vínculo atual no clube.
  */
 export async function consultarEscalacao(db: Leitura, jogoId: string, clubeDoTecnico?: string) {
   const jogo = await db.jogo.findUnique({ where: { id: jogoId }, select: {
@@ -51,8 +52,8 @@ export async function consultarEscalacao(db: Leitura, jogoId: string, clubeDoTec
         orderBy: [{ ocorridoEm: "asc" }, { id: "asc" }],
       }),
       db.vinculoClube.findMany({
-        where: { clubeId: clube.id, fim: null, atleta: { statusVerificacao: "aprovado" } },
-        select: { atleta: { select: { usuario: { select: { id: true, nomeCompleto: true, ativo: true } } } } },
+        where: { clubeId: clube.id, fim: null, atleta: { statusVerificacao: "aprovado", usuario: { ativo: true }, carteirinha: { status: "ativa" } } },
+        select: pessoaDoAtleta,
         orderBy: [{ atleta: { usuario: { nomeCompleto: "asc" } } }, { atletaId: "asc" }],
       }),
     ]);
@@ -101,22 +102,34 @@ function clubeDoTecnico(tecnico: Ator) {
   return tecnico.clubeId.toLowerCase();
 }
 
-/** Bloqueia a conta do atleta (FOR SHARE): transferência e aprovação (FOR UPDATE) aguardam ou já são vistas. */
+/**
+ * Bloqueia a conta do atleta (FOR SHARE): transferência, aprovação e desativação (FOR UPDATE) aguardam ou
+ * já são vistas. Devolve se a conta está ativa.
+ */
 async function bloquearAtleta(tx: Tx, atletaId: string) {
-  const [conta] = await tx.$queryRaw<{ perfil: string }[]>`SELECT perfil::text AS perfil FROM "Usuario" WHERE id = ${atletaId}::uuid FOR SHARE`;
+  const [conta] = await tx.$queryRaw<{ perfil: string; ativo: boolean }[]>`SELECT perfil::text AS perfil, ativo FROM "Usuario" WHERE id = ${atletaId}::uuid FOR SHARE`;
   if (conta?.perfil !== "atleta") throw new NotFoundException("Atleta não encontrado");
+  return conta.ativo;
+}
+
+/** Carteirinha lida com FOR SHARE: invalidação concorrente (FOR UPDATE) aguarda ou já é vista. */
+async function carteirinhaAtiva(tx: Tx, atletaId: string) {
+  const [carteirinha] = await tx.$queryRaw<{ status: string }[]>`SELECT status::text AS status FROM "Carteirinha" WHERE "atletaId" = ${atletaId}::uuid FOR SHARE`;
+  return carteirinha?.status === "ativa";
 }
 
 /**
- * Técnico aprovado atual escolhe um atleta aprovado com vínculo atual no próprio clube para um jogo agendado
- * do clube (RF-016, RN-014, PEN-018). Não credencia nem confirma entrada. Atleta já escolhido, inclusive pelo
+ * Técnico aprovado atual escolhe um atleta aprovado, com conta ativa, carteirinha ativa e vínculo atual no
+ * próprio clube, para um jogo agendado do clube (RF-016, RN-014, PEN-018). Quem seria barrado no
+ * credenciamento por esses motivos não é escolhido (decisão de Marcus, MAR-64); suspensões entram com a
+ * MAR-66. Não credencia nem confirma entrada. Atleta já escolhido, inclusive pelo
  * técnico anterior, permanece como está (`alterado: false`), preservando a autoria. Se a participação já
  * existir sem escolha (credenciamento futuro), recebe a escolha. Ordem dos bloqueios: técnico → jogo → atleta.
  */
 export async function escolherAtleta(tx: Tx, tecnico: Ator, jogoId: string, atletaId: string) {
   const clubeId = clubeDoTecnico(tecnico);
   const inscricaoClubeId = await jogoDoClube(tx, jogoId, clubeId);
-  await bloquearAtleta(tx, atletaId);
+  const contaAtiva = await bloquearAtleta(tx, atletaId);
   const atleta = await tx.atleta.findUnique({ where: { usuarioId: atletaId }, select: {
     statusVerificacao: true, vinculos: { where: { fim: null }, select: { id: true, clubeId: true } },
   } });
@@ -124,6 +137,8 @@ export async function escolherAtleta(tx: Tx, tecnico: Ator, jogoId: string, atle
   if (atleta.statusVerificacao !== "aprovado") throw new ConflictException("Somente atleta aprovado pode ser escalado.");
   const vinculo = atleta.vinculos[0];
   if (vinculo?.clubeId !== clubeId) throw new ConflictException("O técnico escala somente atletas com vínculo atual com o próprio clube.");
+  if (!contaAtiva) throw new ConflictException("Atleta com conta desativada não pode ser escalado.");
+  if (!await carteirinhaAtiva(tx, atletaId)) throw new ConflictException("Atleta com carteirinha invalidada não pode ser escalado.");
 
   const existente = await tx.participacao.findUnique({ where: { jogoId_vinculoClubeId: { jogoId, vinculoClubeId: vinculo.id } }, select: { id: true, escolhidaEm: true } });
   if (existente?.escolhidaEm) return { ...await consultarEscalacao(tx, jogoId, clubeId), alterado: false };

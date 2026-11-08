@@ -103,8 +103,9 @@ negativo) juntos; entrada exige credenciamento; registro sem escolha nem credenc
 Índices únicos: jogo + vínculo; jogo + inscrição + camisa (RN-019); jogo + atleta entre os credenciados.
 O trigger de `Participacao` torna imutáveis jogo, inscrição, vínculo e atleta; exige inscrição de um
 dos clubes do jogo e do clube do vínculo; só deixa a escolha entrar, mudar ou sair com o jogo agendado
-(`FOR SHARE` da linha `Jogo`); exige para nova escolha vínculo aberto (`FOR SHARE`), atleta aprovado e
-técnico aprovado, ativo e atribuído ao clube (`FOR SHARE` em `Tecnico`); exige para novo credenciamento
+(`FOR SHARE` da linha `Jogo`); exige para nova escolha vínculo aberto (`FOR SHARE`), atleta aprovado com
+conta e carteirinha ativas (`FOR SHARE` em `Usuario` e `Carteirinha`) e técnico aprovado, ativo e
+atribuído ao clube (`FOR SHARE` em `Tecnico`); exige para novo credenciamento
 vínculo aberto e carteirinha do próprio atleta, de modo que escolha anterior a uma transferência não
 credencia; e recusa excluir participação credenciada. `AlteracaoEscalacao` é somente de inclusão
 (inclusão/remoção, vínculo, técnico e data), feita com o jogo agendado pelo técnico aprovado do clube do
