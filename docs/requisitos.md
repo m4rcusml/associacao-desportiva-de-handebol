@@ -388,6 +388,11 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   com histórico. O procedimento dessas correções complexas ainda precisa ser detalhado (PEN-019).
 - Presidente pode substituir o código QR da mesma carteirinha, invalidando o anterior e
   preservando credenciamentos existentes. Leitura automática não ganha conferência manual obrigatória.
+  Detalhes aprovados por Marcus (MAR-58): o histórico de invalidações, reativações e substituições
+  fica em registros próprios, e o responsável/data do status atual são os do último registro. QR
+  substituído não é guardado nem identificado como tal: responde como QR não reconhecido. Substituir
+  não reativa carteirinha invalidada. A substituição informa a versão do QR a invalidar, para que
+  reenvio ou pedido simultâneo não gere outro QR. Até o credenciamento (MAR-67), só o presidente lê o QR.
 - Foto do atleta é opcional, JPEG/PNG/WebP, até 5 MB por arquivo. Atleta e presidente podem
   enviar/substituir. Consulta somente pelo próprio atleta, presidentes, técnico atual do clube
   e arbitragem autorizada do jogo em que esteja escalado ou credenciado. QR sozinho não expõe foto.
