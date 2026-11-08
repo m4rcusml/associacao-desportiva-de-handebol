@@ -171,10 +171,9 @@ export async function designarArbitragem(tx: Tx, jogoId: string, presidenteId: s
 /** Retira a designação com o jogo agendado ou em andamento. Sessões de arbitragem chegam na MAR-65. */
 export async function retirarArbitragem(tx: Tx, jogoId: string, arbitragemId: string) {
   await lerJogoParaArbitragem(tx, jogoId);
-  const arbitragem = await tx.arbitragem.findFirst({ where: { id: arbitragemId, jogoId }, select: { id: true } });
-  if (!arbitragem) throw new NotFoundException("Arbitragem não encontrada neste jogo");
   // Integração futura (MAR-65), na mesma transação: revogar as sessões dessa designação.
-  await tx.arbitragem.delete({ where: { id: arbitragemId } });
+  const { count } = await tx.arbitragem.deleteMany({ where: { id: arbitragemId, jogoId } });
+  if (count === 0) throw new NotFoundException("Arbitragem não encontrada neste jogo");
   return detalharJogo(tx, jogoId);
 }
 

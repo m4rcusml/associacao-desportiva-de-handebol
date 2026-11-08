@@ -2,10 +2,12 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { randomInt, randomUUID } from "node:crypto";
+import { setTimeout as esperar } from "node:timers/promises";
 import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
+import { retirarArbitragem } from "../dist/modules/jogos/jogos.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
@@ -236,6 +238,46 @@ test("designação de árbitros cadastrados e externos, única por conta e sem v
   const deOutro = (await consultarJogo(outroJogo.id)).arbitragens[0].id;
   assert.equal((await request("DELETE", `/jogos/${jogo.id}/arbitragens/${deOutro}`, presidente.cookie)).status, 404);
   assert.equal((await designar(jogo.id, { usuarioId: atleta.id })).status, 201);
+});
+
+test("retirada concorrente da mesma designação devolve 404 após a primeira exclusão", async () => {
+  const jogo = await jogoAgendado(await campeonatoComClubes(2));
+  const { arbitragens }: Jogo = await (await designar(jogo.id, { nomeCompleto: "Pessoa Concorrente" })).json();
+  const arbitragemId = arbitragens[0].id;
+  let sinalizarPronta!: (pid: number) => void;
+  let falhar!: (error: unknown) => void;
+  let liberar!: () => void;
+  const pronta = new Promise<number>((resolve, reject) => { sinalizarPronta = resolve; falhar = reject; });
+  const liberacao = new Promise<void>(resolve => { liberar = resolve; });
+  const primeira = prisma.$transaction(async tx => {
+    const resultado = await retirarArbitragem(tx, jogo.id, arbitragemId);
+    const [conexao] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+    sinalizarPronta(conexao.pid);
+    await liberacao;
+    return resultado;
+  });
+  void primeira.catch(falhar);
+  const pid = await pronta;
+  const segunda = request("DELETE", `/jogos/${jogo.id}/arbitragens/${arbitragemId}`, presidente.cookie);
+  try {
+    // A segunda requisição vê a designação, mas sua exclusão aguarda o commit da primeira.
+    const limite = Date.now() + 2_000;
+    let bloqueada = false;
+    while (!bloqueada && Date.now() < limite) {
+      const [estado] = await prisma.$queryRaw<{ bloqueada: boolean }[]>`
+        SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE ${pid}::int = ANY(pg_blocking_pids(pid))) AS bloqueada`;
+      bloqueada = estado.bloqueada;
+      if (!bloqueada) await esperar(10);
+    }
+    assert.equal(bloqueada, true, "a retirada concorrente deve aguardar o commit da primeira");
+  } finally {
+    liberar();
+    await Promise.all([primeira, segunda]);
+  }
+  assert.equal((await primeira).arbitragens.length, 0);
+  const resposta = await segunda;
+  assert.equal(resposta.status, 404, await resposta.clone().text());
+  assert.equal(await prisma.arbitragem.count({ where: { id: arbitragemId } }), 0);
 });
 
 test("arbitragem só muda com jogo agendado ou em andamento", async () => {
