@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { z } from "zod";
 import { Prisma, type StatusCampeonato, type StatusJogo } from "../../generated/prisma/client.js";
+import { encerrarAcessoArbitragem } from "../arbitragem/acesso.js";
 
 const texto = (max: number) => z.string().trim().min(1).max(max);
 const data = z.iso.date().nullable();
@@ -118,11 +119,12 @@ export async function transicionarCampeonato(tx: Tx, campeonatoId: string, trans
     if (await tx.jogo.count({ where: { campeonatoId, status: "em_andamento" } }) > 0) {
       throw new ConflictException("O campeonato possui jogo em andamento e não pode ser cancelado.");
     }
-    await tx.jogo.updateMany({ where: { campeonatoId, status: "agendado" }, data: { status: "cancelado" } });
+    const agendados = await tx.jogo.updateManyAndReturn({ where: { campeonatoId, status: "agendado" }, data: { status: "cancelado" }, select: { id: true } });
+    // Mesma transação: senha e sessões temporárias desses jogos deixam de valer (RF-029, MAR-65).
+    await encerrarAcessoArbitragem(tx, agendados.map(j => j.id), "jogo_cancelado");
   }
   // Integrações futuras, na mesma transação, antes de declarar o fluxo integrado: encerrar/cancelar
-  // encerra saldos de suspensão do campeonato (MAR-66/MAR-79) e o cancelamento dos jogos agendados
-  // revoga seus acessos de arbitragem (MAR-65); notificações após a persistência ficam na MAR-73.
+  // encerra saldos de suspensão do campeonato (MAR-66/MAR-79); notificações após a persistência ficam na MAR-73.
   await tx.campeonato.update({ where: { id: campeonatoId }, data: { status: destino[transicao] } });
   return { campeonato: await detalharCampeonato(tx, campeonatoId), alterado: true };
 }

@@ -51,11 +51,11 @@ export class AuthService {
     });
   }
 
-  /** Ator do domínio para a sessão persistida; null quando não há sessão ou cadastro ativo. */
-  async ator(headers: IncomingHttpHeaders): Promise<Ator | null> {
+  /** Ator do domínio para a sessão persistida (null sem cadastro ativo) e o id dessa sessão de conta. */
+  async autenticar(headers: IncomingHttpHeaders): Promise<{ ator: Ator | null; authSessionId: string }> {
     const session = await this.auth.api.getSession({ headers: fromNodeHeaders(headers) });
     if (!session) throw new UnauthorizedException("Entre para continuar");
-    return carregarAtor(this.prisma, { authId: session.user.id });
+    return { ator: await carregarAtor(this.prisma, { authId: session.user.id }), authSessionId: session.session.id };
   }
 
   async sessao(headers: IncomingHttpHeaders) {

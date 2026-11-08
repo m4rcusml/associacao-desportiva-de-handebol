@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from "@nestjs/common";
 import { hashPassword } from "better-auth/crypto";
 import type { Request } from "express";
-import { ThrottlerGuard } from "@nestjs/throttler";
+import { SkipThrottle, ThrottlerGuard } from "@nestjs/throttler";
 import { PrismaService } from "../../infrastructure/prisma.service.js";
 import { Prisma } from "../../generated/prisma/client.js";
 import { AuthService } from "./auth.service.js";
@@ -19,6 +19,7 @@ import { openapiCampeonatos } from "../campeonatos/campeonatos.openapi.js";
 import { openapiJogos } from "../jogos/jogos.openapi.js";
 import { openapiAtletas } from "../atletas/atletas.openapi.js";
 import { openapiEscalacao } from "../participacoes/escalacao.openapi.js";
+import { openapiArbitragem, securitySchemeArbitragem } from "../arbitragem/arbitragem.openapi.js";
 const cadastroSchema = z.discriminatedUnion("perfil", [
   camposConta.extend({ perfil: z.literal("atleta"), clubeId: z.uuid() }),
   camposConta.extend({ perfil: z.literal("tecnico") }),
@@ -35,7 +36,7 @@ export class AuthController {
     const security = [{ sessionCookie: [] }];
     return {
       openapi: "3.1.0", info: { title: "Handebol — cadastro e sessão", version: "0.1.0" }, servers: [{ url: "/api" }],
-      components: { securitySchemes: { sessionCookie: { type: "apiKey", in: "cookie", name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}better-auth.session_token` } } },
+      components: { securitySchemes: { sessionCookie: { type: "apiKey", in: "cookie", name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}better-auth.session_token` }, arbitragemCookie: securitySchemeArbitragem } },
       paths: {
         ...openapiClubes,
         ...openapiVerificacoes,
@@ -45,6 +46,7 @@ export class AuthController {
         ...openapiJogos,
         ...openapiAtletas,
         ...openapiEscalacao,
+        ...openapiArbitragem,
         "/cadastros": { post: { summary: "Cadastro público com solicitação de verificação pendente", requestBody: { required: true, ...json(z.toJSONSchema(cadastroSchema)) }, responses: {
           "201": resposta("Usuário e perfil criados atomicamente; faça login em seguida"), "400": resposta("Cadastro ou clube inválido"), "403": resposta("Origem não autorizada"), "409": resposta("E-mail já cadastrado ou conflito com restrições do cadastro"), "429": resposta("Limite de 5 tentativas por IP a cada 15 minutos"),
         } } },
@@ -82,6 +84,7 @@ export class AuthController {
 
   @Post("cadastros")
   @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ arbitragem: true })
   async cadastrar(@Body() body: unknown) {
     const parsed = cadastroSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException("Cadastro inválido. Confira nome, e-mail, senha de 8 a 128 caracteres e perfil. Atleta exige clube; técnico não escolhe clube. Campos adicionais não são permitidos.");

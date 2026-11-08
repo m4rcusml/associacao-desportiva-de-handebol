@@ -11,7 +11,9 @@ export class SessionGuard implements CanActivate {
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<RequestComAtor>();
     const requisito = this.reflector.getAllAndOverride<Requisito | undefined>(REQUISITO, [context.getHandler(), context.getClass()]);
-    request.ator = exigirRequisito(await this.auth.ator(request.headers), requisito);
+    const { ator, authSessionId } = await this.auth.autenticar(request.headers);
+    request.ator = exigirRequisito(ator, requisito);
+    request.authSessionId = authSessionId;
     return true;
   }
 }

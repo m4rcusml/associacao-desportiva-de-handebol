@@ -195,7 +195,7 @@ test("designação de árbitros cadastrados e externos, única por conta e sem v
   const corpo: Jogo = await externo.json();
   assert.equal(corpo.arbitragens.length, 1);
   assert.deepEqual({ ...corpo.arbitragens[0], id: undefined, designadoEm: undefined }, {
-    id: undefined, designadoEm: undefined, tipo: "externo", nomeCompleto: "Pessoa Externa", usuario: null, designadoPorPresidenteId: presidente.id,
+    id: undefined, designadoEm: undefined, tipo: "externo", nomeCompleto: "Pessoa Externa", usuario: null, designadoPorPresidenteId: presidente.id, visualizacao: null, acessouEm: null,
   });
   // Externos não são identificados pelo nome: o mesmo nome pode ser designado novamente.
   assert.equal((await designar(jogo.id, { nomeCompleto: "Pessoa Externa" })).status, 201);

@@ -37,6 +37,7 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3001
       CLIENT_ORIGIN: http://localhost:3000
       BETTER_AUTH_SECRET: ci-only-secret-at-least-32-characters-long
+      ARBITRAGEM_SENHA_CHAVE: 00000000000000000000000000000000000000000000000000000000c1c1c1c1
     steps:
       - uses: actions/checkout@v6
         with:

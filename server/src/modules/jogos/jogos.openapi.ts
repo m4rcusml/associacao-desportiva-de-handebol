@@ -6,7 +6,7 @@ const resposta = (description: string) => ({ description });
 const security = [{ sessionCookie: [] }];
 const uuidParam = (name: string) => ({ name, in: "path", required: true, schema: { type: "string", format: "uuid" } });
 const resumo = "id, campeonatoId, status, clubeA e clubeB ({ inscricaoId, clube {id, nome, cidade} }), local, fusoHorario (IANA), inicioPrevistoEm (instante UTC), inicioPrevistoLocal (AAAA-MM-DDTHH:mm no fuso do jogo), iniciadoEm, encerradoEm e criadoPorPresidenteId";
-const detalhado = resposta(`${resumo}; arbitragens (id, tipo cadastrado ou externo, nomeCompleto, usuario {id, nomeCompleto, perfil} ou null, designadoPorPresidenteId, designadoEm)`);
+const detalhado = resposta(`${resumo}; arbitragens (id, tipo cadastrado, externo ou entrada_por_senha, nomeCompleto, usuario {id, nomeCompleto, perfil} ou null, designadoPorPresidenteId, designadoEm, visualizacao, acessouEm)`);
 const negado = { "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Perfil sem permissão ou origem não autorizada") };
 const jogo = [uuidParam("jogoId")];
 
@@ -27,14 +27,14 @@ export const openapiJogos = {
     } },
   },
   "/jogos/{jogoId}/arbitragens": {
-    post: { summary: "Presidente designa árbitro: conta de atleta/técnico aprovada, ativa, sem vínculo com os clubes do jogo e única por jogo (usuarioId), ou pessoa sem cadastro (nomeCompleto). Designação não abre acesso: sessões vêm na MAR-65", security, parameters: jogo, requestBody: { required: true, ...json(z.toJSONSchema(designacaoSchema, { io: "input" })) }, responses: {
+    post: { summary: "Presidente designa árbitro: conta de atleta/técnico aprovada, ativa, sem vínculo com os clubes do jogo e única por jogo (usuarioId), ou pessoa sem cadastro (nomeCompleto). Designação não abre acesso por si: a conta entra pela rota de arbitragem no dia do jogo", security, parameters: jogo, requestBody: { required: true, ...json(z.toJSONSchema(designacaoSchema, { io: "input" })) }, responses: {
       "201": detalhado, "400": resposta("Dados inválidos ou campos adicionais"), ...negado, "404": resposta("Jogo ou conta não encontrados"),
       "409": resposta("Jogo finalizado/cancelado, conta presidente, desativada, não aprovada, de clube do jogo ou já designada"),
     } },
   },
   "/jogos/{jogoId}/arbitragens/{arbitragemId}": {
-    delete: { summary: "Presidente retira a designação com o jogo agendado ou em andamento", security, parameters: [...jogo, uuidParam("arbitragemId")], responses: {
-      "200": detalhado, "400": resposta("UUID inválido"), ...negado, "404": resposta("Jogo ou designação não encontrados"), "409": resposta("Jogo finalizado ou cancelado"),
+    delete: { summary: "Presidente retira a designação com o jogo agendado ou em andamento; as sessões temporárias dessa designação deixam de valer na mesma transação", security, parameters: [...jogo, uuidParam("arbitragemId")], responses: {
+      "200": detalhado, "400": resposta("UUID inválido"), ...negado, "404": resposta("Jogo ou designação não encontrados"), "409": resposta("Jogo finalizado ou cancelado, ou registro de entrada por senha (revogado pela troca da senha)"),
     } },
   },
 };
