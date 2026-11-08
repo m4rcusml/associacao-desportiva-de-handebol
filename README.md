@@ -142,6 +142,16 @@ com os clubes do jogo, uma vez por jogo) ou `nomeCompleto` (pessoa sem cadastro)
 `DELETE /api/jogos/{jogoId}/arbitragens/{arbitragemId}`, ambas com o jogo agendado ou em andamento.
 Designar não abre acesso: senha e sessões vêm na MAR-65; adiamento, início e cancelamento do jogo, na MAR-69.
 
+#### Transferência de atletas (MAR-63)
+
+Somente presidente ativo transfere em `POST /api/atletas/{atletaId}/transferencia` (`clubeAtualId`,
+que confirma a origem, e `clubeDestinoId`). Exige atleta aprovado (conta ativa ou desativada) e
+nenhum campeonato em andamento com o clube atual inscrito, inclusive eliminado/desistente (PEN-017);
+o destino não é restrito. O vínculo atual é encerrado e o seguinte aberto no mesmo instante; vínculos
+anteriores não mudam. Repetir a transferência devolve `alterado: false`; origem divergente, atleta
+pendente/rejeitado ou campeonato em andamento respondem 409. O histórico fica em
+`GET /api/atletas/{atletaId}/vinculos`. A carteirinha não muda.
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -374,6 +384,17 @@ pendente, desativada ou inexistente; retirada e jogo finalizado/cancelado; restr
 agendar × cancelar campeonato e designar × cancelar; acesso indevido e contrato OpenAPI. Os testes
 do ciclo do campeonato passaram a agendar jogos pela API; início/encerramento seguem por fixture até a
 MAR-69. Uma migração nova; nenhuma dependência nova.
+
+Validação local da MAR-63 em 08/11/2026: lint, tipos/build e 81 testes de integração aprovados,
+incluindo oito novos: transferência sem sobreposição nem lacuna, com vínculo original preservado,
+sessão do atleta no novo clube, repetição sem efeito, origem desatualizada e retorno ao primeiro clube;
+recusa de pendente/rejeitado e transferência de conta desativada; bloqueio por campeonato em andamento
+do clube atual (planejado e destino em andamento não bloqueiam; encerrado/cancelado liberam); restrições
+SQL diretas (vínculo encerrado e identificação imutáveis, lacuna, falta de presidente, mesmo clube,
+pendente e campeonato em andamento); rollback após encerrar o vínculo; concorrência de transferências
+do mesmo atleta e de transferência × início do campeonato, em ambas as ordens; acesso indevido e
+contrato OpenAPI. O teste de autorização que simulava transferência passou a usar vínculo sem lacuna.
+Uma migração nova; nenhuma dependência nova.
 
 ## Caminho feliz
 
