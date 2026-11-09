@@ -120,6 +120,12 @@ enum TipoAlteracaoEscalacao {
   remocao
 }
 
+/// Alteração de credenciamento já feito (MAR-71): correção da camisa ou estorno.
+enum TipoAlteracaoCredenciamento {
+  correcao_camisa
+  estorno
+}
+
 /// Tipos provisórios de lançamento (RF-037, RN-035, PEN-003): prefixo temp_ até confirmação do cliente.
 enum TipoLancamento {
   temp_gol
@@ -182,6 +188,7 @@ model Atleta {
   carteirinha               Carteirinha?
   participacoes             Participacao[]
   suspensoes                Suspensao[]
+  alteracoesCredenciamento  AlteracaoCredenciamento[]
 }
 
 model Tecnico {
@@ -221,6 +228,7 @@ model VinculoClube {
   definidoPor             Presidente? @relation(fields: [definidoPorPresidenteId], references: [usuarioId])
   participacoes           Participacao[]
   alteracoesEscalacao     AlteracaoEscalacao[]
+  alteracoesCredenciamento AlteracaoCredenciamento[]
 
   @@index([clubeId])
 }
@@ -244,6 +252,7 @@ model Carteirinha {
   emitidaPor             Presidente        @relation(fields: [emitidaPorPresidenteId], references: [usuarioId])
   eventos                EventoCarteirinha[]
   participacoes          Participacao[]
+  alteracoesCredenciamento AlteracaoCredenciamento[]
 }
 
 /// Histórico somente de inclusão: invalidação, reativação e substituição do QR, com responsável e data (MAR-58).
@@ -295,6 +304,7 @@ model InscricaoClube {
   jogosComoA              Jogo[]     @relation("inscricaoA")
   jogosComoB              Jogo[]     @relation("inscricaoB")
   participacoes           Participacao[]
+  alteracoesCredenciamento AlteracaoCredenciamento[]
 
   @@unique([campeonatoId, clubeId])
   /// Alvo das FKs compostas de `Jogo`: garante as duas inscrições no mesmo campeonato do jogo.
@@ -329,6 +339,7 @@ model Jogo {
   alteracoesEscalacao   AlteracaoEscalacao[]
   cumprimentosSuspensao CumprimentoSuspensao[]
   lancamentos           LancamentoJogo[]
+  alteracoesCredenciamento AlteracaoCredenciamento[]
 
   @@index([campeonatoId, status])
   @@index([inscricaoClubeAId, campeonatoId])
@@ -408,6 +419,36 @@ model AlteracaoEscalacao {
 
   @@index([jogoId, ocorridoEm])
   @@index([vinculoClubeId])
+}
+
+/// Histórico somente de inclusão das correções de camisa e dos estornos de credenciamento (MAR-71; seção 11,
+/// PEN-019 parcial). Guarda uma cópia do credenciamento alterado (inscrição, vínculo, atleta, carteirinha, data e
+/// camisa anterior), sem referência à participação, que deixa de existir no estorno de atleta não escalado. Na
+/// correção, `numeroCamisaNova` é a camisa gravada; no estorno, fica vazia. Sem autoria, como as anulações de
+/// lançamentos (RN-030, PEN-007). O trigger de `Participacao` só aceita a alteração com este registro na mesma transação.
+model AlteracaoCredenciamento {
+  id                   String                      @id @default(uuid()) @db.Uuid
+  jogoId               String                      @db.Uuid
+  jogo                 Jogo                        @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  inscricaoClubeId     String                      @db.Uuid
+  inscricaoClube       InscricaoClube              @relation(fields: [inscricaoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  vinculoClubeId       String                      @db.Uuid
+  vinculoClube         VinculoClube                @relation(fields: [vinculoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  atletaId             String                      @db.Uuid
+  atleta               Atleta                      @relation(fields: [atletaId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  carteirinhaId        String                      @db.Uuid
+  carteirinha          Carteirinha                 @relation(fields: [carteirinhaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  credenciadoEm        DateTime                    @db.Timestamptz
+  tipo                 TipoAlteracaoCredenciamento
+  numeroCamisaAnterior Int
+  numeroCamisaNova     Int?
+  registradaEm         DateTime                    @db.Timestamptz
+
+  @@index([jogoId, registradaEm])
+  @@index([atletaId])
+  @@index([vinculoClubeId])
+  @@index([inscricaoClubeId])
+  @@index([carteirinhaId])
 }
 
 /// Senha compartilhada do jogo (RN-028, MAR-65): hash para verificar a entrada e cópia cifrada (AES-256-GCM,
