@@ -5,19 +5,34 @@
  * Uso (dados fictícios; credenciais nunca no repositório):
  *   SMOKE_URL_PUBLICA=https://<client>.vercel.app SMOKE_URL_API_DIRETA=https://<api>.onrender.com npm run smoke:hospedado
  * Opcionais: SMOKE_EMAIL e SMOKE_SENHA (conta fictícia ativa, para cookies e sessão); SMOKE_ATLETA_ID com essas
- * credenciais de presidente (envio e leitura de foto); SMOKE_SUPABASE_URL e SMOKE_FOTOS_BUCKET (bucket não público).
+ * credenciais de presidente (envio e leitura de foto); SMOKE_SUPABASE_URL, SMOKE_FOTOS_BUCKET e
+ * SMOKE_SUPABASE_SECRET_KEY, juntas (consulta autenticada da configuração privada do bucket).
  * Os limites de tentativa ficam bloqueados por alguns segundos para o IP de quem executa.
  */
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { io } from "socket.io-client";
+import { verificarBucketPrivado } from "./smoke-storage.ts";
 
 const publica = obrigatoria("SMOKE_URL_PUBLICA");
 const direta = obrigatoria("SMOKE_URL_API_DIRETA");
-const { SMOKE_EMAIL: email, SMOKE_SENHA: senha, SMOKE_ATLETA_ID: atletaId, SMOKE_SUPABASE_URL: supabase, SMOKE_FOTOS_BUCKET: bucket } = process.env;
+const { SMOKE_EMAIL: email, SMOKE_SENHA: senha, SMOKE_ATLETA_ID: atletaId, SMOKE_SUPABASE_URL: supabase, SMOKE_FOTOS_BUCKET: bucket, SMOKE_SUPABASE_SECRET_KEY: chaveSupabase } = process.env;
 const https = publica.startsWith("https://");
 const origemIntrusa = "https://intruso.example";
 const falhas: string[] = [];
+const naoExecutadas: string[] = [];
+
+if ((email || senha || atletaId) && !(email && senha)) {
+  console.error("Defina SMOKE_EMAIL e SMOKE_SENHA juntas; SMOKE_ATLETA_ID também exige essas credenciais");
+  process.exit(2);
+}
+if ((supabase || bucket || chaveSupabase) && !(supabase && bucket && chaveSupabase)) {
+  console.error("Defina SMOKE_SUPABASE_URL, SMOKE_FOTOS_BUCKET e SMOKE_SUPABASE_SECRET_KEY juntas");
+  process.exit(2);
+}
+if (!email) naoExecutadas.push("cookies, sessão e logout (sem SMOKE_EMAIL/SMOKE_SENHA)");
+if (!atletaId) naoExecutadas.push("envio e leitura real de foto (sem SMOKE_ATLETA_ID)");
+if (!supabase) naoExecutadas.push("configuração privada do bucket (sem variáveis SMOKE_SUPABASE_*/SMOKE_FOTOS_BUCKET)");
 
 function obrigatoria(nome: string) {
   const valor = process.env[nome];
@@ -160,19 +175,14 @@ await verificar("Socket.IO autoriza só pelo domínio e pela origem do client", 
   return `válida: ${valida}; estranha: ${intrusa}; direto: ${semProxy}`;
 });
 
-if (supabase && bucket) {
-  await verificar("bucket de fotos não é público", async () => {
-    const base = new URL(supabase).origin;
-    for (const url of [`${base}/storage/v1/object/public/${bucket}/inexistente.jpg`, `${base}/storage/v1/bucket/${bucket}`]) {
-      const resposta = await fetch(url);
-      exigir(resposta.status !== 200, `${url} respondeu 200`);
-    }
-  });
+if (supabase && bucket && chaveSupabase) {
+  await verificar("configuração do bucket de fotos é privada", () => verificarBucketPrivado(supabase, bucket, chaveSupabase));
 }
 
+for (const nome of naoExecutadas) console.log(`NÃO EXECUTADA ${nome}`);
 if (falhas.length) {
   console.log(`\n${falhas.length} verificação(ões) falharam.`);
   process.exitCode = 1;
 } else {
-  console.log("\nTodas as verificações passaram.");
+  console.log(`\nTodas as verificações executadas passaram.${naoExecutadas.length ? ` ${naoExecutadas.length} verificação(ões) opcional(is) não executada(s).` : ""}`);
 }

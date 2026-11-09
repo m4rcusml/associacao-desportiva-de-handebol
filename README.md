@@ -839,6 +839,16 @@ e pausa por inatividade no Supabase; suspensão por inatividade e horas mensais 
 após a suspensão demora e reabre a conexão `LISTEN`); termos do plano Hobby na Vercel. Registre na PR o que foi
 conferido e a data.
 
+Conferência documental em **09/11/2026**, posterior ao provisionamento (não comprova a conferência prévia):
+[Supabase Free](https://supabase.com/pricing) inclui 500 MB de banco, 1 GB de arquivos, 5 GB de egress e 5 GB
+de egress em cache, até dois projetos ativos e pausa após uma semana de inatividade.
+[Render Free](https://render.com/docs/free) suspende após 15 minutos de inatividade, leva cerca de um minuto
+para retornar e compartilha 750 horas por workspace/mês; esgotar horas suspende o serviço. Excedentes de banda/build
+podem gerar cobrança quando há método de pagamento, ou suspensão sem ele.
+[Vercel Hobby](https://vercel.com/docs/plans/hobby) destina-se a uso pessoal não comercial: 100 GB de Fast Data
+Transfer, 10 GB de Fast Origin Transfer, um milhão de invocações, 4 CPU-h e 360 GB-h de memória; cotas excedidas
+em geral exigem aguardar 30 dias. Conferir a adequação desse uso antes de ampliar a implantação de demonstração.
+
 1. **Supabase:** crie o projeto de teste na região `us-east-1` (próxima ao Render `virginia`) e registre a versão
    (`select version();`; localmente usamos 17.11). Em *Connect*, copie a string do **Session Pooler** (IPv4; o modo
    sessão é necessário ao `LISTEN` das notificações; o Transaction Pooler não serve) e acrescente
@@ -858,25 +868,31 @@ conferido e a data.
 6. **Smoke hospedado:** em `server/`, execute:
 
    ```sh
-   SMOKE_URL_PUBLICA=https://<projeto>.vercel.app SMOKE_URL_API_DIRETA=https://<serviço>.onrender.com SMOKE_EMAIL=<conta fictícia> SMOKE_SENHA=<senha> SMOKE_SUPABASE_URL=https://<ref>.supabase.co SMOKE_FOTOS_BUCKET=fotos-atletas npm run smoke:hospedado
+   SMOKE_URL_PUBLICA=https://<projeto>.vercel.app SMOKE_URL_API_DIRETA=https://<serviço>.onrender.com SMOKE_SUPABASE_URL=https://<ref>.supabase.co SMOKE_FOTOS_BUCKET=fotos-atletas npm run smoke:hospedado
    ```
 
    Ele confere liveness/readiness, recusa do acesso direto sem segredo, origem estranha, corpo no limite das fotos (4 MB) atravessando
    a Vercel, cookies seguros, sessão isolada e logout, limite de login com IPs forjados, long-polling do Socket.IO por
-   um ciclo de ping de 25 s, autorização do handshake só pelo domínio e pela origem, e bucket não público. Com
-   `SMOKE_ATLETA_ID` e credenciais de presidente, também envia e lê uma foto. Para não deixar a senha no histórico
-   do shell, exporte-a antes em uma variável da sessão.
+   um ciclo de ping de 25 s, autorização do handshake só pelo domínio e pela origem, e a configuração privada do bucket.
+   Exporte `SMOKE_EMAIL` e `SMOKE_SENHA` juntas na sessão para validar cookies, sessão e logout; com `SMOKE_ATLETA_ID`
+   e credenciais de presidente, também envia e lê uma foto. Para consultar o bucket, exporte `SMOKE_SUPABASE_SECRET_KEY`
+   na sessão junto de `SMOKE_SUPABASE_URL` e `SMOKE_FOTOS_BUCKET`: a consulta autenticada exige HTTP 200, o bucket
+   esperado e `public: false`. Não versione nem cole senha ou chave secreta no histórico do shell; somente quem
+   executa o smoke fornece esses valores. Configuração parcial falha; grupos ausentes são listados como não executados.
 
 Validação local da MAR-76 em 09/11/2026: lint e tipos/build de backend e client, testes de integração (ver PR) e o
 smoke contra `next start` com o `proxy.ts` encaminhando para o backend local com `PROXY_SEGREDO`, com todos os checks
 aprovados, exceto o de IP forjado. Esse check falhou como esperado: o `next start` local repassa o `X-Real-IP` enviado
 pelo cliente, o que a Vercel não faz. Sem cabeçalhos forjados, o 4º login seguido respondeu 429 pelo proxy.
 Validação hospedada em 09/11/2026 (Vercel preview, Render free em Node 26.13.0, Supabase PostgreSQL 17.11 pelo
-Session Pooler em `us-west-2`): 27 migrações aplicadas no build e smoke com **todas as verificações aprovadas**: saúde,
+Session Pooler em `us-west-2`): 27 migrações aplicadas no build e smoke aprovado para saúde,
 recusa direta (403), origem estranha (403), cookie seguro, sessão isolada e logout (conta técnica fictícia), limite do
 login com IPs forjados (429 no 4º), long-polling com ping após 25,0 s, handshake só pelo domínio e origem, corpo de 4 MB
-pela Vercel e bucket não público. Um corpo de 5 MB foi recusado pela Vercel (`FUNCTION_PAYLOAD_TOO_LARGE`), daí o limite
-de 4 MB das fotos. Não validado: envio real de foto ao Storage (exige presidente e atleta) e WebSocket (fora do teste).
+pela Vercel. Um corpo de 5 MB foi recusado pela Vercel (`FUNCTION_PAYLOAD_TOO_LARGE`), daí o limite
+de 4 MB das fotos. A prova anterior de bucket privado foi **inconclusiva**: consultava objeto inexistente e aceitava
+qualquer status diferente de 200, o que também aprova bucket público. A nova consulta autenticada ainda precisa ser
+executada no ambiente hospedado. Também não validado: envio real de foto ao Storage (exige presidente e atleta)
+e WebSocket (fora do teste).
 
 ## Caminho feliz
 

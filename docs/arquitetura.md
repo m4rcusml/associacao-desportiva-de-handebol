@@ -382,8 +382,9 @@ locais e Secure na configuração de produção, origem/CORS, expiração, múlt
 conta inativa/sem domínio e replays paralelos após logout. Cadastro de atleta, login, recarga,
 rota protegida e logout passaram no navegador local. A arbitragem temporária e a revogação HTTP concorrente
 foram validadas depois (MAR-65 a 72), e a revogação Socket.IO em conexões abertas na MAR-73, localmente.
-Isso **não** comprova TLS/proxy hospedado nem Socket.IO pelo encaminhamento Vercel/Render. PEN-030
-permanece parcialmente aberta. Reset e uso único concorrente serão validados quando retomados.
+Na MAR-76, TLS/proxy, cookies e Socket.IO por long-polling pelo encaminhamento Vercel/Render foram validados
+no ambiente de teste em 09/11/2026 (evidências no README). PEN-030 permanece parcialmente aberta:
+reset e uso único concorrente serão validados quando retomados.
 Não há Redis nem serviço de e-mail nesta entrega.
 
 ## Interface, conectividade e arquivos
@@ -519,7 +520,7 @@ de planos gratuitos; plano e custos serão avaliados posteriormente.
 Validar o encaminhamento do domínio público entre Vercel e Render, cookies, SSR e Socket.IO
 na implantação de teste; a escolha dos fornecedores não comprova essa integração.
 
-Implantação de teste preparada na MAR-76 (passo a passo e smoke no [README](../README.md#implantação-de-teste-mar-76)):
+Implantação de teste provisionada na MAR-76 (passo a passo e evidências do smoke no [README](../README.md#implantação-de-teste-mar-76)):
 
 - O `proxy.ts` do client encaminha `/api/*` ao Render com o segredo compartilhado e o IP do cliente; cookies e
   API ficam no domínio da Vercel. O backend recusa acesso direto sem o segredo, exceto `/api/health` (liveness) e
@@ -530,17 +531,23 @@ Implantação de teste preparada na MAR-76 (passo a passo e smoke no [README](..
 - Banco pelo Session Pooler do Supabase (IPv4 e modo sessão, exigido pelo `LISTEN`), com TLS sem verificação do
   certificado (`sslmode=require&uselibpqcompat=true`) no teste; verificação com a CA do Supabase fica para produção.
 - `BETTER_AUTH_URL` e `CLIENT_ORIGIN` usam o domínio da Vercel; `PROXY_SEGREDO` é obrigatório em produção.
+
+Em 09/11/2026, Vercel preview, Render free com Node 26.13.0 e Supabase PostgreSQL 17.11 pelo Session Pooler
+em `us-west-2` passaram pelo smoke de saúde, origem, cookies/isolamento/logout, IP não forjável,
+long-polling (ping após 25,0 s) e corpo de 4 MB; 27 migrações aplicadas. A prova anterior de bucket privado
+era inconclusiva; a nova consulta autenticada e o envio/leitura real de foto ainda aguardam execução hospedada.
+Os limites gratuitos foram conferidos documentalmente após o provisionamento, em 09/11/2026 (README).
+
 A estimativa de porte é de dezenas a poucas centenas, sem dimensionamento confirmado de
 atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disponibilidade.
 
 ## Decisões ainda necessárias
 
-1. Completar a prova da PEN-030 na implantação de teste (cookies, TLS/proxy e Socket.IO pelo encaminhamento);
-   sessão temporária, escritas esportivas e revogação HTTP e Socket.IO concorrentes foram validadas localmente
-   (MAR-65 a 73). Contas permanentes, migrações, seed e prova local de cadastro/logout já foram validados; comandos
-   no [README](../README.md#desenvolvimento-local).
-2. Validar no ambiente hospedado a implantação de teste preparada na MAR-76 (encaminhamento, cookies, segredos,
-   IP real, long-polling, Storage privado), com o smoke do README; a preparação foi validada só localmente.
+1. Retomar a prova de recuperação/reset da PEN-030 quando esse fluxo for implementado. Cookies, TLS/proxy e
+   Socket.IO por long-polling hospedados passaram na MAR-76; sessão temporária, escritas esportivas e revogação
+   HTTP e Socket.IO concorrentes foram validadas localmente (MAR-65 a 73).
+2. Completar a prova hospedada do Storage privado pela nova consulta autenticada do smoke e pelo envio/leitura
+   real de foto. A checagem anterior de objeto inexistente não comprovava a privacidade do bucket.
 3. Manter em código o contrato da API (OpenAPI, com eventos Socket.IO na extensão `x-socketio`). Eventos,
    publicação após transação e reconexão foram definidos na MAR-73; comportamentos de produto ainda indefinidos
    exigem esclarecimento com Marcus.
