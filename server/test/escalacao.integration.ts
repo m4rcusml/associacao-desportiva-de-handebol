@@ -470,7 +470,9 @@ test("restrições do banco: clube do jogo, vínculo, autoria, etapas, camisa ú
   await prisma.participacao.update({ where: { id: pAna.id }, data: { carteirinhaId: cAna, credenciadoEm: agora, numeroCamisa: 7 } });
   await assert.rejects(prisma.participacao.update({ where: { id: pBruno.id }, data: { carteirinhaId: cBruno, credenciadoEm: agora, numeroCamisa: 7 } }), "camisa repetida no mesmo clube e jogo");
   await prisma.participacao.update({ where: { id: pCarla.id }, data: { carteirinhaId: cCarla, credenciadoEm: agora, numeroCamisa: 7 } });
-  // Entrada em quadra separada do credenciamento (RN-020).
+  // Entrada em quadra separada do credenciamento (RN-020), somente com o jogo em andamento (MAR-67).
+  await assert.rejects(prisma.participacao.update({ where: { id: pAna.id }, data: { entrouEmQuadraEm: new Date() } }), "jogo agendado");
+  await iniciarJogo(jogo);
   await prisma.participacao.update({ where: { id: pAna.id }, data: { entrouEmQuadraEm: new Date() } });
   assert.equal((await porAtleta(bruno.id)).credenciadoEm, null);
 

@@ -45,7 +45,7 @@ export class CarteirinhasController {
     return consultarPropria(this.prisma, ator.usuarioId);
   }
 
-  /** Leitura do QR: identificação mínima. Por ora só o presidente; a arbitragem entra com o credenciamento (MAR-67). */
+  /** Leitura do QR pelo presidente: identificação mínima. A arbitragem lê o QR no jogo (`/arbitragem/jogos/:jogoId/leitura-qr`, MAR-67). */
   @Post("leitura")
   @Requer(somentePresidente)
   @HttpCode(200)

@@ -115,7 +115,7 @@ async function finalizar(id: string) {
   });
 }
 const cumprir = (id: string) => prisma.$transaction(tx => registrarCumprimentos(tx, id));
-/** Credenciamento direto no banco (a operação da arbitragem vem na MAR-67). */
+/** Credenciamento direto no banco; a operação da arbitragem é testada em credenciamento.integration.ts. */
 async function credenciar(jogoId: string, atletaId: string, clubeId: string, numeroCamisa: number) {
   const [vinculo, carteirinha, jogo] = await Promise.all([
     prisma.vinculoClube.findFirstOrThrow({ where: { atletaId, fim: null } }),

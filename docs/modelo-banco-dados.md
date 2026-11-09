@@ -110,8 +110,13 @@ vínculo aberto e carteirinha do próprio atleta, de modo que escolha anterior a
 credencia; e recusa excluir participação credenciada. `AlteracaoEscalacao` é somente de inclusão
 (inclusão/remoção, vínculo, técnico e data), feita com o jogo agendado pelo técnico aprovado do clube do
 vínculo; preserva a autoria após substituição do técnico ou retirada da escolha. Jogo removido leva
-participações e histórico em cascata (somente fixtures; a aplicação não exclui jogos). Demais regras do
-credenciamento (status do jogo, carteirinha ativa, suspensão) ficam para a MAR-67.
+participações e histórico em cascata (somente fixtures; a aplicação não exclui jogos).
+A migração `credenciamento` (MAR-67) substitui a função do trigger de `Participacao`: novo credenciamento
+exige também jogo agendado ou em andamento, atleta aprovado, conta ativa, a carteirinha ativa do próprio atleta
+(`FOR SHARE`) e nenhuma suspensão vigente no campeonato; carteirinha, data e camisa ficam imutáveis depois de
+gravadas (correções: MAR-71); `entrouEmQuadraEm` é gravado uma vez, com o jogo em andamento e a conta do atleta
+ativa, e não muda. As condições valem só no momento da gravação: credenciamento anterior a invalidação,
+suspensão ou transferência continua válido.
 A migração `sessoes_arbitragem` (MAR-65) acrescenta `Arbitragem.visualizacao` (linha/banco) e
 `acessouEm`, `AcessoArbitragem` (`senhaHash` scrypt, `senhaCifrada` AES-256-GCM com prefixo `v1.`,
 `geradaEm`, `revogadoEm`; PK/FK `jogoId`) e `SessaoArbitragem` (`metodoEntrada`, `tokenHash` SHA-256 único,
