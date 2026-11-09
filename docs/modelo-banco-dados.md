@@ -149,6 +149,11 @@ participações credenciadas), sem tabelas de totais. CHECKs: `valor` positivo e
 atuais, todos de atleta. O trigger exige jogo em andamento (`FOR SHARE` de `Jogo`) e participação credenciada do
 mesmo jogo (`FOR SHARE`), recusa alteração e só permite exclusão na cascata do jogo. Não há coluna de autoria do
 árbitro (RN-030). `substituiLancamentoId`, anulação e o filtro de anulados nas views ficam para a MAR-70.
+A migração `ciclo_jogo` (MAR-69) acrescenta o trigger de transições de `Jogo`, sem colunas novas: o jogo nasce
+agendado; agendado passa a em andamento, cancelado ou finalizado (este último reservado ao W.O. sem início, MAR-72);
+em andamento passa somente a finalizado. Finalizado e cancelado não mudam status, horários, data ou fuso;
+`iniciadoEm` não muda depois de gravado; data prevista e fuso só mudam com o jogo agendado (adiamento). O adiamento
+não tem status próprio: atualiza `inicioPrevistoEm` (nulo = sem data) e revoga as sessões com `jogo_adiado`.
 
 ## Convenções e implementação da herança
 

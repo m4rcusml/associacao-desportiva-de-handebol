@@ -142,7 +142,7 @@ inexistente/ambígua por horário de verão respondem 400. Agendar não inicia o
 `POST /api/jogos/{jogoId}/arbitragens` com `usuarioId` (atleta/técnico aprovado, ativo, sem vínculo
 com os clubes do jogo, uma vez por jogo) ou `nomeCompleto` (pessoa sem cadastro) e retirada em
 `DELETE /api/jogos/{jogoId}/arbitragens/{arbitragemId}`, ambas com o jogo agendado ou em andamento.
-Designar não abre acesso por si: a entrada é descrita abaixo (MAR-65); adiamento, início e cancelamento do jogo ficam na MAR-69.
+Designar não abre acesso por si: a entrada é descrita abaixo (MAR-65); início, encerramento, adiamento e cancelamento, em "Ciclo do jogo" (MAR-69).
 
 #### Transferência de atletas (MAR-63)
 
@@ -193,7 +193,7 @@ paralelo. `GET` na mesma rota (filtro opcional `atletaId`) mostra a situação (
 `POST .../suspensoes/{suspensaoId}/revogar` revoga a vigente, preservando aplicação e jogos cumpridos
 (repetir devolve `alterado: false`; cumprida ou com saldo encerrado responde 409). Encerrar ou cancelar o
 campeonato encerra o saldo restante, sem transportá-lo. O cumprimento é registrado no encerramento do jogo
-(`registrarCumprimentos`, a ser chamado pela MAR-69): cada jogo finalizado do clube conta uma vez para
+(MAR-69): cada jogo finalizado do clube conta uma vez para
 cada suspensão vigente, mesmo sem escalação, exceto o jogo em que o atleta já estava credenciado antes da
 aplicação. A escalação sinaliza `suspensaoPendente` sem impedir a escolha; o credenciamento (MAR-67) barra.
 Somente o presidente consulta suspensões nesta etapa.
@@ -223,6 +223,18 @@ conteúdo é 409 e não sobrescreve o original. A resposta traz o placar atualiz
 placar (`null` antes do início), o desempenho de cada credenciado e os lançamentos em ordem de registro. Placar e
 desempenho são as views `EstatisticasDoJogo` e `DesempenhoDoAtleta`, calculadas dos lançamentos. Lançamentos
 ainda não são corrigidos nem anulados (MAR-70).
+
+#### Ciclo do jogo (MAR-69)
+
+Com o cookie temporário, a arbitragem inicia o jogo agendado em `POST /api/arbitragem/jogos/{jogoId}/inicio`
+(no dia do jogo, no fuso do local) e o encerra em `POST .../encerramento` (somente em andamento; um árbitro basta).
+O encerramento finaliza o jogo, registra o cumprimento das suspensões e revoga a senha e todas as sessões
+temporárias na mesma transação, devolvendo só o jogo e o placar final. Repetir o início, ou reenviar o
+encerramento pela sessão revogada por ele, devolve o estado com `alterado: false`, sem reabrir acesso. O presidente
+adia o jogo agendado em `POST /api/jogos/{jogoId}/adiamento` (`inicioPrevisto` local ou `null` para ficar sem data;
+`fusoHorario` e `local` opcionais): gera nova senha, se já emitida, e revoga as sessões dos dois métodos. Cancela o
+jogo agendado em `POST /api/jogos/{jogoId}/cancelamento`, revogando os acessos; jogo cancelado não conta para
+suspensões, e repetir devolve `alterado: false`. Escalação, credenciamentos, contas e outros jogos são preservados.
 
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
@@ -537,6 +549,16 @@ sem duplicar, mesma operação em paralelo gravada uma vez e `operacaoId` com ou
 totais parciais; acesso sem sessão ou com sessão de outro jogo negado e encerramento concorrente impedindo a
 gravação. Uma migração nova; nenhuma dependência nova. Não validado: início/encerramento reais (MAR-69, os testes
 alteram o status no banco), correção/anulação (MAR-70) e notificação Socket.IO (MAR-73).
+
+Validação local da MAR-69 em 08/11/2026: lint, tipos/build e **130 testes de integração aprovados**, incluindo oito
+novos: início único com pedidos simultâneos e reenvio (`alterado: false`); encerramento por dois árbitros ao mesmo
+tempo com placar, cumprimento único da suspensão e revogação de todas as sessões, reenvio reconhecido sem liberar
+lançamento, credenciamento, sessão ou nova entrada; lançamento e credenciamento aguardando o encerramento recusados;
+rollback do encerramento sem efeitos; adiamento com nova senha, revogação dos dois métodos, nova data, jogo sem data,
+jogo sem senha emitida e credenciamentos preservados; credenciamento concorrente com o adiamento recusado;
+cancelamento idempotente sem cumprimento; campeonato cancelado com sessões abertas e início concorrente recusado;
+transições recusadas no banco. Uma migração nova; nenhuma dependência nova. Não validado: W.O./interrupção (MAR-72)
+e notificação Socket.IO (MAR-73).
 
 ## Caminho feliz
 

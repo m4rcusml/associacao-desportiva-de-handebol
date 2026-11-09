@@ -10,12 +10,16 @@ const uuid = z.uuid().transform(id => id.toLowerCase());
  * Agendamento (RF-015, PEN-021): hora local do início no fuso IANA do local da partida. O backend
  * calcula o instante; o fuso do navegador não participa. `local` é texto opcional.
  */
+export const inicioPrevistoSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Use AAAA-MM-DDTHH:mm, hora local do fuso informado");
+export const fusoHorarioSchema = z.string().trim().min(1).max(64);
+export const localSchema = z.string().trim().min(1).max(160);
+
 export const novoJogoSchema = z.strictObject({
   clubeAId: uuid,
   clubeBId: uuid,
-  inicioPrevisto: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Use AAAA-MM-DDTHH:mm, hora local do fuso informado"),
-  fusoHorario: z.string().trim().min(1).max(64),
-  local: z.string().trim().min(1).max(160).optional(),
+  inicioPrevisto: inicioPrevistoSchema,
+  fusoHorario: fusoHorarioSchema,
+  local: localSchema.optional(),
 }).refine(({ clubeAId, clubeBId }) => clubeAId !== clubeBId, { message: "Os clubes do jogo devem ser distintos", path: ["clubeBId"] });
 
 /** Designação por conta de atleta/técnico (`usuarioId`) ou de pessoa sem cadastro (`nomeCompleto`). */
@@ -79,15 +83,17 @@ async function fusoConhecidoPeloBanco(tx: Tx, fuso: string) {
   return linha.existe;
 }
 
-/**
- * Agenda jogo entre dois clubes inscritos no campeonato planejado ou em andamento. Bloqueia a linha
- * do campeonato, serializando com suas transições (MAR-61). Agendar não inicia o jogo nem abre acesso.
- */
-export async function agendarJogo(tx: Tx, campeonatoId: string, presidenteId: string, dados: z.infer<typeof novoJogoSchema>) {
-  if (!fusoValido(dados.fusoHorario) || !await fusoConhecidoPeloBanco(tx, dados.fusoHorario)) {
+/** Fuso IANA conhecido pela aplicação e pelo banco. */
+export async function validarFuso(tx: Tx, fusoHorario: string) {
+  if (!fusoValido(fusoHorario) || !await fusoConhecidoPeloBanco(tx, fusoHorario)) {
     throw new BadRequestException("fusoHorario deve ser um nome IANA válido, como America/Recife.");
   }
-  const conversao = instanteLocal(dados.inicioPrevisto, dados.fusoHorario);
+}
+
+/** Valida o fuso e converte a hora local do início no instante UTC (PEN-021). */
+export async function instantePrevisto(tx: Tx, inicioPrevisto: string, fusoHorario: string) {
+  await validarFuso(tx, fusoHorario);
+  const conversao = instanteLocal(inicioPrevisto, fusoHorario);
   if ("erro" in conversao) {
     throw new BadRequestException({
       invalida: "inicioPrevisto não é uma data/hora válida.",
@@ -95,6 +101,15 @@ export async function agendarJogo(tx: Tx, campeonatoId: string, presidenteId: st
       ambigua: "inicioPrevisto é ambíguo nesse fuso (horário repetido na mudança de horário de verão).",
     }[conversao.erro]);
   }
+  return conversao.instante;
+}
+
+/**
+ * Agenda jogo entre dois clubes inscritos no campeonato planejado ou em andamento. Bloqueia a linha
+ * do campeonato, serializando com suas transições (MAR-61). Agendar não inicia o jogo nem abre acesso.
+ */
+export async function agendarJogo(tx: Tx, campeonatoId: string, presidenteId: string, dados: z.infer<typeof novoJogoSchema>) {
+  const inicioPrevistoEm = await instantePrevisto(tx, dados.inicioPrevisto, dados.fusoHorario);
 
   const status = await bloquearCampeonato(tx, campeonatoId);
   if (status !== "planejado" && status !== "em_andamento") throw new ConflictException(`Campeonato ${status} não recebe novos jogos.`);
@@ -105,7 +120,7 @@ export async function agendarJogo(tx: Tx, campeonatoId: string, presidenteId: st
 
   const { id } = await tx.jogo.create({ data: {
     campeonatoId, inscricaoClubeAId: a, inscricaoClubeBId: b, fusoHorario: dados.fusoHorario, local: dados.local ?? null,
-    inicioPrevistoEm: conversao.instante, criadoPorPresidenteId: presidenteId,
+    inicioPrevistoEm, criadoPorPresidenteId: presidenteId,
   }, select: { id: true } });
   return detalharJogo(tx, id);
 }
