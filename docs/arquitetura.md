@@ -164,7 +164,7 @@ usam a mesma criação de identidade/credencial do cadastro público (`autentica
 Hooks posteriores não são usados para garantir atomicidade. Falha de FK e falha no commit foram
 injetadas em teste; a identidade e o domínio não persistem. E-mail único normalizado resolve
 repetições concorrentes com 201/409; uma resposta perdida após commit é recuperável pelo login.
-Campos mínimos provisórios: nome completo, e-mail, senha e perfil; atleta escolhe clube existente,
+Campos mínimos confirmados para esta versão na MAR-82 (requisitos, seção 15): nome completo, e-mail, senha e perfil; atleta escolhe clube existente,
 técnico começa sem clube. A solicitação é registrada e o status inicial é pendente.
 
 O handler oficial precede os parsers, com allowlist de rotas/métodos. POST exige origem exata
@@ -393,8 +393,8 @@ QR não dá acesso público. Integração com Storage e políticas ainda não im
   na publicação. Para Prisma 7, o fluxo padrão é `migrate dev` local e `migrate deploy` nos ambientes;
   confirmar os comandos na versão fixada. Não alterar o esquema manualmente pelo painel.
 - Seed reproduzível com dados fictícios baseados na modelagem para desenvolvimento e demonstração.
-- Usar campos cadastrais mínimos para os fluxos aprovados, provisórios até confirmação do cliente
-  (PEN-008), sem acrescentar dados pessoais sem necessidade.
+- Usar os campos cadastrais mínimos confirmados para esta versão na MAR-82
+  (requisitos, seção 15), sem acrescentar dados pessoais além dos aprovados.
 
 ### Matriz inicial — 07/11/2026
 
@@ -481,7 +481,9 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 4. Retomar serviço de e-mail, recuperação de senha e sua validação em etapa posterior.
 5. Detalhar produção, logs e backup/restauração posteriormente, sem bloquear o início local.
 
-Métricas e detalhes disciplinares ainda pendentes continuam registrados em
-[pendencias.md](pendencias.md). Os critérios de suspensão automática foram aprovados na MAR-78
+Decisões das MAR-80/81/82 estão em requisitos, seções 13 a 15: correção administrativa,
+redução de suspensão, ficha/carteirinha e métricas. A aprovação não comprova implementação;
+migração dos identificadores `temp_` exige tarefa própria. Demais questões em aberto
+continuam em [pendencias.md](pendencias.md). Os critérios de suspensão automática foram aprovados na MAR-78
 ([requisitos, seção 12](requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026));
 implementação e validação pertencem à MAR-79.
