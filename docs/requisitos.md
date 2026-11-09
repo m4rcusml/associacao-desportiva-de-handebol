@@ -503,6 +503,8 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   registrado pela arbitragem autorizada, no dia, com o jogo agendado (sem início); jogo nunca acessado segue para
   adiamento ou cancelamento. Após o encerramento, o presidente corrige resultado e vencedor (W.O. somente para
   jogo sem início) e invalida o jogo com motivo; cada alteração fica em histórico próprio, com responsável e data,
-  e a invalidação é definitiva e preserva placar, estatísticas e cumprimentos.
+  e a invalidação é definitiva e preserva placar, estatísticas e cumprimentos. Também aprovado por Marcus na MAR-72:
+  a arbitragem pode encerrar como normal mesmo durante uma interrupção, e o presidente pode corrigir resultado e
+  vencedor de jogo já invalidado.
 - Métricas definitivas e critérios de suspensão automática continuam pendentes; manter `temp_`
   e não ativar regras automáticas fictícias.
