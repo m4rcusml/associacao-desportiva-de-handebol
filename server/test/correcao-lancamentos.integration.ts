@@ -206,7 +206,7 @@ test("arbitragem corrige atleta e tipo, encadeia correções e anula durante o j
   assert.deepEqual([original.operacaoId, original.tipo, original.participacaoId, original.registradoEm], [golAna.operacaoId, "temp_gol", pAna, golAna.registradoEm]);
 
   // Correção sem mudança, lançamento de outro jogo ou inexistente e participação inexistente.
-  await recusa(corrigir(jogo, arbitro, c3.lancamento.id, lancamento(pAna)), 400, /alterar o tipo ou o atleta/);
+  await recusa(corrigir(jogo, arbitro, c3.lancamento.id, lancamento(pAna)), 400, /alterar o tipo, o atleta ou o relatório disciplinar/);
   await recusa(corrigir(jogo, arbitro, randomUUID(), lancamento(pAna, "temp_cartaoAmarelo")), 404, /Lançamento não encontrado/);
   await recusa(anular(jogo, arbitro, randomUUID()), 404, /Lançamento não encontrado/);
   await recusa(corrigir(jogo, arbitro, c3.lancamento.id, lancamento(randomUUID())), 404, /Participação não encontrada/);

@@ -201,6 +201,33 @@ cada suspensão vigente, mesmo sem escalação, exceto o jogo em que o atleta j�
 aplicação. A escalação sinaliza `suspensaoPendente` sem impedir a escolha; o credenciamento (MAR-67) barra.
 Somente o presidente consulta suspensões nesta etapa.
 
+#### Suspensões automáticas (MAR-79)
+
+Único critério aprovado ([requisitos, seção 12](docs/requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026)):
+desqualificação com relatório disciplinar, sinalizada pelo azul, gera **um jogo** de suspensão no mesmo campeonato.
+A arbitragem a registra no próprio vermelho: `relatorioDisciplinar: true` no lançamento `temp_cartaoVermelho`
+(ausente vale `false`; nos demais tipos é recusado com 400 e fica `null`). Amarelos, exclusões (inclusive a
+terceira no jogo) e vermelho sem relatório não geram suspensão; não há acumulação entre partidas, reinício por
+fase nem progressão por reincidência. No encerramento definitivo, depois dos cumprimentos, cada atleta com essa
+ocorrência não anulada recebe uma suspensão `origem: automatica`, `regra: desqualificacao_com_relatorio`,
+`jogoOrigemId` e sem `aplicadaPor`, uma vez por atleta/jogo/regra (vários vermelhos com relatório do mesmo atleta
+são a mesma desqualificação). O jogo de origem não a cumpre; o restante segue a MAR-66 (paralelismo, participação
+já credenciada preservada, término do saldo com o campeonato, revogação pelo presidente). Cada correção ou
+anulação do presidente após o encerramento reconcilia o jogo e devolve `suspensoesAutomaticas { criadas, anuladas }`:
+retirar a ocorrência anula a automática (`anuladaEm`, situação `anulada`), liberando só o saldo restante, sem
+alterar jogos passados nem compensar ausências; acrescentá-la gera uma nova, aplicada a partir da correção.
+Revogada ou com saldo encerrado não muda.
+
+Na revisão da MAR-79, a migração `20261109100000_suspensao_automatica` foi corrigida para preencher
+os vermelhos legados, inclusive anulados: a transação desabilita somente `LancamentoJogo_validar` durante
+o preenchimento e o reabilita antes do commit, mantendo o bloqueio da tabela. Isso altera o checksum da
+versão anterior ainda não integrada. Bancos que já a aplicaram precisam de reconciliação controlada do
+histórico de migrações; não execute reset nem altere `_prisma_migrations` automaticamente. A suíte no banco
+já migrado não comprova esse preenchimento: o teste de regressão de migração usa um esquema isolado.
+A migração incremental `20261109120000_gate_suspensao_automatica` instala o bloqueio consultivo por
+atleta/campeonato usado pela API e pelos triggers antes de gerar automática ou credenciar. Ela também é
+aplicada por `migrate deploy` em bancos que já receberam as duas migrações anteriores, sem reexecutá-las.
+
 #### Credenciamento e entrada em quadra (MAR-67)
 
 Com o cookie temporário do jogo, a arbitragem consulta em `GET /api/arbitragem/jogos/{jogoId}/atletas`, por
@@ -681,6 +708,29 @@ revogação sem NOTIFY (transferência para clube do jogo) retirada pela varredu
 novas `socket.io` e `pg` (e `socket.io-client`/`@types/pg` de desenvolvimento). Não validado: Socket.IO pelo
 encaminhamento Vercel/Render e cookies `__Host-` hospedados (MAR-76) e mais de uma instância (fora do escopo).
 
+Validação inicial da MAR-79 em 09/11/2026, no commit `b41ce8b`: lint, tipos/build, schema Prisma sem diferença para o banco migrado,
+`npm audit --omit=dev` sem alertas e **163 testes de integração aprovados**, incluindo cinco novos: amarelos em três
+jogos, três exclusões e vermelho sem relatório sem suspensão (e a partida seguinte liberada); `relatorioDisciplinar`
+recusado fora do vermelho; vermelho com relatório (após a terceira exclusão e repetido) gerando uma única suspensão
+de um jogo, não cumprida pelo jogo de origem, sem duplicar no reenvio do encerramento nem em três reconciliações
+paralelas, impedindo o credenciamento seguinte e cumprida pelo próximo jogo; correções e anulações do presidente
+anulando a automática (sem compensar o jogo já cumprido), gerando nova a partir da correção, preservando a
+participação já credenciada e devolvendo `suspensoesAutomaticas`; paralelismo com a manual, revogada e saldo
+encerrado intactos na reconciliação; restrições do banco (CHECK, triggers e índice único parcial). Duas migrações
+novas; nenhuma dependência nova. Não validado: regras do regulamento externo além da seção 12 e consultas por
+atleta/técnico (MAR-74).
+
+Revisão local da MAR-79 em 09/11/2026, na árvore corrigida com as decisões da PR #24 integradas:
+lint, tipos/build e **180/180 testes de integração aprovados**, sem testes ignorados, em PostgreSQL
+descartável exclusivo com as 24 migrações aplicadas desde zero; `prisma migrate diff` sem diferença.
+Sete regressões adicionais cobrem o backfill de vermelhos legados válidos/anulados, encerramentos de jogos
+distintos, correção concorrente com encerramento do campeonato, árbitros designados de clubes de outros jogos,
+geração/credenciamento nas duas ordens, cumprimento após geração concorrente e credenciamento SQL direto
+aguardando o trigger. O banco descartável foi removido; bancos existentes e seus históricos não foram alterados.
+A migração incremental de bloqueios é a terceira da MAR-79; o aviso sobre o checksum do backfill está na seção
+de suspensões automáticas. Os checks hospedados são conferidos na PR; esta validação local não comprova
+implantação. Não revalidado: ambiente hospedado e consultas da MAR-74.
+
 ## Caminho feliz
 
 1. **Preparação pelo presidente:** o presidente pré-cadastrado cria os clubes. Atletas e
@@ -705,9 +755,9 @@ encaminhamento Vercel/Render e cookies `__Host-` hospedados (MAR-76) e mais de u
 6. **Encerramento e acompanhamento:** a arbitragem encerra o jogo e seu acesso temporário
    expira. O resultado e o desempenho ficam no histórico dos atletas; correções posteriores
    cabem ao presidente. Suspensões manuais são aplicadas por ele, por quantidade de jogos
-   naquele campeonato. Os critérios automáticos foram aprovados na MAR-78
-   ([requisitos, seção 12](docs/requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026));
-   implementação e validação seguem na MAR-79.
+   naquele campeonato; a desqualificação com relatório disciplinar (azul) gera automaticamente
+   um jogo de suspensão ao encerrar a partida (MAR-79,
+   [requisitos, seção 12](docs/requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026)).
 
 As decisões posteriores sobre exceções, fotos, fuso local, consulta da senha e ciclo de contas/
 competições estão em [requisitos, seção 11](docs/requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026).

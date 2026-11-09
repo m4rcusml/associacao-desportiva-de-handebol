@@ -141,8 +141,8 @@ de entrada por senha não são retirados um a um.
 A migração `suspensoes` (MAR-66) cria `Suspensao` manual (`atletaId`, `campeonatoId`, `quantidadeJogos`
 inteira positiva, `motivo`, `aplicadaPorPresidenteId`, `aplicadaEm`, `revogadaEm`/`revogadaPorPresidenteId` juntos e
 `saldoEncerradoEm`, com revogação e término do saldo mutuamente exclusivos) e `CumprimentoSuspensao`
-(`PK` `suspensaoId` + `jogoId`, `registradoEm`). `origem`, `jogoOrigemId`, `regraSuspensaoId` e
-`RegraSuspensao` ficam para a MAR-79. Triggers: a suspensão nasce vigente, com atleta aprovado e campeonato
+(`PK` `suspensaoId` + `jogoId`, `registradoEm`). Origem automática e anulação vêm da
+migração `suspensao_automatica` (MAR-79, abaixo). Triggers: a suspensão nasce vigente, com atleta aprovado e campeonato
 planejado/em andamento (`FOR SHARE` de `Campeonato`); os dados da aplicação são imutáveis; revogação e término
 são definitivos, e o término exige campeonato encerrado/cancelado; exclusão só na cascata do campeonato. O
 cumprimento bloqueia a suspensão (`FOR UPDATE`) e exige suspensão vigente com saldo, jogo finalizado do mesmo
@@ -151,6 +151,19 @@ ausência de credenciamento do atleta nesse jogo anterior à aplicação; é som
 cascata do jogo ou da suspensão).
 A migração `suspensao_quantidade_positiva` remove o teto inicial de 100 jogos, sem alterar a migração já
 aplicada. A API aceita inteiros positivos no intervalo do tipo `INTEGER` do PostgreSQL.
+A migração `suspensao_automatica` (MAR-79) acrescenta `LancamentoJogo.relatorioDisciplinar` (CHECK: obrigatório
+somente no `temp_cartaoVermelho`; vermelhos anteriores ficam `false`; trigger impede alterá-lo, mudando só por
+correção) e, em `Suspensao`, `origem` (`manual`/`automatica`, padrão manual), `jogoOrigemId` (FK para `Jogo`,
+cascata), `regra` (enum `RegraSuspensao`, hoje só `desqualificacao_com_relatorio`) e `anuladaEm`;
+`aplicadaPorPresidenteId` passa a opcional. CHECK: manual com presidente, sem jogo, regra ou anulação; automática
+sem presidente, com jogo e regra; anulação exclusiva com revogação e término do saldo. Índice único parcial
+(`atletaId`, `jogoOrigemId`, `regra`) sem `anuladaEm`. Triggers: automática nasce com jogo de origem finalizado do
+mesmo campeonato; origem, jogo, regra e anulação são imutáveis; o cumprimento recusa a suspensão anulada e o
+próprio jogo de origem. A migração `credenciamento_suspensao_anulada` faz o trigger de credenciamento ignorar a
+suspensão anulada.
+A migração incremental `gate_suspensao_automatica` instala a função de bloqueio consultivo por
+atleta/campeonato e triggers que a obtêm antes dos validadores de nova automática e novo credenciamento.
+A API usa a mesma função e adquire esses bloqueios antes das contas compartilhadas e dos cumprimentos.
 A migração `lancamentos` (MAR-68) cria `LancamentoJogo` (`operacaoId` UUID único enviado pelo cliente, `jogoId`,
 `participacaoId`, `tipo` com os quatro valores `temp_`, `valor` e `registradoEm`) e as views `EstatisticasDoJogo`
 (`temp_placarClubeA`/`B`, somente jogos com `iniciadoEm`) e `DesempenhoDoAtleta` (as quatro métricas `temp_`, somente
@@ -229,11 +242,10 @@ administrativas não geram linhas adicionais.
 | `Participacao`         | `PK` `id`; `UNIQUE` `jogoId` + `vinculoClubeId`; `UNIQUE` `jogoId` + `inscricaoClubeId` + `numeroCamisa` quando preenchido | `escolhidaPorTecnicoId`, `escolhidaEm`, `carteirinhaId`, `credenciadoEm`, `numeroCamisa`, `entrouEmQuadraEm`                     |
 | `AcessoArbitragem`     | `PK`/`FK` `jogoId`; uma senha compartilhada por jogo                                                                       | `revogadoEm`                                                                                                                     |
 | `Arbitragem`           | `PK` `id`; `UNIQUE` `jogoId` + `usuarioId` quando preenchido                                                               | `usuarioId`, `designadoPorPresidenteId`, `designadoEm`, `acessouEm`                                                              |
-| `LancamentoJogo`       | `PK` `id`; `UNIQUE` `operacaoId`; `FK` `substituiLancamentoId` para o lançamento corrigido; `UNIQUE` `substituiLancamentoId` e `anulacaoOperacaoId` quando preenchidos | `participacaoId` somente em ocorrência geral do jogo; `substituiLancamentoId`; `anuladoEm` e `anulacaoOperacaoId` (juntos) |
+| `LancamentoJogo`       | `PK` `id`; `UNIQUE` `operacaoId`; `FK` `substituiLancamentoId` para o lançamento corrigido; `UNIQUE` `substituiLancamentoId` e `anulacaoOperacaoId` quando preenchidos | `participacaoId` somente em ocorrência geral do jogo; `substituiLancamentoId`; `anuladoEm` e `anulacaoOperacaoId` (juntos); `relatorioDisciplinar` fora do vermelho |
 | `EstatisticasDoJogo`   | `PK`/`FK` `jogoId`; projeção calculada                                                                                     | Registro ausente antes de iniciar o jogo                                                                                         |
 | `DesempenhoDoAtleta`   | `PK`/`FK` `participacaoId`; projeção calculada                                                                             | Registro ausente antes do credenciamento                                                                                         |
-| `RegraSuspensao`       | `PK` `id`                                                                                                                  | Nenhum; implementação pendente na MAR-79, com critérios aprovados em requisitos, seção 12                                                                          |
-| `Suspensao`            | `PK` `id`; `origem` manual ou automatica                                                                                   | `jogoOrigemId` na `origem` manual; `regraSuspensaoId` na `origem` manual; `aplicadaPorPresidenteId` na automática; `revogadaEm`/`revogadaPorPresidenteId`; `saldoEncerradoEm` |
+| `Suspensao`            | `PK` `id`; `origem` manual ou automatica; `FK` `jogoOrigemId`; `UNIQUE` parcial `atletaId` + `jogoOrigemId` + `regra` sem `anuladaEm` | `jogoOrigemId` e `regra` (enum `RegraSuspensao`) na manual; `aplicadaPorPresidenteId` na automática; `revogadaEm`/`revogadaPorPresidenteId`; `saldoEncerradoEm`; `anuladaEm` (somente automática) |
 | `CumprimentoSuspensao` | `PK` composta `suspensaoId` + `jogoId`                                                                                     | Nenhum                                                                                                                           |
 
 Todos os demais campos são obrigatórios. Não se exige `nome` único para pessoas ou
@@ -363,7 +375,8 @@ limites do estorno atualmente implementado na MAR-71.
 `LancamentoJogo` é a fonte dos registros esportivos. A lista desta versão foi aprovada na MAR-82
 (requisitos, seção 15). O `tipo` atual ainda usa identificadores legados:
 `temp_gol`, `temp_cartaoAmarelo`, `temp_exclusaoDoisMinutos` e `temp_cartaoVermelho`. `valor` é
-inteiro positivo, inicialmente 1 por ocorrência. Ocorrências de atleta exigem `participacaoId`. Um
+inteiro positivo, inicialmente 1 por ocorrência. O vermelho traz `relatorioDisciplinar` (MAR-79): `true` é a
+desqualificação com relatório, sinalizada pelo azul, que não é segunda infração nem métrica separada. Ocorrências de atleta exigem `participacaoId`. Um
 gol sempre identifica atleta; o clube é obtido pela participação e não informado separadamente. Não
 há lançamento de gol sem atleta.
 
@@ -377,22 +390,23 @@ cada participação e continua válido após mudança de clube. As métricas atu
 incluir lançamentos novos (MAR-70). Uma correção anula o lançamento anterior e cria o substituto apontando
 `substituiLancamentoId`, na mesma transação, mudando tipo e/ou atleta credenciado; `valor` continua 1. Uma
 exclusão lógica apenas anula. Não apagar o registro anterior. Isso é rastreabilidade mínima da
-correção, não auditoria completa de autores e alterações. Corrigir penalidades exigirá reconciliar
-suspensões automáticas e cumprimentos afetados, sem duplicação, conforme critérios aprovados em
-requisitos, seção 12 (implementação na MAR-79); hoje o cumprimento depende só do encerramento e não é refeito pela correção.
+correção, não auditoria completa de autores e alterações. A correção também pode mudar só o
+`relatorioDisciplinar` do vermelho. Após o encerramento, cada correção ou anulação do presidente reconcilia as
+suspensões automáticas do jogo (MAR-79), sem duplicação; os cumprimentos continuam dependendo só do encerramento
+e não são refeitos.
 
 ## Suspensões
 
 Suspensão manual exige presidente, `motivo`, campeonato e `quantidadeJogos` positiva. A
-automática exige `jogoOrigemId` e `regraSuspensaoId`; só se aplica após encerramento do jogo de
-`origem`. `RegraSuspensao` prevê `tipoPenalidade`, `quantidadePenalidades` e `quantidadeJogos`;
-os critérios foram aprovados por Marcus na MAR-78 (requisitos, seção 12). A implementação na
-MAR-79 deve gerar um jogo por desqualificação com relatório disciplinar/azul, sem acumulação
-entre partidas ou progressão automática. O registro deve distinguir desqualificação com e sem
-relatório e associar o relatório inequivocamente à ocorrência; o atual `temp_cartaoVermelho`
-não basta para decidir. A representação persistida/API será implementada na MAR-79; esta aprovação
-não cria tabelas, campos ou regras ativas. Garantir idempotência da geração automática por atleta + `jogoOrigemId` +
-`regraSuspensaoId`.
+automática (MAR-79) exige `jogoOrigemId` e `regra`, sem presidente, e só nasce após o encerramento do jogo
+de origem, que não a cumpre. `RegraSuspensao` é um enum com o único critério aprovado na MAR-78
+(requisitos, seção 12): `desqualificacao_com_relatorio`, um jogo, gerado pelo vermelho com
+`relatorioDisciplinar` — a ocorrência carrega o relatório, sem inferi-lo de qualquer vermelho ou da terceira
+exclusão. Não há acumulação entre partidas nem progressão automática; a tabela de regras parametrizáveis
+(`tipoPenalidade`, `quantidadePenalidades`) prevista antes não foi criada por não haver critério que a use. A
+geração é idempotente por atleta + `jogoOrigemId` + `regra` (índice único parcial). Retirar a ocorrência por
+correção registra `anuladaEm`, que encerra o saldo restante e preserva os cumprimentos; restaurá-la gera nova
+suspensão, aplicada a partir da correção.
 
 Suspensão só impede jogos daquele campeonato, até cumprir a quantidade. Cada jogo encerrado
 definitivamente do clube no campeonato e elegível após aplicação conta uma vez, mesmo sem
@@ -418,7 +432,7 @@ se a origem for anulada e não reativa revogadas, conforme requisitos, seção 1
 
 ## Pendências que não bloqueiam esta versão documental
 
-- Métricas confirmadas na MAR-82 (requisitos, seção 15); migração compatível dos identificadores `temp_` e adequação de carteirinha pendentes. Critérios automáticos aprovados em requisitos, seção 12; implementação e validação na MAR-79.
+- Métricas confirmadas na MAR-82 (requisitos, seção 15); migração compatível dos identificadores `temp_` e adequação de carteirinha pendentes. Critérios automáticos aprovados em requisitos, seção 12, e implementados na MAR-79.
 - Auditoria completa: autoria, valores anteriores/novos e justificativas de alterações.
 - Redução administrativa e recálculo automático posterior foram aprovados na MAR-81
   (requisitos, seção 14), com implementação e validação pendentes. Revogação, paralelismo
@@ -427,7 +441,7 @@ se a origem for anulada e não reativa revogadas, conforme requisitos, seção 1
 - A ficha desta versão e os dados da carteirinha foram definidos na MAR-82 (requisitos, seção 15); verificar implementação sem acrescentar dados pessoais além dos aprovados.
 
 Essas pendências limitam implementação das respectivas funcionalidades; esta versão não afirma que
-regras automáticas ou auditoria completa estejam prontas para produção.
+as funcionalidades estejam prontas para produção ou que a auditoria completa esteja implementada.
 
 ## Esclarecimentos posteriores — 06/11/2026
 

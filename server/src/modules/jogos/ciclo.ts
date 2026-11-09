@@ -6,7 +6,7 @@ import {
 } from "../arbitragem/acesso.js";
 import type { CofreSenhaArbitragem } from "../arbitragem/senha.js";
 import { placar } from "../resultados/lancamentos.js";
-import { registrarCumprimentos } from "../suspensoes/suspensoes.js";
+import { reconciliarSuspensoesAutomaticas, registrarCumprimentos } from "../suspensoes/suspensoes.js";
 import { horaLocal } from "./fuso.js";
 import { detalharJogo, fusoHorarioSchema, inicioPrevistoSchema, instantePrevisto, localSchema, validarFuso } from "./jogos.js";
 import { registrarEvento } from "../notificacoes/eventos.js";
@@ -93,7 +93,8 @@ export async function exigirVencedorDoJogo(tx: Tx, jogoId: string, vencedorInscr
  * informando a forma do encerramento e o vencedor (clube do jogo ou nenhum), registrados separadamente do placar,
  * que continua vindo dos lançamentos. Jogo em andamento encerra como normal, interrompido definitivamente ou
  * abandono, inclusive durante uma interrupção; W.O. encerra o jogo agendado, sem início, no dia do jogo (0 a 0).
- * Na mesma transação: status finalizado, cumprimento das suspensões (RF-041, RN-039, uma vez) e revogação da senha
+ * Na mesma transação: status finalizado, cumprimento das suspensões (RF-041, RN-039, uma vez), geração das suspensões
+ * automáticas por desqualificação com relatório (RF-039, MAR-79; depois dos cumprimentos) e revogação da senha
  * e de todas as sessões temporárias do jogo (RF-029). Escritas da arbitragem que aguardavam o bloqueio veem o jogo
  * finalizado e a sessão revogada; não gravam depois. Reenvio por sessão revogada por este encerramento (repetição,
  * paralelo ou resposta perdida) recebe a confirmação vigente com `alterado: false`, sem reabrir acesso nem autorizar
@@ -113,6 +114,7 @@ export async function encerrarJogo(tx: Tx, jogoId: string, token: string | undef
     status: "finalizado", encerradoEm: new Date(), resultado: dados.resultado, inscricaoClubeVencedorId: dados.vencedorInscricaoId,
   } });
   await registrarCumprimentos(tx, jogoId);
+  await reconciliarSuspensoesAutomaticas(tx, jogoId);
   await encerrarAcessoArbitragem(tx, [jogoId], "jogo_encerrado");
   // Aviso publicado só após o commit (MAR-73); as sessões revogadas recebem `acesso:encerrado`.
   await registrarEvento(tx, jogoId, "jogo_encerrado");

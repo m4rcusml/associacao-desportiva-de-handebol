@@ -4,6 +4,7 @@ import { Prisma, TipoLancamento } from "../../generated/prisma/client.js";
 import { revalidarArbitragem } from "../arbitragem/acesso.js";
 import { exigirJogoSemInterrupcao } from "../jogos/jogos.js";
 import { registrarEvento } from "../notificacoes/eventos.js";
+import { reconciliarSuspensoesAutomaticas } from "../suspensoes/suspensoes.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -12,13 +13,24 @@ const uuid = () => z.uuid().transform(id => id.toLowerCase());
 /**
  * Lançamento da arbitragem (RF-031/032/037): `operacaoId` é gerado pelo cliente para cada ocorrência e reenviado
  * igual em caso de falha de rede; `participacaoId` identifica o atleta credenciado (o clube vem dela, RN-033).
- * Não há `valor` nem clube no corpo: cada ocorrência vale 1.
+ * Não há `valor` nem clube no corpo: cada ocorrência vale 1. `relatorioDisciplinar` (MAR-79, seção 12) só existe no
+ * vermelho: `true` é a desqualificação com relatório, sinalizada pelo azul; ausente vale `false`. Nos demais tipos é
+ * recusado e fica `null`.
  */
 export const lancamentoSchema = z.strictObject({
   operacaoId: uuid(),
   tipo: z.enum(TipoLancamento),
   participacaoId: uuid(),
-});
+  relatorioDisciplinar: z.boolean().optional(),
+}).refine(l => l.tipo === "temp_cartaoVermelho" || l.relatorioDisciplinar === undefined, {
+  message: "relatorioDisciplinar só é informado no temp_cartaoVermelho", path: ["relatorioDisciplinar"],
+}).transform(l => ({ ...l, relatorioDisciplinar: l.tipo === "temp_cartaoVermelho" ? l.relatorioDisciplinar ?? false : null }));
+
+type Lancamento = z.infer<typeof lancamentoSchema>;
+/** Dados de lançamento ou correção; sem `relatorioDisciplinar`, o vermelho fica sem relatório (como no corpo HTTP). */
+export type DadosLancamento = Omit<Lancamento, "relatorioDisciplinar"> & { relatorioDisciplinar?: boolean | null };
+const normalizar = (dados: DadosLancamento): Lancamento =>
+  ({ ...dados, relatorioDisciplinar: dados.tipo === "temp_cartaoVermelho" ? dados.relatorioDisciplinar ?? false : null });
 
 /** Correção (MAR-70): o mesmo corpo do lançamento; `operacaoId` identifica a correção e o substituto criado. */
 export const correcaoSchema = lancamentoSchema;
@@ -26,7 +38,7 @@ export const correcaoSchema = lancamentoSchema;
 export const anulacaoSchema = z.strictObject({ operacaoId: uuid() });
 
 const selecaoLancamento = {
-  id: true, operacaoId: true, jogoId: true, tipo: true, valor: true, registradoEm: true, participacaoId: true,
+  id: true, operacaoId: true, jogoId: true, tipo: true, relatorioDisciplinar: true, valor: true, registradoEm: true, participacaoId: true,
   substituiLancamentoId: true, anuladoEm: true, substituidoPor: { select: { id: true } },
   participacao: { select: { inscricaoClubeId: true, numeroCamisa: true, atleta: { select: { usuario: { select: { id: true, nomeCompleto: true } } } } } },
 } satisfies Prisma.LancamentoJogoSelect;
@@ -35,7 +47,7 @@ type LinhaLancamento = Prisma.LancamentoJogoGetPayload<{ select: typeof selecaoL
 /** Lançamento com o histórico da correção: anulados continuam listados, indicando quando e por qual substituto. */
 function apresentar(l: LinhaLancamento) {
   return {
-    id: l.id, operacaoId: l.operacaoId, tipo: l.tipo, valor: l.valor, registradoEm: l.registradoEm,
+    id: l.id, operacaoId: l.operacaoId, tipo: l.tipo, relatorioDisciplinar: l.relatorioDisciplinar, valor: l.valor, registradoEm: l.registradoEm,
     participacaoId: l.participacaoId, inscricaoId: l.participacao?.inscricaoClubeId ?? null,
     atleta: l.participacao?.atleta.usuario ?? null, numeroCamisa: l.participacao?.numeroCamisa ?? null,
     substituiLancamentoId: l.substituiLancamentoId, anuladoEm: l.anuladoEm, substituidoPorId: l.substituidoPor?.id ?? null,
@@ -74,7 +86,8 @@ async function bloquearOperacao(tx: Tx, operacaoId: string) {
 async function repeticao(tx: Tx, jogoId: string, dados: z.infer<typeof lancamentoSchema>) {
   const existente = await lerPorOperacao(tx, dados.operacaoId);
   if (!existente) return null;
-  if (existente.jogoId !== jogoId || existente.tipo !== dados.tipo || existente.participacaoId !== dados.participacaoId || existente.substituiLancamentoId) {
+  if (existente.jogoId !== jogoId || existente.tipo !== dados.tipo || existente.participacaoId !== dados.participacaoId
+    || existente.relatorioDisciplinar !== dados.relatorioDisciplinar || existente.substituiLancamentoId) {
     throw operacaoUsada();
   }
   return { lancamento: apresentar(existente), alterado: false, placar: await placar(tx, jogoId) };
@@ -87,7 +100,8 @@ async function repeticao(tx: Tx, jogoId: string, dados: z.infer<typeof lancament
  * diferentes são todos preservados; a mesma operação enviada em paralelo grava uma vez (`ON CONFLICT`).
  * Placar e desempenho são lidos das projeções na mesma transação, já com o lançamento.
  */
-export async function registrarLancamento(tx: Tx, jogoId: string, token: string | undefined, dados: z.infer<typeof lancamentoSchema>) {
+export async function registrarLancamento(tx: Tx, jogoId: string, token: string | undefined, entrada: DadosLancamento) {
+  const dados = normalizar(entrada);
   const { status } = await revalidarArbitragem(tx, jogoId, token);
   await bloquearOperacao(tx, dados.operacaoId);
   const anterior = await repeticao(tx, jogoId, dados);
@@ -98,8 +112,9 @@ export async function registrarLancamento(tx: Tx, jogoId: string, token: string 
   await exigirCredenciada(tx, jogoId, dados.participacaoId);
 
   const inseridos = await tx.$queryRaw<{ id: string }[]>`
-    INSERT INTO "LancamentoJogo" (id, "operacaoId", "jogoId", "participacaoId", tipo, valor, "registradoEm")
-    VALUES (gen_random_uuid(), ${dados.operacaoId}::uuid, ${jogoId}::uuid, ${dados.participacaoId}::uuid, ${dados.tipo}::"TipoLancamento", 1, now())
+    INSERT INTO "LancamentoJogo" (id, "operacaoId", "jogoId", "participacaoId", tipo, "relatorioDisciplinar", valor, "registradoEm")
+    VALUES (gen_random_uuid(), ${dados.operacaoId}::uuid, ${jogoId}::uuid, ${dados.participacaoId}::uuid, ${dados.tipo}::"TipoLancamento",
+      ${dados.relatorioDisciplinar}::boolean, 1, now())
     ON CONFLICT ("operacaoId") DO NOTHING
     RETURNING id`;
   if (inseridos.length === 0) {
@@ -135,9 +150,13 @@ function exigirStatus(corretor: Corretor, status: string) {
   }
 }
 
-/** Status do jogo para o presidente, com o mesmo bloqueio compartilhado do jogo usado pela arbitragem. */
-async function statusParaPresidente(tx: Tx, jogoId: string) {
-  const [jogo] = await tx.$queryRaw<{ status: string }[]>`SELECT status::text AS status FROM "Jogo" WHERE id = ${jogoId}::uuid FOR SHARE`;
+/** Correções serializam o jogo e bloqueiam antes o campeonato, que pode encerrar os saldos. */
+async function statusParaPresidente(tx: Tx, jogoId: string, corrigindo = false) {
+  const referencia = await tx.jogo.findUnique({ where: { id: jogoId }, select: { campeonatoId: true } });
+  if (!referencia) throw new NotFoundException("Jogo não encontrado.");
+  await tx.$queryRaw`SELECT id FROM "Campeonato" WHERE id = ${referencia.campeonatoId}::uuid FOR SHARE`;
+  const bloqueio = corrigindo ? Prisma.sql`FOR NO KEY UPDATE` : Prisma.sql`FOR SHARE`;
+  const [jogo] = await tx.$queryRaw<{ status: string }[]>`SELECT status::text AS status FROM "Jogo" WHERE id = ${jogoId}::uuid ${bloqueio}`;
   if (!jogo) throw new NotFoundException("Jogo não encontrado.");
   return jogo.status;
 }
@@ -174,15 +193,16 @@ async function repeticaoCorrecao(tx: Tx, jogoId: string, lancamentoId: string, d
     if (await lerPorAnulacao(tx, dados.operacaoId)) throw operacaoUsada();
     return null;
   }
-  if (existente.jogoId !== jogoId || existente.substituiLancamentoId !== lancamentoId || existente.tipo !== dados.tipo || existente.participacaoId !== dados.participacaoId) {
+  if (existente.jogoId !== jogoId || existente.substituiLancamentoId !== lancamentoId || existente.tipo !== dados.tipo
+    || existente.participacaoId !== dados.participacaoId || existente.relatorioDisciplinar !== dados.relatorioDisciplinar) {
     throw operacaoUsada();
   }
   return { lancamento: apresentar(existente), anulado: apresentar(await lerPorId(tx, lancamentoId)), alterado: false, placar: await placar(tx, jogoId) };
 }
 
 /**
- * Correção (RF-034/036, RN-034, MAR-70): na mesma transação anula o lançamento e cria o substituto, com outro tipo
- * e/ou atleta credenciado do mesmo jogo; `valor` continua 1 por ocorrência (MAR-68). O original não muda nem é
+ * Correção (RF-034/036, RN-034, MAR-70): na mesma transação anula o lançamento e cria o substituto, com outro tipo,
+ * atleta credenciado do mesmo jogo e/ou relatório disciplinar do vermelho (MAR-79); `valor` continua 1 (MAR-68). O original não muda nem é
  * apagado. Bloqueios: jogo (na autorização) → operação → lançamento (FOR UPDATE) → participação (FOR SHARE).
  */
 async function corrigir(tx: Tx, corretor: Corretor, status: string, jogoId: string, lancamentoId: string, dados: z.infer<typeof correcaoSchema>) {
@@ -200,8 +220,8 @@ async function corrigir(tx: Tx, corretor: Corretor, status: string, jogoId: stri
     throw await conflitoAnulado(tx, lancamentoId);
   }
   const original = await lerPorId(tx, lancamentoId);
-  if (original.tipo === dados.tipo && original.participacaoId === dados.participacaoId) {
-    throw new BadRequestException("A correção deve alterar o tipo ou o atleta. Para retirar o lançamento, use a anulação.");
+  if (original.tipo === dados.tipo && original.participacaoId === dados.participacaoId && original.relatorioDisciplinar === dados.relatorioDisciplinar) {
+    throw new BadRequestException("A correção deve alterar o tipo, o atleta ou o relatório disciplinar. Para retirar o lançamento, use a anulação.");
   }
   await exigirCredenciada(tx, jogoId, dados.participacaoId);
 
@@ -209,8 +229,9 @@ async function corrigir(tx: Tx, corretor: Corretor, status: string, jogoId: stri
     UPDATE "LancamentoJogo" SET "anuladoEm" = now(), "anulacaoOperacaoId" = ${dados.operacaoId}::uuid
     WHERE id = ${lancamentoId}::uuid AND "anuladoEm" IS NULL`;
   await tx.$executeRaw`
-    INSERT INTO "LancamentoJogo" (id, "operacaoId", "jogoId", "participacaoId", tipo, valor, "registradoEm", "substituiLancamentoId")
-    VALUES (gen_random_uuid(), ${dados.operacaoId}::uuid, ${jogoId}::uuid, ${dados.participacaoId}::uuid, ${dados.tipo}::"TipoLancamento", 1, now(), ${lancamentoId}::uuid)`;
+    INSERT INTO "LancamentoJogo" (id, "operacaoId", "jogoId", "participacaoId", tipo, "relatorioDisciplinar", valor, "registradoEm", "substituiLancamentoId")
+    VALUES (gen_random_uuid(), ${dados.operacaoId}::uuid, ${jogoId}::uuid, ${dados.participacaoId}::uuid, ${dados.tipo}::"TipoLancamento",
+      ${dados.relatorioDisciplinar}::boolean, 1, now(), ${lancamentoId}::uuid)`;
   const substituto = await lerPorOperacao(tx, dados.operacaoId);
   await registrarEvento(tx, jogoId, "lancamento_corrigido", substituto!.id);
   return { lancamento: apresentar(substituto!), anulado: apresentar(await lerPorId(tx, lancamentoId)), alterado: true, placar: await placar(tx, jogoId) };
@@ -249,9 +270,9 @@ async function anular(tx: Tx, corretor: Corretor, status: string, jogoId: string
 }
 
 /** Arbitragem autorizada corrige ou anula durante o jogo (RF-034); a sessão é revalidada na transação. */
-export async function corrigirPelaArbitragem(tx: Tx, jogoId: string, token: string | undefined, lancamentoId: string, dados: z.infer<typeof correcaoSchema>) {
+export async function corrigirPelaArbitragem(tx: Tx, jogoId: string, token: string | undefined, lancamentoId: string, dados: DadosLancamento) {
   const { status } = await revalidarArbitragem(tx, jogoId, token);
-  return corrigir(tx, "arbitragem", status, jogoId, lancamentoId, dados);
+  return corrigir(tx, "arbitragem", status, jogoId, lancamentoId, normalizar(dados));
 }
 
 export async function anularPelaArbitragem(tx: Tx, jogoId: string, token: string | undefined, lancamentoId: string, dados: z.infer<typeof anulacaoSchema>) {
@@ -262,13 +283,17 @@ export async function anularPelaArbitragem(tx: Tx, jogoId: string, token: string
 /**
  * Presidente corrige ou anula após o encerramento, diretamente, sem devolver acesso à arbitragem (RF-036, RN-031).
  * Não inclui lançamentos novos (decisão de Marcus, MAR-70) nem refaz o cumprimento de suspensões do encerramento.
+ * Na mesma transação, reconcilia as suspensões automáticas do jogo (MAR-79): a desqualificação com relatório
+ * retirada anula a automática, liberando só o saldo restante; a acrescentada gera uma nova, para os próximos jogos.
  */
-export async function corrigirPeloPresidente(tx: Tx, jogoId: string, lancamentoId: string, dados: z.infer<typeof correcaoSchema>) {
-  return corrigir(tx, "presidente", await statusParaPresidente(tx, jogoId), jogoId, lancamentoId, dados);
+export async function corrigirPeloPresidente(tx: Tx, jogoId: string, lancamentoId: string, dados: DadosLancamento) {
+  const resultado = await corrigir(tx, "presidente", await statusParaPresidente(tx, jogoId, true), jogoId, lancamentoId, normalizar(dados));
+  return { ...resultado, suspensoesAutomaticas: await reconciliarSuspensoesAutomaticas(tx, jogoId) };
 }
 
 export async function anularPeloPresidente(tx: Tx, jogoId: string, lancamentoId: string, dados: z.infer<typeof anulacaoSchema>) {
-  return anular(tx, "presidente", await statusParaPresidente(tx, jogoId), jogoId, lancamentoId, dados);
+  const resultado = await anular(tx, "presidente", await statusParaPresidente(tx, jogoId, true), jogoId, lancamentoId, dados);
+  return { ...resultado, suspensoesAutomaticas: await reconciliarSuspensoesAutomaticas(tx, jogoId) };
 }
 
 /**
@@ -315,7 +340,7 @@ async function registrosDoJogo(tx: Tx, jogoId: string, status: string) {
         WHERE p."jogoId" = ${jogoId}::uuid
       ) d) AS desempenho,
       (SELECT COALESCE(jsonb_agg(l ORDER BY l."registradoEm", l.id), '[]'::jsonb) FROM (
-        SELECT l.id, l."operacaoId", l.tipo, l.valor, l."registradoEm", l."participacaoId",
+        SELECT l.id, l."operacaoId", l.tipo, l."relatorioDisciplinar", l.valor, l."registradoEm", l."participacaoId",
           p."inscricaoClubeId" AS "inscricaoId", p."numeroCamisa",
           CASE WHEN u.id IS NOT NULL THEN jsonb_build_object('id', u.id, 'nomeCompleto', u."nomeCompleto") END AS atleta,
           l."substituiLancamentoId", l."anuladoEm", s.id AS "substituidoPorId"
