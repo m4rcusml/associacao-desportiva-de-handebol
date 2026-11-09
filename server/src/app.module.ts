@@ -18,6 +18,7 @@ import { AtletasController } from "./modules/atletas/atletas.controller.js";
 import { EscalacaoController } from "./modules/participacoes/escalacao.controller.js";
 import { ArbitragemController } from "./modules/arbitragem/arbitragem.controller.js";
 import { CofreSenhaArbitragem } from "./modules/arbitragem/senha.js";
+import { SuspensoesController } from "./modules/suspensoes/suspensoes.controller.js";
 
 @Module({
   imports: [ThrottlerModule.forRoot({
@@ -28,7 +29,7 @@ import { CofreSenhaArbitragem } from "./modules/arbitragem/senha.js";
       ? "Muitas tentativas de entrada na arbitragem. Aguarde alguns minutos e tente novamente."
       : "Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.",
   })],
-  controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController, CampeonatosController, JogosController, AtletasController, EscalacaoController, ArbitragemController],
+  controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController, CampeonatosController, JogosController, AtletasController, EscalacaoController, ArbitragemController, SuspensoesController],
   providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService, CofreSenhaArbitragem],
 })
 export class AppModule {}

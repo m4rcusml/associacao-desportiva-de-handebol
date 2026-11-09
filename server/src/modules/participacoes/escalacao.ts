@@ -3,12 +3,13 @@ import { z } from "zod";
 import { Prisma, type StatusJogo } from "../../generated/prisma/client.js";
 import type { Ator } from "../autorizacao/ator.js";
 import { horaLocal } from "../jogos/fuso.js";
+import { atletasComSuspensaoVigente } from "../suspensoes/suspensoes.js";
 
 /** Inclusão de um atleta na escalação do clube do técnico (RF-016). */
 export const escolhaSchema = z.strictObject({ atletaId: z.uuid().transform(id => id.toLowerCase()) });
 
 type Tx = Prisma.TransactionClient;
-type Leitura = Pick<Tx, "jogo" | "participacao" | "alteracaoEscalacao" | "vinculoClube" | "tecnico">;
+type Leitura = Pick<Tx, "jogo" | "participacao" | "alteracaoEscalacao" | "vinculoClube" | "tecnico" | "$queryRaw">;
 
 const pessoa = { select: { usuario: { select: { id: true, nomeCompleto: true } } } } as const;
 const pessoaDoAtleta = { atleta: pessoa } as const;
@@ -20,6 +21,8 @@ const nome = ({ usuario }: { usuario: { id: string; nomeCompleto: string } }) =>
  * usado (`vinculoAtual: false` depois de uma transferência: não serve para credenciar pelo clube anterior)
  * e quem a fez; `alteracoes` preserva todas as inclusões e retiradas, com o técnico responsável.
  * `atletasDoClube` são os que podem ser escolhidos: aprovados, com conta e carteirinha ativas e vínculo atual no clube.
+ * `suspensaoPendente` sinaliza suspensão vigente no campeonato do jogo: não impede a escolha, porque o saldo pode ser
+ * cumprido antes do jogo; quem barra é o credenciamento (decisão de Marcus, MAR-66).
  */
 export async function consultarEscalacao(db: Leitura, jogoId: string, clubeDoTecnico?: string) {
   const jogo = await db.jogo.findUnique({ where: { id: jogoId }, select: {
@@ -57,16 +60,20 @@ export async function consultarEscalacao(db: Leitura, jogoId: string, clubeDoTec
         orderBy: [{ atleta: { usuario: { nomeCompleto: "asc" } } }, { atletaId: "asc" }],
       }),
     ]);
+    const suspensos = await atletasComSuspensaoVigente(db, dados.campeonatoId, [
+      ...escolhas.map(e => e.atleta.usuario.id), ...atletas.map(a => a.atleta.usuario.id),
+    ]);
     return {
       inscricaoId, clube, tecnico: tecnico ? nome(tecnico) : null,
       escalados: escolhas.map(({ id, escolhidaEm, atleta, escolhidaPorTecnico, vinculoClube }) => ({
         participacaoId: id, atleta: nome(atleta), vinculoClubeId: vinculoClube.id, vinculoAtual: vinculoClube.fim === null,
         escolhidaPorTecnico: escolhidaPorTecnico ? nome(escolhidaPorTecnico) : null, escolhidaEm,
+        suspensaoPendente: suspensos.has(atleta.usuario.id),
       })),
       alteracoes: alteracoes.map(({ tipo, ocorridoEm, vinculoClubeId, tecnico, vinculoClube }) => ({
         tipo, atleta: nome(vinculoClube.atleta), vinculoClubeId, tecnico: nome(tecnico), ocorridoEm,
       })),
-      atletasDoClube: atletas.map(({ atleta }) => atleta.usuario),
+      atletasDoClube: atletas.map(({ atleta }) => ({ ...atleta.usuario, suspensaoPendente: suspensos.has(atleta.usuario.id) })),
     };
   }));
   return {
@@ -121,8 +128,8 @@ async function carteirinhaAtiva(tx: Tx, atletaId: string) {
 /**
  * Técnico aprovado atual escolhe um atleta aprovado, com conta ativa, carteirinha ativa e vínculo atual no
  * próprio clube, para um jogo agendado do clube (RF-016, RN-014, PEN-018). Quem seria barrado no
- * credenciamento por esses motivos não é escolhido (decisão de Marcus, MAR-64); suspensões entram com a
- * MAR-66. Não credencia nem confirma entrada. Atleta já escolhido, inclusive pelo
+ * credenciamento por esses motivos não é escolhido (decisão de Marcus, MAR-64). Suspensão vigente não impede a
+ * escolha, apenas é sinalizada na consulta (MAR-66). Não credencia nem confirma entrada. Atleta já escolhido, inclusive pelo
  * técnico anterior, permanece como está (`alterado: false`), preservando a autoria. Se a participação já
  * existir sem escolha (credenciamento futuro), recebe a escolha. Ordem dos bloqueios: técnico → jogo → atleta.
  */

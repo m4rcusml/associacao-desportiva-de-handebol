@@ -157,6 +157,8 @@ model Presidente {
   inscricoesIncluidas   InscricaoClube[]
   jogosCriados          Jogo[]
   arbitragensDesignadas Arbitragem[]
+  suspensoesAplicadas   Suspensao[]    @relation("aplicadaPor")
+  suspensoesRevogadas   Suspensao[]    @relation("revogadaPor")
 }
 
 model Atleta {
@@ -171,6 +173,7 @@ model Atleta {
   vinculos                  VinculoClube[]
   carteirinha               Carteirinha?
   participacoes             Participacao[]
+  suspensoes                Suspensao[]
 }
 
 model Tecnico {
@@ -266,6 +269,7 @@ model Campeonato {
   criadoPor             Presidente       @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
   inscricoes            InscricaoClube[]
   jogos                 Jogo[]
+  suspensoes            Suspensao[]
 }
 
 /// Inclusão de clube no campeonato pelo presidente (RF-014, provisório: PEN-005). Única por
@@ -314,6 +318,7 @@ model Jogo {
   acessoArbitragem      AcessoArbitragem?
   participacoes         Participacao[]
   alteracoesEscalacao   AlteracaoEscalacao[]
+  cumprimentosSuspensao CumprimentoSuspensao[]
 
   @@index([campeonatoId, status])
   @@index([inscricaoClubeAId, campeonatoId])
@@ -419,4 +424,44 @@ model SessaoArbitragem {
   motivoRevogacao MotivoRevogacaoArbitragem?
 
   @@index([arbitragemId])
+}
+
+/// Suspensão manual aplicada pelo presidente (RF-038, RN-037/038/043, MAR-66): impede o atleta somente no
+/// campeonato, por quantidade de jogos. Saldo = `quantidadeJogos` − cumprimentos, nunca armazenado.
+/// Revogar (`revogadaEm`/`revogadaPor`) e encerrar o saldo com o campeonato (`saldoEncerradoEm`) são registros
+/// distintos e definitivos, que preservam a suspensão e seus cumprimentos. Origem automática, regra e jogo de
+/// origem ficam para a MAR-79. Triggers da migração `suspensoes` tornam os dados da aplicação imutáveis.
+model Suspensao {
+  id                      String                 @id @default(uuid()) @db.Uuid
+  atletaId                String                 @db.Uuid
+  atleta                  Atleta                 @relation(fields: [atletaId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  campeonatoId            String                 @db.Uuid
+  campeonato              Campeonato             @relation(fields: [campeonatoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  quantidadeJogos         Int
+  motivo                  String
+  aplicadaPorPresidenteId String                 @db.Uuid
+  aplicadaPor             Presidente             @relation("aplicadaPor", fields: [aplicadaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  aplicadaEm              DateTime               @db.Timestamptz
+  revogadaEm              DateTime?              @db.Timestamptz
+  revogadaPorPresidenteId String?                @db.Uuid
+  revogadaPor             Presidente?            @relation("revogadaPor", fields: [revogadaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  /// Término do saldo restante ao encerrar ou cancelar o campeonato (PEN-010); não é cumprimento nem revogação.
+  saldoEncerradoEm        DateTime?              @db.Timestamptz
+  cumprimentos            CumprimentoSuspensao[]
+
+  @@index([atletaId, campeonatoId])
+  @@index([campeonatoId])
+}
+
+/// Jogo encerrado definitivamente que contou para uma suspensão (RF-041, RN-039). A chave composta impede
+/// contar o mesmo jogo duas vezes; suspensões simultâneas recebem cada uma o seu registro (paralelo).
+model CumprimentoSuspensao {
+  suspensaoId  String    @db.Uuid
+  suspensao    Suspensao @relation(fields: [suspensaoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  jogoId       String    @db.Uuid
+  jogo         Jogo      @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  registradoEm DateTime  @db.Timestamptz
+
+  @@id([suspensaoId, jogoId])
+  @@index([jogoId])
 }
