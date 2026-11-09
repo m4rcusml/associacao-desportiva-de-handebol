@@ -10,7 +10,8 @@ export const Requer = (requisito: Requisito) => SetMetadata(REQUISITO, requisito
 /** Atalho para módulos esportivos: conta ativa, perfil permitido e aprovação. */
 export const RequerAprovado = (...perfis: Perfil[]) => Requer({ aprovado: true, ...(perfis.length ? { perfis } : {}) });
 
-export type RequestComAtor = Request & { ator?: Ator };
+/** `authSessionId`: sessão de conta de origem, exigida pela entrada da arbitragem por designação (MAR-65). */
+export type RequestComAtor = Request & { ator?: Ator; authSessionId?: string };
 
 /** Ator anexado pelo SessionGuard. */
 export const AtorAtual = createParamDecorator((_: unknown, context: ExecutionContext): Ator => {

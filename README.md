@@ -23,7 +23,8 @@ está em [arquitetura](docs/arquitetura.md#matriz-inicial--07112026); os manifes
 os runtimes aceitos. Instale Docker com Compose para executar o PostgreSQL local.
 Copie `.env.example` da raiz para `.env` e `server/.env.example` para `server/.env`.
 As credenciais de exemplo são exclusivamente locais. Em `server/.env`, gere e preencha
-`BETTER_AUTH_SECRET` (mínimo 32 caracteres):
+`BETTER_AUTH_SECRET` (mínimo 32 caracteres) e `ARBITRAGEM_SENHA_CHAVE` (64 caracteres hexadecimais);
+o mesmo comando gera os dois:
 
 ```sh
 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
@@ -38,6 +39,7 @@ Não versione o valor gerado. As outras variáveis estão nos `.env.example`:
 | `BETTER_AUTH_URL` | URL externa da API, localmente `http://localhost:3001`. |
 | `CLIENT_ORIGIN` | Origem exata autorizada, localmente `http://localhost:3000`, sem curinga. |
 | `BETTER_AUTH_SECRET` | Segredo local aleatório, mantido no backend. |
+| `ARBITRAGEM_SENHA_CHAVE` | Chave AES-256 (32 bytes em hex) da cópia cifrada da senha da arbitragem; fora do banco e do repositório. Trocá-la torna ilegíveis as cópias existentes. |
 | `PORT` | Porta da API, padrão 3001. |
 | `NEXT_PUBLIC_API_URL` | Opcional em `client/.env.local`, conforme `client/.env.example`; padrão `http://localhost:3001/api`. Incorporado no build do Next. |
 
@@ -140,7 +142,7 @@ inexistente/ambígua por horário de verão respondem 400. Agendar não inicia o
 `POST /api/jogos/{jogoId}/arbitragens` com `usuarioId` (atleta/técnico aprovado, ativo, sem vínculo
 com os clubes do jogo, uma vez por jogo) ou `nomeCompleto` (pessoa sem cadastro) e retirada em
 `DELETE /api/jogos/{jogoId}/arbitragens/{arbitragemId}`, ambas com o jogo agendado ou em andamento.
-Designar não abre acesso: senha e sessões vêm na MAR-65; adiamento, início e cancelamento do jogo, na MAR-69.
+Designar não abre acesso por si: a entrada é descrita abaixo (MAR-65); adiamento, início e cancelamento do jogo ficam na MAR-69.
 
 #### Transferência de atletas (MAR-63)
 
@@ -165,6 +167,21 @@ altera a lista do anterior; confirmar atleta já escolhido mantém a autoria ori
 escala; clube sem técnico apto fica sem escalação, e a arbitragem credenciará diretamente (MAR-67).
 Escalar não credencia nem confirma entrada em quadra. Depois de uma transferência, a escolha antiga
 aparece com `vinculoAtual: false` e não serve para credenciar pelo clube anterior.
+
+#### Acesso temporário da arbitragem (MAR-65)
+
+No dia do jogo (no fuso do local) ou com o jogo em andamento, a arbitragem entra por
+`POST /api/arbitragem/jogos/{jogoId}/entrada/designacao` (conta autenticada, designada, ativa, aprovada e
+sem vínculo com os clubes do jogo) ou por `POST /api/arbitragem/jogos/{jogoId}/entrada/senha`
+(`nomeCompleto` e `senha`, sem conta nem conferência de vínculo; 10 tentativas por IP a cada 10 minutos).
+Ambas aceitam `visualizacao` (`linha`/`banco`) e emitem o cookie HttpOnly `handebol.arbitragem.{jogoId}`,
+separado do cookie da conta. Com ele: `GET .../sessao`, `PUT .../visualizacao` e `POST .../saida` (só este
+dispositivo). Jogo agendado sem início até a virada do dia local perde o acesso até ser reagendado.
+O presidente e as contas designadas consultam a senha em `GET /api/jogos/{jogoId}/arbitragem/senha` (gerada
+na primeira consulta) e a trocam em `POST /api/jogos/{jogoId}/arbitragem/senha/troca`, que revoga as sessões
+por senha e preserva as designadas. A sessão temporária não consulta nem troca a senha. Retirar a
+designação, encerrar a sessão da conta de origem ou desativar a conta invalida as entradas por designação;
+cancelar o campeonato revoga os acessos dos jogos cancelados.
 
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
@@ -424,6 +441,21 @@ com a escolha, nas duas ordens; inclusões e retiradas simultâneas sem duplicar
 restrições SQL diretas (clube fora do jogo, vínculo/atleta/técnico divergentes, etapas, camisa única por
 clube, credenciamento único por atleta, identificação e histórico imutáveis); acesso indevido e contrato
 OpenAPI. Uma migração nova; nenhuma dependência nova.
+
+Validação local da MAR-65 em 08/11/2026: lint, tipos/build e 100 testes de integração aprovados,
+incluindo dez novos: entrada por designação com cookie próprio por jogo (atributos, sem sobrescrever o da
+conta, token só como hash), vários dispositivos, linha/banco e saída; recusa sem conta, sem designação, de
+presidente, sem origem e com vínculo impeditivo surgido depois; dia no fuso do local (Kiritimati × Pago
+Pago), dia vencido sem início, continuação após a virada com jogo iniciado, jogo sem data e futuro; senha
+gerada na primeira consulta, consultada por presidente e designado, recusada a outra conta e à sessão por
+senha, armazenada só como hash e cópia AES-GCM ligada ao jogo (adulteração e outro jogo falham), entrada
+com nome sem conferir vínculo e normalização; troca revogando só as sessões por senha; retirada da
+designação, logout e desativação invalidando a entrada designada (senha independe da conta); limite de
+tentativas e origem; encerramento e cancelamento do campeonato revogando tudo, reenvio do encerramento
+reconhecido sem devolver permissão, revogação definitiva no banco; troca, desativação e retirada aguardando
+a autorização em curso; emissões e trocas simultâneas. Uma migração nova; nenhuma dependência nova.
+Não validado: Socket.IO (MAR-73), início/encerramento/adiamento reais (MAR-69) e cookies `__Host-` atrás
+do proxy hospedado.
 
 ## Caminho feliz
 

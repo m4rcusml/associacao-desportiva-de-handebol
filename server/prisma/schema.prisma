@@ -97,6 +97,24 @@ enum StatusJogo {
   cancelado
 }
 
+enum VisualizacaoArbitragem {
+  linha
+  banco
+}
+
+enum MetodoEntradaArbitragem {
+  designacao
+  senha
+}
+
+enum MotivoRevogacaoArbitragem {
+  saida
+  troca_senha
+  jogo_encerrado
+  jogo_adiado
+  jogo_cancelado
+}
+
 enum TipoAlteracaoEscalacao {
   inclusao
   remocao
@@ -293,6 +311,7 @@ model Jogo {
   criadoPorPresidenteId String         @db.Uuid
   criadoPor             Presidente     @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
   arbitragens           Arbitragem[]
+  acessoArbitragem      AcessoArbitragem?
   participacoes         Participacao[]
   alteracoesEscalacao   AlteracaoEscalacao[]
 
@@ -315,6 +334,11 @@ model Arbitragem {
   designadoPorPresidenteId String?     @db.Uuid
   designadoPor             Presidente? @relation(fields: [designadoPorPresidenteId], references: [usuarioId], onDelete: Restrict)
   designadoEm              DateTime?   @db.Timestamptz
+  /// Tela escolhida (RF-028/RN-029): muda só a apresentação, nunca as permissões.
+  visualizacao             VisualizacaoArbitragem?
+  /// Primeira entrada aceita para esta arbitragem (MAR-65).
+  acessouEm                DateTime?   @db.Timestamptz
+  sessoes                  SessaoArbitragem[]
 
   @@unique([jogoId, usuarioId])
   @@index([jogoId])
@@ -367,4 +391,32 @@ model AlteracaoEscalacao {
 
   @@index([jogoId, ocorridoEm])
   @@index([vinculoClubeId])
+}
+
+/// Senha compartilhada do jogo (RN-028, MAR-65): hash para verificar a entrada e cópia cifrada (AES-256-GCM,
+/// chave fora do banco) para consulta pelo presidente e pelas contas designadas. Nunca em texto puro.
+model AcessoArbitragem {
+  jogoId       String    @id @db.Uuid
+  jogo         Jogo      @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  senhaHash    String
+  senhaCifrada String
+  geradaEm     DateTime  @db.Timestamptz
+  revogadoEm   DateTime? @db.Timestamptz
+}
+
+/// Sessão temporária de arbitragem (PEN-030), separada da sessão de conta. Só o hash do token é guardado.
+/// `authSessionId` (sem FK, como `Usuario.authId`) é a sessão de conta de origem da entrada por designação.
+model SessaoArbitragem {
+  id              String                     @id @default(uuid()) @db.Uuid
+  arbitragemId    String                     @db.Uuid
+  arbitragem      Arbitragem                 @relation(fields: [arbitragemId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  authSessionId   String?
+  metodoEntrada   MetodoEntradaArbitragem
+  tokenHash       String                     @unique
+  criadaEm        DateTime                   @db.Timestamptz
+  expiraEm        DateTime                   @db.Timestamptz
+  revogadaEm      DateTime?                  @db.Timestamptz
+  motivoRevogacao MotivoRevogacaoArbitragem?
+
+  @@index([arbitragemId])
 }

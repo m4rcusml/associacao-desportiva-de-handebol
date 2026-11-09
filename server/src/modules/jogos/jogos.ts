@@ -55,16 +55,20 @@ export async function detalharJogo(db: Leitura, jogoId: string) {
   const jogo = await db.jogo.findUnique({ where: { id: jogoId }, select: {
     ...selecaoJogo,
     arbitragens: {
-      select: { id: true, nomeCompleto: true, designadoPorPresidenteId: true, designadoEm: true, usuario: { select: { id: true, nomeCompleto: true, perfil: true } } },
-      orderBy: [{ designadoEm: "asc" }, { id: "asc" }],
+      select: {
+        id: true, nomeCompleto: true, designadoPorPresidenteId: true, designadoEm: true, visualizacao: true, acessouEm: true,
+        usuario: { select: { id: true, nomeCompleto: true, perfil: true } },
+      },
+      orderBy: [{ designadoEm: { sort: "asc", nulls: "last" } }, { acessouEm: "asc" }, { id: "asc" }],
     },
   } });
   if (!jogo) throw new NotFoundException("Jogo não encontrado");
   const { arbitragens, ...dados } = jogo;
   return {
     ...resumirJogo(dados),
+    // Entrada pela senha cria registro próprio, sem designação (MAR-65); não é retirada individualmente.
     arbitragens: arbitragens.map(({ usuario, nomeCompleto, ...a }) => ({
-      ...a, tipo: usuario ? "cadastrado" as const : "externo" as const,
+      ...a, tipo: usuario ? "cadastrado" as const : a.designadoEm ? "externo" as const : "entrada_por_senha" as const,
       nomeCompleto: usuario?.nomeCompleto ?? nomeCompleto, usuario,
     })),
   };
@@ -168,12 +172,21 @@ export async function designarArbitragem(tx: Tx, jogoId: string, presidenteId: s
   return detalharJogo(tx, jogoId);
 }
 
-/** Retira a designação com o jogo agendado ou em andamento. Sessões de arbitragem chegam na MAR-65. */
+/**
+ * Retira a designação com o jogo agendado ou em andamento. As sessões temporárias dessa designação saem na
+ * mesma transação (FK em cascata): uma revalidação concorrente as mantém bloqueadas (FOR SHARE) até terminar,
+ * e a seguinte já não as encontra. Registros criados pela entrada por senha não são retirados um a um:
+ * a troca da senha revoga todos (seção 10).
+ */
 export async function retirarArbitragem(tx: Tx, jogoId: string, arbitragemId: string) {
   await lerJogoParaArbitragem(tx, jogoId);
-  // Integração futura (MAR-65), na mesma transação: revogar as sessões dessa designação.
-  const { count } = await tx.arbitragem.deleteMany({ where: { id: arbitragemId, jogoId } });
-  if (count === 0) throw new NotFoundException("Arbitragem não encontrada neste jogo");
+  const { count } = await tx.arbitragem.deleteMany({ where: { id: arbitragemId, jogoId, designadoEm: { not: null } } });
+  if (count === 0) {
+    if (await tx.arbitragem.count({ where: { id: arbitragemId, jogoId } })) {
+      throw new ConflictException("Acesso pela senha não é retirado individualmente; troque a senha do jogo para revogar esses acessos.");
+    }
+    throw new NotFoundException("Arbitragem não encontrada neste jogo");
+  }
   return detalharJogo(tx, jogoId);
 }
 

@@ -16,14 +16,19 @@ import { CampeonatosController } from "./modules/campeonatos/campeonatos.control
 import { JogosController } from "./modules/jogos/jogos.controller.js";
 import { AtletasController } from "./modules/atletas/atletas.controller.js";
 import { EscalacaoController } from "./modules/participacoes/escalacao.controller.js";
+import { ArbitragemController } from "./modules/arbitragem/arbitragem.controller.js";
+import { CofreSenhaArbitragem } from "./modules/arbitragem/senha.js";
 
 @Module({
   imports: [ThrottlerModule.forRoot({
     // Contadores em memória por IP; aplicado somente nas rotas com ThrottlerGuard.
-    throttlers: [{ name: "cadastro", ttl: minutes(15), limit: 5 }],
-    errorMessage: "Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.",
+    // Cada rota com ThrottlerGuard dispensa (SkipThrottle) os limites que não são seus.
+    throttlers: [{ name: "cadastro", ttl: minutes(15), limit: 5 }, { name: "arbitragem", ttl: minutes(10), limit: 10 }],
+    errorMessage: context => context.getClass().name === "ArbitragemController"
+      ? "Muitas tentativas de entrada na arbitragem. Aguarde alguns minutos e tente novamente."
+      : "Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.",
   })],
-  controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController, CampeonatosController, JogosController, AtletasController, EscalacaoController],
-  providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService],
+  controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController, CampeonatosController, JogosController, AtletasController, EscalacaoController, ArbitragemController],
+  providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService, CofreSenhaArbitragem],
 })
 export class AppModule {}
