@@ -445,7 +445,7 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
 - Arbitragem pode desfazer credenciamento antes do encerramento somente sem entrada em quadra
   e sem gols/penalidades registrados. Casos com entrada/lançamentos são corrigidos pelo presidente,
   com histórico. O procedimento dessas correções complexas ainda precisa ser detalhado (PEN-019).
-  Na implementação (MAR-71): a correção informa a camisa atual vista por quem corrige, e o estorno, a camisa do
+  Detalhes aprovados por Marcus (MAR-71, 09/11/2026): a correção informa a camisa atual vista por quem corrige, e o estorno, a camisa do
   credenciamento a desfazer; divergência é conflito com o registro atual, e repetir a operação já feita não tem
   efeito. Lançamento anulado também impede o estorno, porque continua apontando a participação. O estorno mantém
   a escolha do técnico e permite novo credenciamento pelas regras normais. Cada correção e estorno fica em
