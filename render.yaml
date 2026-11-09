@@ -1,0 +1,44 @@
+# Backend do ambiente de TESTE (MAR-76). Produção não é provisionada por esta blueprint.
+# Segredos com `sync: false` são informados no painel do Render; nunca no repositório.
+# Passo a passo e verificações: README, seção "Implantação de teste".
+services:
+  - type: web
+    name: handebol-api-teste
+    runtime: node
+    plan: free
+    region: virginia
+    rootDir: server
+    # O plano free não oferece pre-deploy command: as migrações versionadas são aplicadas no fim do build
+    # (as variáveis de ambiente estão disponíveis no build). Uma instância, sem migração concorrente.
+    # `--include=dev`: com NODE_ENV=production o npm omitiria Nest CLI, Prisma e TypeScript, usados no build.
+    buildCommand: npm ci --include=dev && npm run build && npm run db:deploy
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 26.13.0
+      # Supabase Session Pooler (IPv4; modo sessão, necessário ao LISTEN das notificações), terminando em
+      # ?sslmode=require&uselibpqcompat=true (TLS sem verificar o certificado; ver README, "Implantação de teste").
+      - key: DATABASE_URL
+        sync: false
+      # URL pública do client (Vercel); a API é servida em <origem>/api pelo encaminhamento.
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      # 64 caracteres hexadecimais; o generateValue do Render não produz hexadecimal.
+      - key: ARBITRAGEM_SENHA_CHAVE
+        sync: false
+      # Mesmo valor configurado no projeto da Vercel (client/src/proxy.ts).
+      - key: PROXY_SEGREDO
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_FOTOS_BUCKET
+        value: fotos-atletas

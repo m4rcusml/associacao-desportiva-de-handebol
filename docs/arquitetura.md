@@ -181,11 +181,12 @@ Limite de tentativas: `/api/cadastros` usa `@nestjs/throttler`, com 5 requisiç�
 limite do Better Auth (3 a cada 10 s por IP, em memória), habilitado explicitamente em todos os
 ambientes. Memória atende uma instância e zera a cada reinício; várias réplicas exigirão
 armazenamento compartilhado. O 409 de e-mail repetido permanece e revela contas existentes;
-reavaliar junto com a UX final e a confirmação por e-mail. **Pendente na implantação:** atrás do
-encaminhamento Vercel/Render, o throttler vê o IP do proxy enquanto `trust proxy` não for
-configurado no Express (um único contador para todos), e o Better Auth lê `X-Forwarded-For`, que o
-cliente pode forjar sem proxy confiável e que, ausente em produção, gera um contador compartilhado.
-Configurar `trust proxy` e `advanced.ipAddress` conforme os proxies reais antes da implantação de teste.
+reavaliar junto com a UX final e a confirmação por e-mail. IP na implantação (MAR-76): com
+`PROXY_SEGREDO`, só o proxy público chega à API (segredo compartilhado, comparado em tempo constante), e o
+backend reescreve `X-Forwarded-For` com o `X-Cliente-IP` informado por ele, com `trust proxy` ligado; o throttler
+(`req.ip`) e o Better Auth (`advanced.ipAddress`) passam a contar por cliente, e cabeçalhos forjados são descartados.
+Sem `PROXY_SEGREDO` (desenvolvimento e testes) o comportamento anterior continua: o Better Auth lê
+`X-Forwarded-For` do cliente, e o throttler, o IP do socket.
 
 Client usa fetch com cookies e sem cache; as páginas são cascas estáticas, sem SSR de sessão.
 Ao introduzir SSR autenticado, repassar cookies e provar isolamento/cache antes de utilizá-lo.
@@ -517,6 +518,18 @@ de planos gratuitos; plano e custos serão avaliados posteriormente.
 
 Validar o encaminhamento do domínio público entre Vercel e Render, cookies, SSR e Socket.IO
 na implantação de teste; a escolha dos fornecedores não comprova essa integração.
+
+Implantação de teste preparada na MAR-76 (passo a passo e smoke no [README](../README.md#implantação-de-teste-mar-76)):
+
+- O `proxy.ts` do client encaminha `/api/*` ao Render com o segredo compartilhado e o IP do cliente; cookies e
+  API ficam no domínio da Vercel. O backend recusa acesso direto sem o segredo, exceto `/api/health` (liveness) e
+  `/api/health/ready` (readiness com consulta ao banco, health check do Render).
+- As rewrites da Vercel não fazem upgrade para WebSocket. No teste, o Socket.IO usa long-polling pelo domínio
+  público (decisão de Marcus em 09/11/2026). WebSocket exigiria domínio próprio compartilhado entre client e API.
+- Render free sem pre-deploy: migrações versionadas aplicadas no fim do build; uma instância.
+- Banco pelo Session Pooler do Supabase (IPv4 e modo sessão, exigido pelo `LISTEN`), com TLS sem verificação do
+  certificado (`sslmode=require&uselibpqcompat=true`) no teste; verificação com a CA do Supabase fica para produção.
+- `BETTER_AUTH_URL` e `CLIENT_ORIGIN` usam o domínio da Vercel; `PROXY_SEGREDO` é obrigatório em produção.
 A estimativa de porte é de dezenas a poucas centenas, sem dimensionamento confirmado de
 atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disponibilidade.
 
@@ -526,9 +539,8 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
    sessão temporária, escritas esportivas e revogação HTTP e Socket.IO concorrentes foram validadas localmente
    (MAR-65 a 73). Contas permanentes, migrações, seed e prova local de cadastro/logout já foram validados; comandos
    no [README](../README.md#desenvolvimento-local).
-2. Detalhar e validar implantação de teste, encaminhamento, cookies, segredos, IP real do cliente
-   para os limites de tentativa (`trust proxy` e `advanced.ipAddress`) e verificações;
-   implementar limites e permissões das fotos definidos nos requisitos.
+2. Validar no ambiente hospedado a implantação de teste preparada na MAR-76 (encaminhamento, cookies, segredos,
+   IP real, long-polling, Storage privado), com o smoke do README; a preparação foi validada só localmente.
 3. Manter em código o contrato da API (OpenAPI, com eventos Socket.IO na extensão `x-socketio`). Eventos,
    publicação após transação e reconexão foram definidos na MAR-73; comportamentos de produto ainda indefinidos
    exigem esclarecimento com Marcus.

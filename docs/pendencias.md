@@ -144,15 +144,16 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   HTTP validados. Client não usa SSR de sessão; será preciso validar seu repasse de cookies/cache
   quando introduzido. Arbitragem temporária (MAR-65) validada localmente: cookie separado por jogo,
   revalidação transacional e revogação concorrente com troca de senha, retirada e desativação. Escritas
-  esportivas reais e o ciclo do jogo foram validados localmente (MAR-67 a 69), e a revogação Socket.IO em conexões abertas na MAR-73; TLS/proxy/cookies e Socket.IO hospedados continuam fora da entrega. Recuperação e prova
+  esportivas reais e o ciclo do jogo foram validados localmente (MAR-67 a 69), e a revogação Socket.IO em conexões abertas na MAR-73. TLS/proxy/cookies e Socket.IO (long-polling) hospedados foram preparados na MAR-76 e validados localmente atrás do proxy do Next; a prova hospedada depende do provisionamento. Recuperação e prova
   de reset seguem adiadas. A escolha está encerrada; a PEN-030 **não está totalmente encerrada**.
   Regras atuais da arbitragem substituem as pendências
   históricas da conclusão: PEN-022 e PEN-021 resolvidas.
 - PEN-031 parcialmente resolvida: Vercel para frontend, Render para backend e Supabase para banco
   e fotos; usar franquia gratuita de armazenamento nesta etapa, conferindo limites antes de provisionar.
   Serviço de e-mail adiado. Fotos: limites/permissões definidos em requisitos, seção 11, e implementados com
-  validação local na MAR-75 (arquitetura); faltam o bucket hospedado e suas configurações de implantação (MAR-76);
-  produção e custos correspondentes serão avaliados posteriormente.
+  validação local na MAR-75 (arquitetura). A MAR-76 preparou blueprint do Render, encaminhamento pela Vercel,
+  segredo do proxy, readiness e smoke hospedado (README), validados localmente; falta provisionar o teste e
+  registrar o smoke hospedado. Produção e custos correspondentes serão avaliados posteriormente.
 - PEN-032 parcialmente resolvida: npm e lockfile versionado, versões estáveis recentes compatíveis,
   preferência por Node.js LTS e scripts convencionais. Estrutura mínima de `client/` e `server/`
   criada em 07/11/2026, com pacotes/lockfiles independentes e matriz na arquitetura. PostgreSQL
@@ -160,8 +161,8 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   lint, tipos e build definidos no README. Prisma 7.10.1 e Better Auth/adaptador 1.7.18 fixados
   e validados juntos; três migrações aplicadas e seed fictício reproduzível. Onze testes de integração,
   navegador e lint/tipos/build aprovados. Node/npm executados: 26.8.2/12.2.0; patches-alvo ainda não.
-  Conexão hospedada direta ou Session Pooler conforme rede. Faltam alinhamento à versão do Supabase
-  provisionado e detalhes de implantação; produção permanece adiada. Alertas moderados de ferramentas
+  Conexão hospedada pelo Session Pooler (IPv4 do Render; modo sessão para o `LISTEN`), definida na MAR-76.
+  Falta registrar a versão do Supabase provisionado; produção permanece adiada. Alertas moderados de ferramentas
   de lint e a limitação de suporte do ESLint 9 continuam registrados na arquitetura.
 - PEN-033: equipe define os contratos em código/OpenAPI e detalha eventos, reconexão, publicação
   após transação e conflitos. Não exige questionário técnico ao usuário; decisões de comportamento

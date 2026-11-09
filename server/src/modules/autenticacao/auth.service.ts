@@ -47,7 +47,12 @@ export class AuthService {
         if (!usuario?.ativo) return false;
         return { data: { versaoAtivacao: usuario.versaoAtivacao } };
       } } } },
-      advanced: { useSecureCookies: secure, defaultCookieAttributes: { httpOnly: true, sameSite: "lax", secure } },
+      advanced: {
+        useSecureCookies: secure, defaultCookieAttributes: { httpOnly: true, sameSite: "lax", secure },
+        // Limite do sign-in por IP. Na implantação hospedada o cabeçalho é reescrito pelo backend com o IP
+        // informado pelo proxy confiável (proxy-confiavel.ts); valor enviado pelo cliente é descartado.
+        ipAddress: { ipAddressHeaders: ["x-forwarded-for"] },
+      },
     });
   }
 

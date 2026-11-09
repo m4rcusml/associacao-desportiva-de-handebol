@@ -44,6 +44,8 @@ Não versione o valor gerado. As outras variáveis estão nos `.env.example`:
 | `FOTOS_DIRETORIO` | Diretório local das fotos dos atletas, somente fora de produção; ignorado quando o Supabase está configurado. |
 | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_FOTOS_BUCKET` | Opcionais localmente, definidas juntas: Storage do Supabase com bucket privado. A chave secreta fica só no backend. |
 | `NOTIFICACOES_VARREDURA_MS` | Opcional. Intervalo da varredura das notificações Socket.IO (padrão 30000): reprocessa eventos não publicados e retira conexões revogadas sem aviso do banco (expiração, virada do dia, vínculo). |
+| `PROXY_SEGREDO` | Somente na implantação hospedada (obrigatória com `NODE_ENV=production`), igual no backend e no client: segredo do encaminhamento público. Localmente fica vazia. Ver [Implantação de teste](#implantação-de-teste-mar-76). |
+| `API_ORIGEM` | Somente no client hospedado: origem do backend no Render para onde `/api` é encaminhado. |
 | `NEXT_PUBLIC_API_URL` | Opcional em `client/.env.local`, conforme `client/.env.example`; padrão `http://localhost:3001/api`. Incorporado no build do Next. |
 
 Use `localhost` nas duas URLs do navegador; não misture com `127.0.0.1`.
@@ -816,6 +818,61 @@ métricas (dois gols válidos e um anulado contam dois, gol corrigido no mesmo c
 azul contando uma desqualificação) seguem cobertos pelo teste de histórico, agora com os nomes sem `temp_`;
 `temp_gol` passa a ser recusado como tipo inválido. A migração `identificadores_metricas` renomeia enum e colunas das
 views sem reescrever dados. Nenhuma dependência nova. Não validado: ambiente hospedado (MAR-76).
+
+## Implantação de teste (MAR-76)
+
+Somente o ambiente de **teste**, com dados fictícios e credenciais próprias; produção, serviço de e-mail e SSR
+autenticado ficam fora. Hospedagem: Vercel (client), Render (backend, [`render.yaml`](render.yaml)) e Supabase
+(PostgreSQL e Storage), sem contratação paga automática.
+
+**Encaminhamento.** O navegador só fala com o domínio da Vercel. O [`client/src/proxy.ts`](client/src/proxy.ts)
+encaminha `/api/*` (REST e Socket.IO) ao Render e acrescenta `X-Proxy-Segredo` e `X-Cliente-IP` (IP lido pela Vercel,
+que sobrescreve `X-Real-IP`/`X-Forwarded-For` recebidos do cliente). Com `PROXY_SEGREDO` definido, o backend recusa
+com 403 requisições e handshakes Socket.IO sem o segredo, exceto `/api/health` e `/api/health/ready`, e reescreve
+`X-Forwarded-For` com o IP do proxy, usado pelos limites do cadastro, da arbitragem e do login. Assim, cookies continuam
+no domínio do client (`__Secure-`, `HttpOnly`, `SameSite=Lax`, sem `Domain`) e o acesso direto ao `onrender.com` não
+contorna os limites. As rewrites da Vercel não fazem upgrade para WebSocket: no teste, o Socket.IO funciona por
+**long-polling** (decisão de Marcus em 09/11/2026); um cliente Socket.IO deve usar `transports: ["polling"]`.
+
+**Antes de criar recursos**, confira nas páginas oficiais os limites vigentes dos planos gratuitos: banco, Storage
+e pausa por inatividade no Supabase; suspensão por inatividade e horas mensais no Render free (a primeira requisição
+após a suspensão demora e reabre a conexão `LISTEN`); termos do plano Hobby na Vercel. Registre na PR o que foi
+conferido e a data.
+
+1. **Supabase:** crie o projeto de teste na região `us-east-1` (próxima ao Render `virginia`) e registre a versão
+   (`select version();`; localmente usamos 17.11). Em *Connect*, copie a string do **Session Pooler** (IPv4; o modo
+   sessão é necessário ao `LISTEN` das notificações; o Transaction Pooler não serve) e acrescente
+   `?sslmode=require&uselibpqcompat=true`. Esse modo cifra a conexão sem verificar o certificado do Supabase, que não é
+   de uma CA pública; aceitável para dados fictícios, a verificação com `sslrootcert` fica para produção. Em Storage,
+   crie o bucket **privado** `fotos-atletas`, sem políticas de acesso; a API usa a chave secreta (`sb_secret_…`),
+   que nunca vai ao client.
+2. **Vercel:** importe o repositório com *Root Directory* `client` e anote o domínio (`https://<projeto>.vercel.app`).
+   Variáveis: `NEXT_PUBLIC_API_URL=/api`, `API_ORIGEM=https://<serviço>.onrender.com` e `PROXY_SEGREDO`.
+3. **Render:** *New → Blueprint* com este repositório. Preencha `DATABASE_URL`, `BETTER_AUTH_URL` e `CLIENT_ORIGIN`
+   (ambas com o domínio da Vercel, sem `/api`), `ARBITRAGEM_SENHA_CHAVE` e `PROXY_SEGREDO` (gere cada uma com o comando
+   de [Desenvolvimento local](#desenvolvimento-local)), `SUPABASE_URL` e `SUPABASE_SECRET_KEY`. `BETTER_AUTH_SECRET` é
+   gerada pelo Render. O build aplica as migrações (`db:deploy`), e o health check usa `/api/health/ready`.
+4. Copie o `PROXY_SEGREDO` do Render para a Vercel, se ainda não estiver lá, e faça um novo deploy do client.
+5. **Dados fictícios:** crie o presidente inicial executando `npm run presidente:inicial` localmente, com
+   `DATABASE_URL` do teste somente nesse comando, e use contas `@example.invalid`.
+6. **Smoke hospedado:** em `server/`, execute:
+
+   ```sh
+   SMOKE_URL_PUBLICA=https://<projeto>.vercel.app SMOKE_URL_API_DIRETA=https://<serviço>.onrender.com SMOKE_EMAIL=<conta fictícia> SMOKE_SENHA=<senha> SMOKE_SUPABASE_URL=https://<ref>.supabase.co SMOKE_FOTOS_BUCKET=fotos-atletas npm run smoke:hospedado
+   ```
+
+   Ele confere liveness/readiness, recusa do acesso direto sem segredo, origem estranha, corpo de 5 MB atravessando
+   a Vercel, cookies seguros, sessão isolada e logout, limite de login com IPs forjados, long-polling do Socket.IO por
+   um ciclo de ping de 25 s, autorização do handshake só pelo domínio e pela origem, e bucket não público. Com
+   `SMOKE_ATLETA_ID` e credenciais de presidente, também envia e lê uma foto. Para não deixar a senha no histórico
+   do shell, exporte-a antes em uma variável da sessão.
+
+Validação local da MAR-76 em 09/11/2026: lint e tipos/build de backend e client, testes de integração (ver PR) e o
+smoke contra `next start` com o `proxy.ts` encaminhando para o backend local com `PROXY_SEGREDO`, com todos os checks
+aprovados, exceto o de IP forjado. Esse check falhou como esperado: o `next start` local repassa o `X-Real-IP` enviado
+pelo cliente, o que a Vercel não faz. Sem cabeçalhos forjados, o 4º login seguido respondeu 429 pelo proxy.
+**Não validado: o ambiente hospedado**, que depende do provisionamento acima; a MAR-76 só fecha seus critérios
+hospedados com a saída do smoke registrada.
 
 ## Caminho feliz
 
