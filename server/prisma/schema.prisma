@@ -164,7 +164,7 @@ enum TipoAlteracaoCredenciamento {
 }
 
 /// Condição que impediria o credenciamento normal, gravada no registro administrativo da participação real (MAR-83).
-/// A suspensão é a que contou este jogo como cumprimento; conta e carteirinha, a situação no momento do registro.
+/// A suspensão é a não anulada que contou este jogo como cumprimento; conta e carteirinha, a situação no momento do registro.
 enum IrregularidadeParticipacao {
   conta_desativada
   carteirinha_invalidada

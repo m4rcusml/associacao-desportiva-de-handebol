@@ -311,6 +311,41 @@ test("atleta inelegível tem a participação real registrada com as irregularid
   assert.deepEqual((await historico(pedro.id)).jogos.map(j => [j.registroAdministrativo, j.irregularidades]), [[true, ["suspensao"]]]);
 });
 
+test("suspensão automática anulada não vira irregularidade; estorno anterior da arbitragem não é repetição do presidente", async () => {
+  const [a, b] = [await criarClube("Clube A"), await criarClube("Clube B")];
+  const campeonato = await campeonatoCom([a, b]);
+  const [joao, carla] = [await cadastrar("atleta", { clubeId: a, nome: "João" }), await cadastrar("atleta", { clubeId: a, nome: "Carla" })];
+
+  // Jogo 1: vermelho com relatório para João gera suspensão automática de 1 jogo, cumprida no jogo 2.
+  const jogo1 = await agendar(campeonato, a, b);
+  const arbitro1 = await arbitrar(jogo1);
+  const pJoao = (await credenciar(jogo1, arbitro1, joao.id, 7)).participacaoId;
+  await iniciar(jogo1, arbitro1);
+  await entrar(jogo1, arbitro1, joao.id);
+  const vermelho = await lancar(jogo1, arbitro1, pJoao, "temp_cartaoVermelho", true);
+  await encerrar(jogo1, arbitro1);
+  const automatica = await prisma.suspensao.findFirstOrThrow({ where: { jogoOrigemId: jogo1, atletaId: joao.id }, select: { id: true } });
+
+  // Jogo 2: Carla credenciada e estornada pela arbitragem durante a partida.
+  const jogo2 = await agendar(campeonato, a, b);
+  const arbitro2 = await arbitrar(jogo2);
+  await credenciar(jogo2, arbitro2, carla.id, 8);
+  await iniciar(jogo2, arbitro2);
+  const estornoArbitragem = await ok<Estorno>(request("POST", `${ARBITRAGEM}/${jogo2}/credenciamentos/${carla.id}/estorno`, arbitro2, { numeroCamisa: 8 }));
+  assert.deepEqual([estornoArbitragem.alterado, estornoArbitragem.estorno.presidenteId], [true, null]);
+  await encerrar(jogo2, arbitro2);
+  assert.equal(await prisma.cumprimentoSuspensao.count({ where: { suspensaoId: automatica.id, jogoId: jogo2 } }), 1);
+
+  // Vermelho anulado no jogo 1: a suspensão automática é anulada e o registro de João no jogo 2 fica sem irregularidades.
+  await anularLancamento(jogo1, vermelho.id);
+  assert.ok((await prisma.suspensao.findUniqueOrThrow({ where: { id: automatica.id } })).anuladaEm);
+  const registro = await ok<Registro>(registrar(jogo2, joao.id, 7));
+  assert.deepEqual(registro.participacao.registroAdministrativo?.irregularidades, []);
+
+  // O estorno da arbitragem não é devolvido como repetição do presidente.
+  await recusa(estornar(jogo2, carla.id, 8), 409, /não está credenciado/);
+});
+
 test("vínculo no início do jogo define o clube; sem vínculo, sem início, camisa ocupada e não presidente são recusados", async () => {
   const { a, b, campeonato, jogo, pedro, bruno } = await cenario();
   const c = await criarClube("Clube C");

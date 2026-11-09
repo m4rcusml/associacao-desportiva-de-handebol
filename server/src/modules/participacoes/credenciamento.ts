@@ -431,7 +431,7 @@ async function jogoParaCorrecaoAdministrativa(tx: Tx, jogoId: string, acao: stri
  * jogou no lugar de João credenciado por engano. Exige atleta aprovado, com carteirinha e com vínculo com um dos clubes
  * do jogo no início da partida (o clube representado vem desse vínculo, mesmo que ele tenha sido transferido depois).
  * Não aplica as condições do credenciamento normal: o que o impediria fica gravado em `irregularidades` —
- * `suspensao` quando este jogo contou como cumprimento de uma suspensão dele, `conta_desativada` e
+ * `suspensao` quando este jogo contou como cumprimento de uma suspensão dele não anulada, `conta_desativada` e
  * `carteirinha_invalidada` pela situação no registro. A participação não fica regular, o resultado não muda e o
  * cumprimento já registrado permanece (decisão de Marcus, 09/11/2026); punição adicional é decisão manual.
  * Gols e penalidades são atribuídos depois, um a um, pela correção dos lançamentos (transferência). A camisa continua
@@ -467,7 +467,7 @@ export async function registrarParticipacaoAdministrativa(tx: Tx, presidenteId: 
   const [{ suspenso }] = await tx.$queryRaw<{ suspenso: boolean }[]>`
     SELECT EXISTS (
       SELECT 1 FROM "CumprimentoSuspensao" c JOIN "Suspensao" s ON s.id = c."suspensaoId"
-      WHERE c."jogoId" = ${jogoId}::uuid AND s."atletaId" = ${atletaId}::uuid) AS suspenso`;
+      WHERE c."jogoId" = ${jogoId}::uuid AND s."atletaId" = ${atletaId}::uuid AND s."anuladaEm" IS NULL) AS suspenso`;
   const irregularidades = [
     ...(!atleta.usuario.ativo ? ["conta_desativada" as const] : []),
     ...(carteirinha.status !== "ativa" ? ["carteirinha_invalidada" as const] : []),
@@ -526,7 +526,7 @@ export async function estornarPeloPresidente(tx: Tx, presidenteId: string, jogoI
   const atual = await bloquearCredenciamento(tx, jogoId, atletaId);
   if (!atual) {
     const anterior = await tx.alteracaoCredenciamento.findFirst({
-      where: { jogoId, atletaId, tipo: "estorno" }, orderBy: [{ registradaEm: "desc" }, { id: "desc" }], select: selecaoAlteracao,
+      where: { jogoId, atletaId, tipo: "estorno", presidenteId: { not: null } }, orderBy: [{ registradaEm: "desc" }, { id: "desc" }], select: selecaoAlteracao,
     });
     if (anterior?.numeroCamisaAnterior === dados.numeroCamisa) return { estorno: apresentarAlteracao(anterior), alterado: false };
     throw new ConflictException("O atleta não está credenciado neste jogo.");
