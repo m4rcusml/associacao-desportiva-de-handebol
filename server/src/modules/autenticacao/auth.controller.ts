@@ -42,7 +42,7 @@ export class AuthController {
     const resposta = (description: string) => ({ description });
     const security = [{ sessionCookie: [] }];
     return {
-      openapi: "3.1.0", info: { title: "Handebol — cadastro e sessão", version: "0.1.0" }, servers: [{ url: "/api" }],
+      openapi: "3.1.0", info: { title: "Handebol — cadastro e sessão", version: "0.1.0", description: "Na implantação hospedada, a API só aceita requisições encaminhadas pelo domínio público do client; acesso direto ao backend responde 403 (\"Acesso somente pelo domínio público\"), exceto /health e /health/ready." }, servers: [{ url: "/api" }],
       components: { securitySchemes: { sessionCookie: { type: "apiKey", in: "cookie", name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}better-auth.session_token` }, arbitragemCookie: securitySchemeArbitragem } },
       "x-socketio": openapiNotificacoes,
       paths: {
@@ -61,6 +61,8 @@ export class AuthController {
         ...openapiCicloJogo,
         ...openapiHistorico,
         ...openapiFotos,
+        "/health": { get: { summary: "Liveness do processo; acessível sem o proxy público", responses: { "200": resposta("{ status: ok }") } } },
+        "/health/ready": { get: { summary: "Readiness: consulta o banco; health check da hospedagem, acessível sem o proxy público", responses: { "200": resposta("{ status: ok }"), "503": resposta("Banco indisponível") } } },
         "/cadastros": { post: { summary: "Cadastro público com solicitação de verificação pendente", requestBody: { required: true, ...json(z.toJSONSchema(cadastroSchema)) }, responses: {
           "201": resposta("Usuário e perfil criados atomicamente; faça login em seguida"), "400": resposta("Cadastro ou clube inválido"), "403": resposta("Origem não autorizada"), "409": resposta("E-mail já cadastrado ou conflito com restrições do cadastro"), "429": resposta("Limite de 5 tentativas por IP a cada 15 minutos"),
         } } },

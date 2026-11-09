@@ -144,28 +144,36 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   HTTP validados. Client não usa SSR de sessão; será preciso validar seu repasse de cookies/cache
   quando introduzido. Arbitragem temporária (MAR-65) validada localmente: cookie separado por jogo,
   revalidação transacional e revogação concorrente com troca de senha, retirada e desativação. Escritas
-  esportivas reais e o ciclo do jogo foram validados localmente (MAR-67 a 69), e a revogação Socket.IO em conexões abertas na MAR-73; TLS/proxy/cookies e Socket.IO hospedados continuam fora da entrega. Recuperação e prova
+  esportivas reais e o ciclo do jogo foram validados localmente (MAR-67 a 69), e a revogação Socket.IO em conexões abertas na MAR-73.
+  TLS/proxy/cookies, isolamento/logout, IP não forjável e Socket.IO por long-polling hospedados passaram na MAR-76
+  em 09/11/2026 (Vercel preview → Render free; evidências no README). Recuperação e prova
   de reset seguem adiadas. A escolha está encerrada; a PEN-030 **não está totalmente encerrada**.
   Regras atuais da arbitragem substituem as pendências
   históricas da conclusão: PEN-022 e PEN-021 resolvidas.
 - PEN-031 parcialmente resolvida: Vercel para frontend, Render para backend e Supabase para banco
   e fotos; usar franquia gratuita de armazenamento nesta etapa, conferindo limites antes de provisionar.
   Serviço de e-mail adiado. Fotos: limites/permissões definidos em requisitos, seção 11, e implementados com
-  validação local na MAR-75 (arquitetura); faltam o bucket hospedado e suas configurações de implantação (MAR-76);
-  produção e custos correspondentes serão avaliados posteriormente.
+  validação local na MAR-75 (arquitetura). A MAR-76 provisionou o teste e validou encaminhamento pela Vercel,
+  segredo do proxy, readiness, cookies, IP e long-polling em 09/11/2026 (README). Na revisão, criou-se o bucket privado
+  e validou-se envio/leitura real por atleta fictício pendente. SQL autenticado confirmou bucket privado, zero políticas
+  e objeto existente; a leitura anônima foi recusada. A consulta REST de metadados do smoke não foi executada,
+  sem extrair a chave secreta; a prova alternativa está no README.
+  Limites gratuitos conferidos documentalmente em 09/11/2026, após provisionar, sem evidência de conferência prévia
+  (fontes e cotas no README). Produção e custos correspondentes serão avaliados posteriormente.
 - PEN-032 parcialmente resolvida: npm e lockfile versionado, versões estáveis recentes compatíveis,
   preferência por Node.js LTS e scripts convencionais. Estrutura mínima de `client/` e `server/`
   criada em 07/11/2026, com pacotes/lockfiles independentes e matriz na arquitetura. PostgreSQL
   17.11 iniciado e consultado em Docker Compose, com volume persistente. Scripts de desenvolvimento,
   lint, tipos e build definidos no README. Prisma 7.10.1 e Better Auth/adaptador 1.7.18 fixados
   e validados juntos; três migrações aplicadas e seed fictício reproduzível. Onze testes de integração,
-  navegador e lint/tipos/build aprovados. Node/npm executados: 26.8.2/12.2.0; patches-alvo ainda não.
-  Conexão hospedada direta ou Session Pooler conforme rede. Faltam alinhamento à versão do Supabase
-  provisionado e detalhes de implantação; produção permanece adiada. Alertas moderados de ferramentas
+  navegador e lint/tipos/build aprovados. Node/npm locais: 26.8.2/12.2.0; patches-alvo ainda não executados localmente.
+  Conexão hospedada pelo Session Pooler (IPv4 do Render; modo sessão para o `LISTEN`), definida na MAR-76.
+  Supabase provisionado em PostgreSQL 17.11 (`us-west-2`), 27 migrações aplicadas; Render executou Node 26.13.0
+  no teste de 09/11/2026. Produção permanece adiada. Alertas moderados de ferramentas
   de lint e a limitação de suporte do ESLint 9 continuam registrados na arquitetura.
 - PEN-033: equipe define os contratos em código/OpenAPI e detalha eventos, reconexão, publicação
   após transação e conflitos. Não exige questionário técnico ao usuário; decisões de comportamento
   ainda indefinidas precisam ser esclarecidas; PEN-023 foi resolvida nesta rodada. Eventos, publicação após
   a transação e reconexão definidos e validados localmente na MAR-73 (arquitetura); destinatários, conteúdo do
-  aviso e motivo da revogação aprovados por Marcus (requisitos, seção 11). Falta validar Socket.IO na
-  implantação de teste (MAR-76).
+  aviso e motivo da revogação aprovados por Marcus (requisitos, seção 11). Socket.IO por long-polling validado na
+  implantação de teste (MAR-76); WebSocket ficou fora por decisão de escopo.

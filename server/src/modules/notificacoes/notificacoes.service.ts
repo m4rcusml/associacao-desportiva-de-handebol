@@ -9,6 +9,7 @@ import { revalidarArbitragem } from "../arbitragem/acesso.js";
 import { cookieArbitragem, lerCookie } from "../arbitragem/arbitragem.controller.js";
 import { hashToken } from "../arbitragem/senha.js";
 import { AuthService } from "../autenticacao/auth.service.js";
+import { segredoConfere } from "../../infrastructure/proxy-confiavel.js";
 
 /** Caminho do Socket.IO sob `/api`, encaminhado ao backend junto com a API REST. */
 export const CAMINHO_SOCKET = "/api/socket.io";
@@ -72,14 +73,15 @@ export class NotificacoesService implements OnApplicationBootstrap, BeforeApplic
   constructor(private readonly prisma: PrismaService, private readonly auth: AuthService) {}
 
   /** Monta o Socket.IO no servidor HTTP do Nest (chamado em `createApp`). */
-  anexar(httpServer: HttpServer) {
+  anexar(httpServer: HttpServer, segredoProxy: string | null = null) {
     const origem = this.auth.clientOrigin;
     this.io = new Server(httpServer, {
       path: CAMINHO_SOCKET,
       serveClient: false,
       cors: { origin: origem, credentials: true },
       // Mesmo critério das escritas REST: somente a origem exata do cliente (impede uso do cookie por outro site).
-      allowRequest: (request, permitir) => permitir(null, request.headers.origin === origem),
+      // Na implantação hospedada, também só pelo proxy público (segredo compartilhado; proxy-confiavel.ts).
+      allowRequest: (request, permitir) => permitir(null, request.headers.origin === origem && (!segredoProxy || segredoConfere(request.headers, segredoProxy))),
     });
     this.io.use((socket, next) => {
       const handshake = handshakeSchema.safeParse(socket.handshake.auth);

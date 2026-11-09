@@ -44,6 +44,8 @@ Não versione o valor gerado. As outras variáveis estão nos `.env.example`:
 | `FOTOS_DIRETORIO` | Diretório local das fotos dos atletas, somente fora de produção; ignorado quando o Supabase está configurado. |
 | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_FOTOS_BUCKET` | Opcionais localmente, definidas juntas: Storage do Supabase com bucket privado. A chave secreta fica só no backend. |
 | `NOTIFICACOES_VARREDURA_MS` | Opcional. Intervalo da varredura das notificações Socket.IO (padrão 30000): reprocessa eventos não publicados e retira conexões revogadas sem aviso do banco (expiração, virada do dia, vínculo). |
+| `PROXY_SEGREDO` | Somente na implantação hospedada (obrigatória com `NODE_ENV=production`), igual no backend e no client: segredo do encaminhamento público. Localmente fica vazia. Ver [Implantação de teste](#implantação-de-teste-mar-76). |
+| `API_ORIGEM` | Somente no client hospedado: origem do backend no Render para onde `/api` é encaminhado. |
 | `NEXT_PUBLIC_API_URL` | Opcional em `client/.env.local`, conforme `client/.env.example`; padrão `http://localhost:3001/api`. Incorporado no build do Next. |
 
 Use `localhost` nas duas URLs do navegador; não misture com `127.0.0.1`.
@@ -296,7 +298,7 @@ real com outra camisa e corrija-a depois do estorno de quem a usava.
 
 O próprio atleta (inclusive pendente de aprovação) ou um presidente envia ou substitui a foto em
 `PUT /api/atletas/{atletaId}/foto`, com o arquivo como corpo binário e `Content-Type` `image/jpeg`, `image/png` ou
-`image/webp`. Até 5 MB (5 × 1024 × 1024 bytes): acima, 413; conteúdo que não é imagem desses formatos ou diverge do
+`image/webp`. Até 4 MB (4 × 1024 × 1024 bytes; 5 MB até a MAR-76): acima, 413; conteúdo que não é imagem desses formatos ou diverge do
 `Content-Type`, 415. A troca não exige nem altera a aprovação, e a resposta não traz chave nem URL.
 `GET /api/atletas/{atletaId}/foto` entrega o arquivo ao próprio atleta, aos presidentes e ao técnico atual, aprovado,
 do clube atual do atleta; após uma transferência, o técnico anterior perde o acesso. A arbitragem lê, com o cookie
@@ -816,6 +818,92 @@ métricas (dois gols válidos e um anulado contam dois, gol corrigido no mesmo c
 azul contando uma desqualificação) seguem cobertos pelo teste de histórico, agora com os nomes sem `temp_`;
 `temp_gol` passa a ser recusado como tipo inválido. A migração `identificadores_metricas` renomeia enum e colunas das
 views sem reescrever dados. Nenhuma dependência nova. Não validado: ambiente hospedado (MAR-76).
+
+## Implantação de teste (MAR-76)
+
+Somente o ambiente de **teste**, com dados fictícios e credenciais próprias; produção, serviço de e-mail e SSR
+autenticado ficam fora. Hospedagem: Vercel (client), Render (backend, [`render.yaml`](render.yaml)) e Supabase
+(PostgreSQL e Storage), sem contratação paga automática.
+
+**Encaminhamento.** O navegador só fala com o domínio da Vercel. O [`client/src/proxy.ts`](client/src/proxy.ts)
+encaminha `/api/*` (REST e Socket.IO) ao Render e acrescenta `X-Proxy-Segredo` e `X-Cliente-IP` (IP lido pela Vercel,
+que sobrescreve `X-Real-IP`/`X-Forwarded-For` recebidos do cliente). Com `PROXY_SEGREDO` definido, o backend recusa
+com 403 requisições e handshakes Socket.IO sem o segredo, exceto `/api/health` e `/api/health/ready`, e reescreve
+`X-Forwarded-For` com o IP do proxy, usado pelos limites do cadastro, da arbitragem e do login. Assim, cookies continuam
+no domínio do client (`__Secure-`, `HttpOnly`, `SameSite=Lax`, sem `Domain`) e o acesso direto ao `onrender.com` não
+contorna os limites. As rewrites da Vercel não fazem upgrade para WebSocket: no teste, o Socket.IO funciona por
+**long-polling** (decisão de Marcus em 09/11/2026); um cliente Socket.IO deve usar `transports: ["polling"]`.
+
+**Antes de criar recursos**, confira nas páginas oficiais os limites vigentes dos planos gratuitos: banco, Storage
+e pausa por inatividade no Supabase; suspensão por inatividade e horas mensais no Render free (a primeira requisição
+após a suspensão demora e reabre a conexão `LISTEN`); termos do plano Hobby na Vercel. Registre na PR o que foi
+conferido e a data.
+
+Conferência documental em **09/11/2026**, posterior ao provisionamento (não comprova a conferência prévia):
+[Supabase Free](https://supabase.com/pricing) inclui 500 MB de banco, 1 GB de arquivos, 5 GB de egress e 5 GB
+de egress em cache, até dois projetos ativos e pausa após uma semana de inatividade.
+[Render Free](https://render.com/docs/free) suspende após 15 minutos de inatividade, leva cerca de um minuto
+para retornar e compartilha 750 horas por workspace/mês; esgotar horas suspende o serviço. Excedentes de banda/build
+podem gerar cobrança quando há método de pagamento, ou suspensão sem ele.
+[Vercel Hobby](https://vercel.com/docs/plans/hobby) destina-se a uso pessoal não comercial: 100 GB de Fast Data
+Transfer, 10 GB de Fast Origin Transfer, um milhão de invocações, 4 CPU-h e 360 GB-h de memória; cotas excedidas
+em geral exigem aguardar 30 dias. Conferir a adequação desse uso antes de ampliar a implantação de demonstração.
+
+1. **Supabase:** crie o projeto de teste na região `us-east-1` (próxima ao Render `virginia`) e registre a versão
+   (`select version();`; localmente usamos 17.11). Em *Connect*, copie a string do **Session Pooler** (IPv4; o modo
+   sessão é necessário ao `LISTEN` das notificações; o Transaction Pooler não serve) e acrescente
+   `?sslmode=require&uselibpqcompat=true`. Esse modo cifra a conexão sem verificar o certificado do Supabase, que não é
+   de uma CA pública; aceitável para dados fictícios, a verificação com `sslrootcert` fica para produção. Em Storage,
+   crie o bucket **privado** `fotos-atletas`, sem políticas de acesso; a API usa a chave secreta (`sb_secret_…`),
+   que nunca vai ao client.
+2. **Vercel:** importe o repositório com *Root Directory* `client` e anote o domínio (`https://<projeto>.vercel.app`).
+   Variáveis: `NEXT_PUBLIC_API_URL=/api`, `API_ORIGEM=https://<serviço>.onrender.com` e `PROXY_SEGREDO`.
+   Use o domínio canônico do frontend em `main`, ou o alias estável da branch no preview; evite a URL efêmera
+   de um deploy, que muda a cada publicação. Após o merge, o teste deve usar `https://associacao-de-handebol.vercel.app`
+   com backend em `main`; essa transição exige conferir novamente as origens configuradas.
+3. **Render:** *New → Blueprint* com este repositório. Preencha `DATABASE_URL`, `BETTER_AUTH_URL` e `CLIENT_ORIGIN`
+   (ambas com a mesma origem estável da Vercel usada pelo navegador, sem `/api`), `ARBITRAGEM_SENHA_CHAVE` e `PROXY_SEGREDO` (gere cada uma com o comando
+   de [Desenvolvimento local](#desenvolvimento-local)), `SUPABASE_URL` e `SUPABASE_SECRET_KEY`. `BETTER_AUTH_SECRET` é
+   gerada pelo Render. O build aplica as migrações (`db:deploy`), e o health check usa `/api/health/ready`.
+4. Copie o `PROXY_SEGREDO` do Render para a Vercel, se ainda não estiver lá, e faça um novo deploy do client.
+5. **Dados fictícios:** crie o presidente inicial executando `npm run presidente:inicial` localmente, com
+   `DATABASE_URL` do teste somente nesse comando, e use contas `@example.invalid`.
+6. **Smoke hospedado:** em `server/`, configure `SMOKE_URL_PUBLICA` (origem estável da Vercel) e
+   `SMOKE_URL_API_DIRETA` (origem do Render) no arquivo local `.env.smoke.local`, ignorado pelo Git, e execute:
+
+   ```sh
+   node --env-file=.env.smoke.local scripts/smoke-hospedado.ts
+   ```
+
+   Ele confere liveness/readiness, recusa do acesso direto sem segredo, origem estranha, corpo no limite das fotos (4 MB) atravessando
+   a Vercel, cookies seguros, sessão isolada e logout, limite de login com IPs forjados, long-polling do Socket.IO por
+   um ciclo de ping de 25 s, autorização do handshake só pelo domínio e pela origem, e a configuração privada do bucket.
+   Defina `SMOKE_EMAIL` e `SMOKE_SENHA` juntas no arquivo local para validar cookies, sessão e logout; com
+   `SMOKE_ATLETA_ID`, também envia e lê uma foto, usando presidente ou o próprio atleta (inclusive pendente).
+   Para consultar o bucket via REST, defina `SMOKE_SUPABASE_SECRET_KEY` junto de `SMOKE_SUPABASE_URL` e
+   `SMOKE_FOTOS_BUCKET`: a consulta autenticada exige HTTP 200, o bucket
+   esperado e `public: false`. Não versione nem cole senha ou chave secreta no histórico do shell; somente quem
+   executa o smoke fornece esses valores. Configuração parcial falha; grupos ausentes são listados como não executados.
+
+Validação local da MAR-76 em 09/11/2026: lint e tipos/build de backend e client, testes de integração (ver PR) e o
+smoke contra `next start` com o `proxy.ts` encaminhando para o backend local com `PROXY_SEGREDO`, com todos os checks
+aprovados, exceto o de IP forjado. Esse check falhou como esperado: o `next start` local repassa o `X-Real-IP` enviado
+pelo cliente, o que a Vercel não faz. Sem cabeçalhos forjados, o 4º login seguido respondeu 429 pelo proxy.
+Validação hospedada em 09/11/2026 (Vercel preview, Render free em Oregon com Node 26.13.0, Supabase PostgreSQL 17.11 pelo
+Session Pooler em `us-west-2`): 27 migrações aplicadas no build e smoke aprovado para saúde,
+recusa direta (403), origem estranha (403), cookie seguro, sessão isolada e logout (conta técnica fictícia), limite do
+login com IPs forjados (429 no 4º), long-polling com ping após 25,0 s, handshake só pelo domínio e origem, corpo de 4 MB
+pela Vercel. Um corpo de 5 MB foi recusado pela Vercel (`FUNCTION_PAYLOAD_TOO_LARGE`), daí o limite
+de 4 MB das fotos. Na revisão, a prova anterior de bucket privado foi considerada **inconclusiva**: consultava objeto
+inexistente e aceitava qualquer status diferente de 200. O bucket ainda não existia e foi criado privado.
+Após corrigir `CLIENT_ORIGIN`/`BETTER_AUTH_URL` no Render para o alias estável da branch, o smoke foi repetido com
+atleta fictício pendente: envio e leitura real da foto, cookies/logout e os demais checks executados passaram.
+A única opção não executada foi a consulta REST de metadados do bucket, sem acessar a chave secreta. Em seu lugar,
+consulta SQL autenticada confirmou `storage.buckets.public = false`, zero políticas em `storage` e o objeto da foto
+existente; acesso anônimo ao objeto pela URL pública retornou HTTP 400 (`statusCode: 404`, bucket não encontrado),
+e pelo endpoint autenticado retornou HTTP 400 por falta de autorização. A leitura pela API com sessão retornou 200.
+Assim, Storage privado e envio/leitura hospedados foram validados sem extrair a chave secreta. WebSocket permanece
+fora do teste por decisão.
 
 ## Caminho feliz
 

@@ -20,6 +20,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "npm run build && prisma db seed",
     "presidente:inicial": "node --env-file-if-exists=.env dist/cli/presidente-inicial.js",
+    "smoke:hospedado": "node scripts/smoke-hospedado.ts",
     "test:integration": "npm run build && node --env-file-if-exists=.env test/run-integration.ts"
   },
   "dependencies": {

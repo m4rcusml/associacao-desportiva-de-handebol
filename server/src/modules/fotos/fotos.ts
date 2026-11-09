@@ -9,8 +9,8 @@ import { extensoes, type TipoImagem } from "./armazenamento.js";
 
 type Tx = Prisma.TransactionClient;
 
-/** Limite por arquivo (seção 11): 5 MB, contados como 5 × 1024 × 1024 bytes. */
-export const LIMITE_FOTO_BYTES = 5 * 1024 * 1024;
+/** Limite por arquivo (seção 11): 4 MB, contados como 4 × 1024 × 1024 bytes; abaixo do limite de corpo da Vercel (MAR-76). */
+export const LIMITE_FOTO_BYTES = 4 * 1024 * 1024;
 const tiposAceitos = Object.keys(extensoes) as TipoImagem[];
 // libvips compartilha cache e fila de avisos: valide uma imagem por vez, sem reaproveitar pixels corrompidos.
 sharp.cache(false);
@@ -58,7 +58,7 @@ export async function lerImagem(request: Request): Promise<{ conteudo: Buffer; t
     if (total > LIMITE_FOTO_BYTES) { excedeu = true; partes.length = 0; continue; }
     partes.push(parte);
   }
-  if (excedeu) throw new PayloadTooLargeException("A foto deve ter no máximo 5 MB.");
+  if (excedeu) throw new PayloadTooLargeException("A foto deve ter no máximo 4 MB.");
   const conteudo = Buffer.concat(partes);
   if (conteudo.length === 0) throw new BadRequestException("Envie o arquivo da foto no corpo da requisição.");
   const tipo = await detectarImagem(conteudo);

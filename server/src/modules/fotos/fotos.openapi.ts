@@ -8,7 +8,7 @@ const indisponivel = { "503": resposta("Armazenamento de fotos indisponível ou 
 export const openapiFotos = {
   "/atletas/{atletaId}/foto": {
     put: {
-      summary: "O próprio atleta ou um presidente envia ou substitui a foto opcional (JPEG, PNG ou WebP, até 5 MB = 5 × 1024 × 1024 bytes), enviada como corpo binário. O conteúdo real é conferido e deve corresponder ao Content-Type. Não exige nem altera a aprovação. O arquivo vai ao Storage privado antes da troca no banco: falha no envio ou na persistência preserva a foto atual",
+      summary: "O próprio atleta ou um presidente envia ou substitui a foto opcional (JPEG, PNG ou WebP, até 4 MB = 4 × 1024 × 1024 bytes), enviada como corpo binário. O conteúdo real é conferido e deve corresponder ao Content-Type. Não exige nem altera a aprovação. O arquivo vai ao Storage privado antes da troca no banco: falha no envio ou na persistência preserva a foto atual",
       security: [{ sessionCookie: [] }], parameters: [uuid("atletaId")],
       requestBody: { required: true, content: imagem },
       responses: {
@@ -17,7 +17,7 @@ export const openapiFotos = {
         "401": resposta("Sessão ou cadastro indisponível"),
         "403": resposta("Conta que não é o próprio atleta nem presidente, ou origem não autorizada"),
         "404": resposta("Atleta não encontrado"),
-        "413": resposta("Arquivo acima de 5 MB"),
+        "413": resposta("Arquivo acima de 4 MB"),
         "415": resposta("Content-Type diferente de image/jpeg, image/png ou image/webp, conteúdo que não é imagem válida desses formatos ou divergente do Content-Type"),
         ...indisponivel,
       },

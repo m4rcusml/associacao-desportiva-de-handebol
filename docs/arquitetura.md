@@ -181,11 +181,12 @@ Limite de tentativas: `/api/cadastros` usa `@nestjs/throttler`, com 5 requisiç�
 limite do Better Auth (3 a cada 10 s por IP, em memória), habilitado explicitamente em todos os
 ambientes. Memória atende uma instância e zera a cada reinício; várias réplicas exigirão
 armazenamento compartilhado. O 409 de e-mail repetido permanece e revela contas existentes;
-reavaliar junto com a UX final e a confirmação por e-mail. **Pendente na implantação:** atrás do
-encaminhamento Vercel/Render, o throttler vê o IP do proxy enquanto `trust proxy` não for
-configurado no Express (um único contador para todos), e o Better Auth lê `X-Forwarded-For`, que o
-cliente pode forjar sem proxy confiável e que, ausente em produção, gera um contador compartilhado.
-Configurar `trust proxy` e `advanced.ipAddress` conforme os proxies reais antes da implantação de teste.
+reavaliar junto com a UX final e a confirmação por e-mail. IP na implantação (MAR-76): com
+`PROXY_SEGREDO`, só o proxy público chega à API (segredo compartilhado, comparado em tempo constante), e o
+backend reescreve `X-Forwarded-For` com o `X-Cliente-IP` informado por ele, com `trust proxy` ligado; o throttler
+(`req.ip`) e o Better Auth (`advanced.ipAddress`) passam a contar por cliente, e cabeçalhos forjados são descartados.
+Sem `PROXY_SEGREDO` (desenvolvimento e testes) o comportamento anterior continua: o Better Auth lê
+`X-Forwarded-For` do cliente, e o throttler, o IP do socket.
 
 Client usa fetch com cookies e sem cache; as páginas são cascas estáticas, sem SSR de sessão.
 Ao introduzir SSR autenticado, repassar cookies e provar isolamento/cache antes de utilizá-lo.
@@ -381,8 +382,9 @@ locais e Secure na configuração de produção, origem/CORS, expiração, múlt
 conta inativa/sem domínio e replays paralelos após logout. Cadastro de atleta, login, recarga,
 rota protegida e logout passaram no navegador local. A arbitragem temporária e a revogação HTTP concorrente
 foram validadas depois (MAR-65 a 72), e a revogação Socket.IO em conexões abertas na MAR-73, localmente.
-Isso **não** comprova TLS/proxy hospedado nem Socket.IO pelo encaminhamento Vercel/Render. PEN-030
-permanece parcialmente aberta. Reset e uso único concorrente serão validados quando retomados.
+Na MAR-76, TLS/proxy, cookies e Socket.IO por long-polling pelo encaminhamento Vercel/Render foram validados
+no ambiente de teste em 09/11/2026 (evidências no README). PEN-030 permanece parcialmente aberta:
+reset e uso único concorrente serão validados quando retomados.
 Não há Redis nem serviço de e-mail nesta entrega.
 
 ## Interface, conectividade e arquivos
@@ -395,7 +397,7 @@ Não há Redis nem serviço de e-mail nesta entrega.
 - Fotos ficam no Supabase Storage, usando a franquia gratuita nesta etapa; o banco mantém
   a referência. Conferir limites vigentes antes de provisionar; não contratar plano pago automaticamente.
 
-Fotos opcionais JPEG/PNG/WebP de até 5 MB; validar conteúdo e tamanho no backend.
+Fotos opcionais JPEG/PNG/WebP de até 4 MB (reduzido de 5 MB na MAR-76: a função da Vercel que encaminha `/api` recusa corpos acima de ~4,5 MB); validar conteúdo e tamanho no backend.
 Armazenamento privado, com consulta autorizada pelo backend ou URL assinada de curta duração.
 Permissões em [requisitos, seção 11](requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026);
 QR não dá acesso público.
@@ -406,7 +408,7 @@ Implementação da MAR-75 (09/11/2026), validada localmente:
   do Supabase por `fetch`, sem SDK adicional. Não há URL pública nem assinada; toda leitura passa pela
   API, que revalida a permissão. Sem as variáveis do Supabase, um diretório local (`FOTOS_DIRETORIO`)
   serve ao desenvolvimento e aos testes, nunca em produção; sem nenhuma configuração, as rotas de fotos respondem 503.
-- Envio como corpo binário com `Content-Type` da imagem; 5 MB contados como 5 × 1024 × 1024 bytes. O formato é
+- Envio como corpo binário com `Content-Type` da imagem; 4 MB contados como 4 × 1024 × 1024 bytes. O formato é
   conferido pelo decoder Sharp 0.35.5 e deve coincidir com o `Content-Type`. Depois de identificar JPEG/PNG/WebP,
   o backend decodifica todos os pixels (incluindo quadros de WebP animado) com `failOn: "warning"`, antes de enviar
   ao Storage. Só ler metadados não valida os pixels; `stats()` percorre os pixels sem criar um buffer JavaScript
@@ -420,7 +422,8 @@ Implementação da MAR-75 (09/11/2026), validada localmente:
   troca `Atleta.fotoChave` com a linha bloqueada. Falha no envio ou na transação preserva a foto atual, e o
   objeto novo é removido se o banco confirmadamente não o referencia. O anterior é removido após o commit; se
   essa remoção falhar, resta um órfão, nunca uma referência inválida. A limpeza de órfãos está no README.
-- A prova hospedada (bucket privado, políticas, chave secreta e limites gratuitos) fica na MAR-76.
+- A prova hospedada de envio/leitura, bucket privado e ausência de políticas foi concluída na revisão da MAR-76,
+  sem extrair a chave secreta; método e limites gratuitos registrados no README.
 
 Referências da validação de imagens: [Sharp 0.35.5](https://sharp.pixelplumbing.com/changelog/v0.35.5/),
 [metadados](https://sharp.pixelplumbing.com/api-input/), [saída dos pixels](https://sharp.pixelplumbing.com/api-output/) e
@@ -517,23 +520,41 @@ de planos gratuitos; plano e custos serão avaliados posteriormente.
 
 Validar o encaminhamento do domínio público entre Vercel e Render, cookies, SSR e Socket.IO
 na implantação de teste; a escolha dos fornecedores não comprova essa integração.
+
+Implantação de teste provisionada na MAR-76 (passo a passo e evidências do smoke no [README](../README.md#implantação-de-teste-mar-76)):
+
+- O `proxy.ts` do client encaminha `/api/*` ao Render com o segredo compartilhado e o IP do cliente; cookies e
+  API ficam no domínio da Vercel. O backend recusa acesso direto sem o segredo, exceto `/api/health` (liveness) e
+  `/api/health/ready` (readiness com consulta ao banco, health check do Render).
+- As rewrites da Vercel não fazem upgrade para WebSocket. No teste, o Socket.IO usa long-polling pelo domínio
+  público (decisão de Marcus em 09/11/2026). WebSocket exigiria domínio próprio compartilhado entre client e API.
+- Render free sem pre-deploy: migrações versionadas aplicadas no fim do build; uma instância.
+- Banco pelo Session Pooler do Supabase (IPv4 e modo sessão, exigido pelo `LISTEN`), com TLS sem verificação do
+  certificado (`sslmode=require&uselibpqcompat=true`) no teste; verificação com a CA do Supabase fica para produção.
+- `BETTER_AUTH_URL` e `CLIENT_ORIGIN` usam a mesma origem estável da Vercel acessada pelo navegador (domínio
+  canônico em `main`, alias da branch em preview), evitando URLs efêmeras de deploy; `PROXY_SEGREDO` é obrigatório em produção.
+
+Em 09/11/2026, Vercel preview, Render free em Oregon com Node 26.13.0 e Supabase PostgreSQL 17.11 pelo Session Pooler
+em `us-west-2` passaram pelo smoke de saúde, origem, cookies/isolamento/logout, IP não forjável,
+long-polling (ping após 25,0 s) e corpo de 4 MB; 27 migrações aplicadas. A revisão criou o bucket privado e validou
+envio/leitura real pela API com atleta fictício pendente. SQL autenticado confirmou bucket privado, zero políticas
+de Storage e objeto existente; a leitura anônima desse objeto foi recusada. A consulta REST de metadados do smoke
+não foi executada, sem extrair a chave secreta; as evidências alternativas estão no README.
+Os limites gratuitos foram conferidos documentalmente após o provisionamento, em 09/11/2026 (README).
+
 A estimativa de porte é de dezenas a poucas centenas, sem dimensionamento confirmado de
 atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disponibilidade.
 
 ## Decisões ainda necessárias
 
-1. Completar a prova da PEN-030 na implantação de teste (cookies, TLS/proxy e Socket.IO pelo encaminhamento);
-   sessão temporária, escritas esportivas e revogação HTTP e Socket.IO concorrentes foram validadas localmente
-   (MAR-65 a 73). Contas permanentes, migrações, seed e prova local de cadastro/logout já foram validados; comandos
-   no [README](../README.md#desenvolvimento-local).
-2. Detalhar e validar implantação de teste, encaminhamento, cookies, segredos, IP real do cliente
-   para os limites de tentativa (`trust proxy` e `advanced.ipAddress`) e verificações;
-   implementar limites e permissões das fotos definidos nos requisitos.
-3. Manter em código o contrato da API (OpenAPI, com eventos Socket.IO na extensão `x-socketio`). Eventos,
+1. Retomar a prova de recuperação/reset da PEN-030 quando esse fluxo for implementado. Cookies, TLS/proxy e
+   Socket.IO por long-polling hospedados passaram na MAR-76; sessão temporária, escritas esportivas e revogação
+   HTTP e Socket.IO concorrentes foram validadas localmente (MAR-65 a 73).
+2. Manter em código o contrato da API (OpenAPI, com eventos Socket.IO na extensão `x-socketio`). Eventos,
    publicação após transação e reconexão foram definidos na MAR-73; comportamentos de produto ainda indefinidos
    exigem esclarecimento com Marcus.
-4. Retomar serviço de e-mail, recuperação de senha e sua validação em etapa posterior.
-5. Detalhar produção, logs e backup/restauração posteriormente, sem bloquear o início local.
+3. Retomar serviço de e-mail, recuperação de senha e sua validação em etapa posterior.
+4. Detalhar produção, logs e backup/restauração posteriormente, sem bloquear o início local.
 
 Decisões das MAR-80/81/82 estão em requisitos, seções 13 a 15: correção administrativa,
 redução de suspensão, ficha/carteirinha e métricas. A aprovação não comprova implementação;
