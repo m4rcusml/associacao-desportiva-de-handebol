@@ -32,6 +32,9 @@ Desde a MAR-65, a arbitragem entra no dia do jogo (fuso do local) pela conta des
 senha do jogo, com sessão temporária própria; presidente e contas designadas consultam e trocam a senha.
 As operações esportivas da arbitragem (credenciamento, lançamentos, início/encerramento) continuam nas
 MAR-67 a MAR-69.
+Desde a MAR-66, o presidente aplica, consulta e revoga suspensões manuais; encerrar/cancelar o campeonato
+encerra os saldos. O cumprimento no encerramento do jogo e o bloqueio no credenciamento estão prontos para
+a MAR-69 e a MAR-67.
 Detalhes aprovados por Marcus (MAR-65): a primeira senha é gerada na primeira consulta pelo presidente
 ou por conta designada; antes disso não há entrada por senha. Ela ignora maiúsculas, espaços e hífens.
 Cada entrada por senha gera um registro próprio com o nome informado, sem presumir identidade. A sessão
@@ -370,8 +373,9 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   preservando autoria histórica. Sem técnico, arbitragem credencia diretamente; presidente
   não ganha uma operação de escalação substituta.
   Detalhes aprovados por Marcus (MAR-64): não se escolhe quem seria barrado no credenciamento.
-  A escolha exige atleta aprovado, com vínculo atual no clube, conta ativa e carteirinha ativa
-  (suspensões entram com a MAR-66). Atleta com conta desativada também não pode ser credenciado
+  A escolha exige atleta aprovado, com vínculo atual no clube, conta ativa e carteirinha ativa.
+  Suspensão vigente não impede a escolha, porque o saldo pode ser cumprido antes do jogo: a escalação
+  só a sinaliza e o credenciamento barra (decisão de Marcus, MAR-66). Atleta com conta desativada também não pode ser credenciado
   nem entrar em quadra, o que a MAR-67 deve aplicar. Escolha já feita não é apagada se o atleta
   ficar inapto depois: o credenciamento o barra. Retirar a escolha de atleta já credenciado retira
   só a escolha; o credenciamento continua independente, inclusive de atleta não escolhido.
@@ -446,6 +450,11 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   liberando o saldo indevido. Não altera jogos passados nem compensa partidas perdidas pelo atleta.
 - Encerrar/cancelar campeonato encerra saldos restantes e preserva histórico; não transfere
   punições para outro campeonato. Registrar esse encerramento, distinto do cumprimento por jogos.
+  Detalhes aprovados por Marcus (MAR-66): suspensão manual exige atleta aprovado, com conta ativa ou
+  desativada, e campeonato planejado ou em andamento, sem exigir que o clube atual esteja inscrito.
+  Jogo do clube já em andamento na aplicação, sem credenciamento do atleta, conta para o cumprimento;
+  somente o jogo em que ele já estava credenciado antes da aplicação é preservado. Por ora só o
+  presidente consulta suspensões; a visibilidade para atleta, técnico e público segue a MAR-67/MAR-74.
 - Interrompidos definitivamente, abandonados, W.O. e invalidados contam para cumprimento;
   adiados/cancelados não contam enquanto não realizados. A partida que será retomada permanece
   o mesmo jogo e só conta uma vez no encerramento definitivo.

@@ -183,6 +183,21 @@ por senha e preserva as designadas. A sessão temporária não consulta nem troc
 designação, encerrar a sessão da conta de origem ou desativar a conta invalida as entradas por designação;
 cancelar o campeonato revoga os acessos dos jogos cancelados.
 
+#### Suspensões manuais (MAR-66)
+
+O presidente suspende atleta aprovado (conta ativa ou desativada) em campeonato planejado ou em andamento:
+`POST /api/campeonatos/{campeonatoId}/suspensoes` (`atletaId`, `quantidadeJogos` inteira positiva e `motivo`),
+registrando quem aplicou e quando. Suspensões simultâneas do mesmo atleta coexistem e são cumpridas em
+paralelo. `GET` na mesma rota (filtro opcional `atletaId`) mostra a situação (`vigente`, `cumprida`,
+`revogada` ou `saldo_encerrado`), jogos cumpridos e restantes; o saldo é derivado dos cumprimentos.
+`POST .../suspensoes/{suspensaoId}/revogar` revoga a vigente, preservando aplicação e jogos cumpridos
+(repetir devolve `alterado: false`; cumprida ou com saldo encerrado responde 409). Encerrar ou cancelar o
+campeonato encerra o saldo restante, sem transportá-lo. O cumprimento é registrado no encerramento do jogo
+(`registrarCumprimentos`, a ser chamado pela MAR-69): cada jogo finalizado do clube conta uma vez para
+cada suspensão vigente, mesmo sem escalação, exceto o jogo em que o atleta já estava credenciado antes da
+aplicação. A escalação sinaliza `suspensaoPendente` sem impedir a escolha; o credenciamento (MAR-67) barra.
+Somente o presidente consulta suspensões nesta etapa.
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -456,6 +471,24 @@ reconhecido sem devolver permissão, revogação definitiva no banco; troca, des
 a autorização em curso; emissões e trocas simultâneas. Uma migração nova; nenhuma dependência nova.
 Não validado: Socket.IO (MAR-73), início/encerramento/adiamento reais (MAR-69) e cookies `__Host-` atrás
 do proxy hospedado.
+
+Validação local da MAR-66 em 08/11/2026: lint, tipos/build e 107 testes de integração aprovados,
+incluindo sete novos: aplicação com responsável, data e motivo, validações (quantidade, motivo, campos
+extras), atleta pendente, inexistente ou técnico, conta desativada e clube não inscrito aceitos, acesso
+indevido; aplicações simultâneas coexistindo e cumpridas em paralelo, encerramento repetido e simultâneo
+sem duplicar e saldo nunca negativo (inclusive inserção direta recusada pelo banco); jogo credenciado antes
+da aplicação preservado, jogo em andamento sem credenciamento contando e jogo encerrado antes não contando;
+outro campeonato e outro clube sem efeito; revogação simultânea, definitiva e preservando cumprimentos,
+recusada para cumprida; encerrar e cancelar o campeonato encerrando só o saldo das vigentes, sem
+transportar; escalação sinalizando a suspensão sem impedir a escolha; dados da aplicação, exclusão e
+cumprimentos imutáveis no banco. Uma migração nova; nenhuma dependência nova. Não validado: chamada real
+no encerramento do jogo (MAR-69) e bloqueio no credenciamento (MAR-67), que usarão as funções exportadas.
+
+Após revisão da MAR-66: lint, tipos/build e **109 testes de integração aprovados**. Dois testes novos
+reproduziram as falhas antes da correção e passaram depois: revogação aguardando o último cumprimento
+retorna 409 e mantém a suspensão cumprida; aplicação de 101 jogos é aceita pela API e pelo banco.
+Revogação consulta o saldo depois de obter o bloqueio. A migração adicional remove o teto de 100 jogos
+sem modificar a migração já aplicada; permanece o intervalo técnico do `INTEGER` do PostgreSQL.
 
 ## Caminho feliz
 
