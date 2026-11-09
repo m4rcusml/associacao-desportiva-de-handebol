@@ -54,15 +54,21 @@ async function lerJogo(db: Pick<Tx, "jogo">, jogoId: string): Promise<JogoCreden
 
 const selecaoParticipacao = {
   id: true, inscricaoClubeId: true, numeroCamisa: true, credenciadoEm: true, entrouEmQuadraEm: true, escolhidaEm: true,
+  entradaAnuladaEm: true, entradaAnuladaPorPresidenteId: true, registradaPorPresidenteId: true, irregularidades: true,
   atleta: { select: { usuario: { select: { id: true, nomeCompleto: true } } } },
 } satisfies Prisma.ParticipacaoSelect;
 type LinhaParticipacao = Prisma.ParticipacaoGetPayload<{ select: typeof selecaoParticipacao }>;
 
-/** Dados da participação expostos à arbitragem: somente o necessário à operação (RNF-012). */
+/**
+ * Dados da participação expostos à arbitragem: somente o necessário à operação (RNF-012). `entradaAnulada` e
+ * `registroAdministrativo` (MAR-83) só existem nas correções do presidente após o encerramento; senão ficam null.
+ */
 function apresentar(p: LinhaParticipacao) {
   return {
     participacaoId: p.id, inscricaoId: p.inscricaoClubeId, atleta: p.atleta.usuario,
     numeroCamisa: p.numeroCamisa, credenciadoEm: p.credenciadoEm, entrouEmQuadraEm: p.entrouEmQuadraEm, escalado: p.escolhidaEm !== null,
+    entradaAnulada: p.entradaAnuladaEm ? { anuladaEm: p.entradaAnuladaEm, presidenteId: p.entradaAnuladaPorPresidenteId } : null,
+    registroAdministrativo: p.registradaPorPresidenteId ? { presidenteId: p.registradaPorPresidenteId, irregularidades: p.irregularidades } : null,
   };
 }
 
@@ -271,13 +277,23 @@ type Corretor = "arbitragem" | "presidente";
 
 const selecaoAlteracao = {
   id: true, tipo: true, inscricaoClubeId: true, credenciadoEm: true, numeroCamisaAnterior: true, numeroCamisaNova: true, registradaEm: true,
+  entrouEmQuadraEm: true, entradaAnuladaEm: true, entradaAnuladaPorPresidenteId: true, registradaPorPresidenteId: true, irregularidades: true,
+  presidenteId: true,
   atleta: { select: { usuario: { select: { id: true, nomeCompleto: true } } } },
 } satisfies Prisma.AlteracaoCredenciamentoSelect;
 
+/**
+ * Registro do histórico com a cópia do credenciamento alterado (MAR-71) e, desde a MAR-83, da entrada em quadra, da sua
+ * anulação e do registro administrativo; `presidenteId` é o autor quando foi o presidente (null para a arbitragem).
+ */
 function apresentarAlteracao(a: Prisma.AlteracaoCredenciamentoGetPayload<{ select: typeof selecaoAlteracao }>) {
   return {
     id: a.id, tipo: a.tipo, inscricaoId: a.inscricaoClubeId, atleta: a.atleta.usuario, credenciadoEm: a.credenciadoEm,
     numeroCamisaAnterior: a.numeroCamisaAnterior, numeroCamisaNova: a.numeroCamisaNova, registradaEm: a.registradaEm,
+    entrouEmQuadraEm: a.entrouEmQuadraEm,
+    entradaAnulada: a.entradaAnuladaEm ? { anuladaEm: a.entradaAnuladaEm, presidenteId: a.entradaAnuladaPorPresidenteId } : null,
+    registroAdministrativo: a.registradaPorPresidenteId ? { presidenteId: a.registradaPorPresidenteId, irregularidades: a.irregularidades } : null,
+    presidenteId: a.presidenteId,
   };
 }
 
@@ -301,10 +317,12 @@ function credenciamentoMudou(atual: LinhaParticipacao) {
 }
 
 /** Grava no histórico a cópia do credenciamento vigente, na mesma transação da alteração (o trigger exige). */
-async function registrarAlteracao(tx: Tx, participacaoId: string, tipo: "correcao_camisa" | "estorno", numeroCamisaNova: number | null) {
+async function registrarAlteracao(tx: Tx, participacaoId: string, tipo: "correcao_camisa" | "estorno", numeroCamisaNova: number | null, presidenteId: string | null = null) {
   const [{ id }] = await tx.$queryRaw<{ id: string }[]>`
-    INSERT INTO "AlteracaoCredenciamento" (id, "jogoId", "inscricaoClubeId", "vinculoClubeId", "atletaId", "carteirinhaId", "credenciadoEm", tipo, "numeroCamisaAnterior", "numeroCamisaNova", "registradaEm")
-    SELECT gen_random_uuid(), "jogoId", "inscricaoClubeId", "vinculoClubeId", "atletaId", "carteirinhaId", "credenciadoEm", ${tipo}::"TipoAlteracaoCredenciamento", "numeroCamisa", ${numeroCamisaNova}, now()
+    INSERT INTO "AlteracaoCredenciamento" (id, "jogoId", "inscricaoClubeId", "vinculoClubeId", "atletaId", "carteirinhaId", "credenciadoEm", tipo, "numeroCamisaAnterior", "numeroCamisaNova", "registradaEm",
+      "entrouEmQuadraEm", "entradaAnuladaEm", "entradaAnuladaPorPresidenteId", "registradaPorPresidenteId", irregularidades, "presidenteId")
+    SELECT gen_random_uuid(), "jogoId", "inscricaoClubeId", "vinculoClubeId", "atletaId", "carteirinhaId", "credenciadoEm", ${tipo}::"TipoAlteracaoCredenciamento", "numeroCamisa", ${numeroCamisaNova}, now(),
+      "entrouEmQuadraEm", "entradaAnuladaEm", "entradaAnuladaPorPresidenteId", "registradaPorPresidenteId", irregularidades, ${presidenteId}::uuid
     FROM "Participacao" WHERE id = ${participacaoId}::uuid
     RETURNING id`;
   return tx.alteracaoCredenciamento.findUniqueOrThrow({ where: { id }, select: selecaoAlteracao });
@@ -316,7 +334,7 @@ async function registrarAlteracao(tx: Tx, participacaoId: string, tipo: "correca
  * (RN-019); a disputa simultânea fica com a primeira e as demais recebem 409. Corrigir para a camisa que o atleta já
  * tem devolve `alterado: false` (reenvio). Ordem dos bloqueios: jogo → participação (FOR UPDATE).
  */
-async function corrigirCamisa(tx: Tx, corretor: Corretor, status: StatusJogo, jogoId: string, atletaId: string, dados: z.infer<typeof correcaoCamisaSchema>) {
+async function corrigirCamisa(tx: Tx, corretor: Corretor, status: StatusJogo, jogoId: string, atletaId: string, dados: z.infer<typeof correcaoCamisaSchema>, presidenteId: string | null = null) {
   if (corretor === "presidente" && status !== "finalizado") {
     throw new ConflictException("O presidente corrige a camisa somente após o encerramento do jogo; antes, quem corrige é a arbitragem.");
   }
@@ -327,7 +345,7 @@ async function corrigirCamisa(tx: Tx, corretor: Corretor, status: StatusJogo, jo
   const ocupada = await tx.participacao.findFirst({ where: { jogoId, inscricaoClubeId: atual.inscricaoClubeId, numeroCamisa: dados.numeroCamisa }, select: { id: true } });
   if (ocupada) throw new ConflictException(`A camisa ${dados.numeroCamisa} já está em uso por outro atleta deste clube no jogo.`);
 
-  const alteracao = await registrarAlteracao(tx, atual.id, "correcao_camisa", dados.numeroCamisa);
+  const alteracao = await registrarAlteracao(tx, atual.id, "correcao_camisa", dados.numeroCamisa, presidenteId);
   await tx.participacao.update({ where: { id: atual.id }, data: { numeroCamisa: dados.numeroCamisa } });
   const corrigida = await credenciamentoDoAtleta(tx, jogoId, atletaId);
   await registrarEvento(tx, jogoId, "credenciamento_corrigido", atletaId);
@@ -339,11 +357,14 @@ export async function corrigirCamisaPelaArbitragem(tx: Tx, jogoId: string, token
   return corrigirCamisa(tx, "arbitragem", status, jogoId, atletaId, dados);
 }
 
-/** Presidente corrige a camisa somente após o encerramento, sem reabrir a arbitragem; o jogo fica em FOR SHARE. */
-export async function corrigirCamisaPeloPresidente(tx: Tx, jogoId: string, atletaId: string, dados: z.infer<typeof correcaoCamisaSchema>) {
+/**
+ * Presidente corrige a camisa somente após o encerramento, sem reabrir a arbitragem; o jogo fica em FOR SHARE.
+ * Desde a MAR-83 o histórico registra o presidente autor.
+ */
+export async function corrigirCamisaPeloPresidente(tx: Tx, jogoId: string, atletaId: string, dados: z.infer<typeof correcaoCamisaSchema>, presidenteId: string | null = null) {
   const [jogo] = await tx.$queryRaw<{ status: StatusJogo }[]>`SELECT status FROM "Jogo" WHERE id = ${jogoId}::uuid FOR SHARE`;
   if (!jogo) throw new NotFoundException("Jogo não encontrado.");
-  return corrigirCamisa(tx, "presidente", jogo.status, jogoId, atletaId, dados);
+  return corrigirCamisa(tx, "presidente", jogo.status, jogoId, atletaId, dados, presidenteId);
 }
 
 /**
@@ -351,7 +372,7 @@ export async function corrigirCamisaPeloPresidente(tx: Tx, jogoId: string, atlet
  * gols/penalidades registrados (inclusive anulados, que preservam a participação no histórico). Grava a cópia do
  * credenciamento no histórico e retira carteirinha, data e camisa; a escolha do técnico, se houver, permanece, e sem
  * ela a participação é excluída. O atleta pode ser credenciado de novo pelas regras normais. Casos com entrada ou
- * lançamentos ficam com o presidente, cujo procedimento ainda está pendente (PEN-019 residual).
+ * lançamentos ficam com o presidente após o encerramento (`estornarPeloPresidente`, MAR-83).
  * Repetir o estorno já feito devolve `alterado: false`. Ordem: jogo → arbitragem → sessão → participação (FOR UPDATE).
  */
 export async function estornarCredenciamento(tx: Tx, jogoId: string, token: string | undefined, atletaId: string, dados: z.infer<typeof estornoSchema>) {
@@ -366,10 +387,10 @@ export async function estornarCredenciamento(tx: Tx, jogoId: string, token: stri
   }
   if (atual.numeroCamisa !== dados.numeroCamisa) throw credenciamentoMudou(atual);
   if (atual.entrouEmQuadraEm) {
-    throw new ConflictException("Atleta que já entrou em quadra não tem o credenciamento desfeito pela arbitragem; a correção cabe ao presidente, com procedimento ainda pendente (PEN-019).");
+    throw new ConflictException("Atleta que já entrou em quadra não tem o credenciamento desfeito pela arbitragem; a correção cabe ao presidente, após o encerramento do jogo.");
   }
   if (await tx.lancamentoJogo.count({ where: { participacaoId: atual.id } }) > 0) {
-    throw new ConflictException("Atleta com gols ou penalidades registrados não tem o credenciamento desfeito pela arbitragem; a correção cabe ao presidente, com procedimento ainda pendente (PEN-019).");
+    throw new ConflictException("Atleta com gols ou penalidades registrados não tem o credenciamento desfeito pela arbitragem; a correção cabe ao presidente, após o encerramento do jogo.");
   }
 
   const estorno = await registrarAlteracao(tx, atual.id, "estorno", null);
@@ -380,6 +401,172 @@ export async function estornarCredenciamento(tx: Tx, jogoId: string, token: stri
   }
   await registrarEvento(tx, jogoId, "credenciamento_desfeito", atletaId);
   return { estorno: apresentarAlteracao(estorno), alterado: true };
+}
+
+/** Registro administrativo da participação real (MAR-83): atleta, camisa usada no jogo e se entrou em quadra. */
+export const registroAdministrativoSchema = z.strictObject({
+  atletaId: z.uuid().transform(id => id.toLowerCase()), numeroCamisa: camisa, entrouEmQuadra: z.boolean(),
+});
+
+/**
+ * Bloqueios das correções administrativas (MAR-83), na mesma ordem das correções de lançamentos do presidente (MAR-70):
+ * campeonato (FOR SHARE) → jogo (FOR NO KEY UPDATE). Assim, as correções do mesmo jogo pelo presidente se serializam.
+ * Somente com o jogo finalizado (decisão de Marcus, 09/11/2026); antes, quem corrige é a arbitragem.
+ */
+async function jogoParaCorrecaoAdministrativa(tx: Tx, jogoId: string, acao: string) {
+  const referencia = await tx.jogo.findUnique({ where: { id: jogoId }, select: { campeonatoId: true } });
+  if (!referencia) throw new NotFoundException("Jogo não encontrado.");
+  await tx.$queryRaw`SELECT id FROM "Campeonato" WHERE id = ${referencia.campeonatoId}::uuid FOR SHARE`;
+  const [jogo] = await tx.$queryRaw<{ status: StatusJogo; iniciadoEm: Date | null; campeonatoId: string; inscricaoClubeAId: string; inscricaoClubeBId: string }[]>`
+    SELECT status, "iniciadoEm", "campeonatoId", "inscricaoClubeAId", "inscricaoClubeBId" FROM "Jogo" WHERE id = ${jogoId}::uuid FOR NO KEY UPDATE`;
+  if (!jogo) throw new NotFoundException("Jogo não encontrado.");
+  if (jogo.status !== "finalizado") {
+    throw new ConflictException(`O presidente ${acao} somente após o encerramento do jogo; antes, quem corrige é a arbitragem.`);
+  }
+  return jogo;
+}
+
+/**
+ * Presidente registra a participação real de um atleta após o encerramento (MAR-83; seção 13), por exemplo Pedro, que
+ * jogou no lugar de João credenciado por engano. Exige atleta aprovado, com carteirinha e com vínculo com um dos clubes
+ * do jogo no início da partida (o clube representado vem desse vínculo, mesmo que ele tenha sido transferido depois).
+ * Não aplica as condições do credenciamento normal: o que o impediria fica gravado em `irregularidades` —
+ * `suspensao` quando este jogo contou como cumprimento de uma suspensão dele, `conta_desativada` e
+ * `carteirinha_invalidada` pela situação no registro. A participação não fica regular, o resultado não muda e o
+ * cumprimento já registrado permanece (decisão de Marcus, 09/11/2026); punição adicional é decisão manual.
+ * Gols e penalidades são atribuídos depois, um a um, pela correção dos lançamentos (transferência). A camisa continua
+ * única no clube/jogo: se for a do atleta credenciado por engano, use outra e corrija-a após o estorno dele.
+ * Repetir com os mesmos dados devolve `alterado: false`. A arbitragem não ganha novos credenciamentos com isso.
+ */
+export async function registrarParticipacaoAdministrativa(tx: Tx, presidenteId: string, jogoId: string, dados: z.infer<typeof registroAdministrativoSchema>) {
+  const jogo = await jogoParaCorrecaoAdministrativa(tx, jogoId, "registra a participação");
+  const { atletaId } = dados;
+  await bloquearGeracaoAutomatica(tx, jogo.campeonatoId, atletaId);
+  await bloquearAtleta(tx, atletaId);
+
+  const existente = await credenciamentoDoAtleta(tx, jogoId, atletaId);
+  if (existente) {
+    if (existente.registradaPorPresidenteId && existente.numeroCamisa === dados.numeroCamisa && (existente.entrouEmQuadraEm !== null) === dados.entrouEmQuadra) {
+      return { participacao: apresentar(existente), alterado: false };
+    }
+    throw new ConflictException(`Atleta já credenciado neste jogo com a camisa ${existente.numeroCamisa}. Corrija o credenciamento existente.`);
+  }
+  if (!jogo.iniciadoEm) throw new ConflictException("Jogo encerrado sem início (W.O.) não tem participações a registrar.");
+
+  const [vinculo] = await tx.$queryRaw<{ id: string; inscricaoId: string }[]>`
+    SELECT v.id, i.id AS "inscricaoId" FROM "VinculoClube" v JOIN "InscricaoClube" i ON i."clubeId" = v."clubeId"
+    WHERE v."atletaId" = ${atletaId}::uuid AND i.id IN (${jogo.inscricaoClubeAId}::uuid, ${jogo.inscricaoClubeBId}::uuid)
+      AND v.inicio <= ${jogo.iniciadoEm} AND (v.fim IS NULL OR v.fim > ${jogo.iniciadoEm})
+    FOR SHARE OF v`;
+  if (!vinculo) throw new ConflictException("O atleta não tinha vínculo com um dos clubes do jogo no início da partida.");
+  const atleta = await tx.atleta.findUniqueOrThrow({ where: { usuarioId: atletaId }, select: { statusVerificacao: true, usuario: { select: { ativo: true } } } });
+  if (atleta.statusVerificacao !== "aprovado") throw new ConflictException("Somente atleta aprovado tem a participação registrada.");
+  const [carteirinha] = await tx.$queryRaw<{ id: string; status: string }[]>`
+    SELECT id, status::text AS status FROM "Carteirinha" WHERE "atletaId" = ${atletaId}::uuid FOR SHARE`;
+  if (!carteirinha) throw new ConflictException("Somente atleta com carteirinha tem a participação registrada.");
+  const [{ suspenso }] = await tx.$queryRaw<{ suspenso: boolean }[]>`
+    SELECT EXISTS (
+      SELECT 1 FROM "CumprimentoSuspensao" c JOIN "Suspensao" s ON s.id = c."suspensaoId"
+      WHERE c."jogoId" = ${jogoId}::uuid AND s."atletaId" = ${atletaId}::uuid) AS suspenso`;
+  const irregularidades = [
+    ...(!atleta.usuario.ativo ? ["conta_desativada" as const] : []),
+    ...(carteirinha.status !== "ativa" ? ["carteirinha_invalidada" as const] : []),
+    ...(suspenso ? ["suspensao" as const] : []),
+  ];
+  const ocupada = await tx.participacao.findFirst({ where: { jogoId, inscricaoClubeId: vinculo.inscricaoId, numeroCamisa: dados.numeroCamisa }, select: { id: true } });
+  if (ocupada) throw new ConflictException(`A camisa ${dados.numeroCamisa} já está em uso por outro atleta deste clube no jogo.`);
+
+  // `now()` da transação: o trigger confere que o registro e a entrada são datados nela.
+  const entrada = dados.entrouEmQuadra ? Prisma.sql`now()` : Prisma.sql`NULL`;
+  const irregularidadesSql = Prisma.sql`CAST(${`{${irregularidades.join(",")}}`} AS "IrregularidadeParticipacao"[])`;
+  const atualizadas = await tx.$executeRaw`
+    UPDATE "Participacao" SET "carteirinhaId" = ${carteirinha.id}::uuid, "credenciadoEm" = now(), "numeroCamisa" = ${dados.numeroCamisa},
+      "entrouEmQuadraEm" = ${entrada}, "registradaPorPresidenteId" = ${presidenteId}::uuid, irregularidades = ${irregularidadesSql},
+      "credenciamentoDesfeitoEm" = NULL
+    WHERE "jogoId" = ${jogoId}::uuid AND "vinculoClubeId" = ${vinculo.id}::uuid AND "credenciadoEm" IS NULL`;
+  if (atualizadas === 0) {
+    await tx.$executeRaw`
+      INSERT INTO "Participacao" (id, "jogoId", "inscricaoClubeId", "vinculoClubeId", "atletaId", "carteirinhaId", "credenciadoEm", "numeroCamisa",
+        "entrouEmQuadraEm", "registradaPorPresidenteId", irregularidades)
+      VALUES (gen_random_uuid(), ${jogoId}::uuid, ${vinculo.inscricaoId}::uuid, ${vinculo.id}::uuid, ${atletaId}::uuid, ${carteirinha.id}::uuid, now(),
+        ${dados.numeroCamisa}, ${entrada}, ${presidenteId}::uuid, ${irregularidadesSql})`;
+  }
+  const participacao = await credenciamentoDoAtleta(tx, jogoId, atletaId);
+  await registrarEvento(tx, jogoId, "credenciamento_registrado", atletaId);
+  return { participacao: apresentar(participacao!), alterado: true };
+}
+
+/**
+ * Presidente anula a entrada em quadra registrada por engano após o encerramento (MAR-83; seção 13). O horário original
+ * permanece, com quem anulou e quando; a entrada anulada deixa de contar no histórico. Repetir devolve `alterado: false`.
+ * Lançamentos não mudam: são corrigidos um a um. Ordem: campeonato → jogo → participação (FOR UPDATE).
+ */
+export async function anularEntrada(tx: Tx, presidenteId: string, jogoId: string, atletaId: string) {
+  await jogoParaCorrecaoAdministrativa(tx, jogoId, "anula a entrada em quadra");
+  const atual = await bloquearCredenciamento(tx, jogoId, atletaId);
+  if (!atual) throw new ConflictException("O atleta não está credenciado neste jogo.");
+  if (!atual.entrouEmQuadraEm) throw new ConflictException("O atleta não tem entrada em quadra registrada neste jogo.");
+  if (atual.entradaAnuladaEm) return { participacao: apresentar(atual), alterado: false };
+  await tx.$executeRaw`
+    UPDATE "Participacao" SET "entradaAnuladaEm" = now(), "entradaAnuladaPorPresidenteId" = ${presidenteId}::uuid WHERE id = ${atual.id}::uuid`;
+  const anulada = await credenciamentoDoAtleta(tx, jogoId, atletaId);
+  await registrarEvento(tx, jogoId, "credenciamento_corrigido", atletaId);
+  return { participacao: apresentar(anulada!), alterado: true };
+}
+
+/**
+ * Presidente desfaz, após o encerramento, o credenciamento de quem não participou (MAR-83; seção 13), quando não restam
+ * entrada válida (sem entrada ou anulada) nem gols/penalidades válidos (anulados ou transferidos a outro atleta). O
+ * histórico recebe a cópia completa — camisa, entrada, anulação, registro administrativo e o presidente autor — e a
+ * participação é preservada sem etapas (`credenciamentoDesfeitoEm`), porque os lançamentos anulados continuam
+ * apontando para ela; a escolha do técnico, se houver, permanece. Nada é apagado. Repetir devolve `alterado: false`.
+ */
+export async function estornarPeloPresidente(tx: Tx, presidenteId: string, jogoId: string, atletaId: string, dados: z.infer<typeof estornoSchema>) {
+  await jogoParaCorrecaoAdministrativa(tx, jogoId, "desfaz o credenciamento");
+  const atual = await bloquearCredenciamento(tx, jogoId, atletaId);
+  if (!atual) {
+    const anterior = await tx.alteracaoCredenciamento.findFirst({
+      where: { jogoId, atletaId, tipo: "estorno" }, orderBy: [{ registradaEm: "desc" }, { id: "desc" }], select: selecaoAlteracao,
+    });
+    if (anterior?.numeroCamisaAnterior === dados.numeroCamisa) return { estorno: apresentarAlteracao(anterior), alterado: false };
+    throw new ConflictException("O atleta não está credenciado neste jogo.");
+  }
+  if (atual.numeroCamisa !== dados.numeroCamisa) throw credenciamentoMudou(atual);
+  if (atual.entrouEmQuadraEm && !atual.entradaAnuladaEm) {
+    throw new ConflictException("O atleta tem entrada em quadra válida. Anule a entrada antes de desfazer o credenciamento.");
+  }
+  if (await tx.lancamentoJogo.count({ where: { participacaoId: atual.id, anuladoEm: null } }) > 0) {
+    throw new ConflictException("O atleta tem gols ou penalidades válidos. Transfira ou anule cada lançamento antes de desfazer o credenciamento (restam lançamentos válidos).");
+  }
+
+  const estorno = await registrarAlteracao(tx, atual.id, "estorno", null, presidenteId);
+  await tx.$executeRaw`
+    UPDATE "Participacao" SET "carteirinhaId" = NULL, "credenciadoEm" = NULL, "numeroCamisa" = NULL, "entrouEmQuadraEm" = NULL,
+      "entradaAnuladaEm" = NULL, "entradaAnuladaPorPresidenteId" = NULL, "registradaPorPresidenteId" = NULL,
+      irregularidades = ARRAY[]::"IrregularidadeParticipacao"[], "credenciamentoDesfeitoEm" = now()
+    WHERE id = ${atual.id}::uuid`;
+  await registrarEvento(tx, jogoId, "credenciamento_desfeito", atletaId);
+  return { estorno: apresentarAlteracao(estorno), alterado: true };
+}
+
+/**
+ * Credenciamentos do jogo para o presidente (MAR-83), em qualquer status: participações credenciadas e desfeitas, com
+ * entrada, anulação e registro administrativo, e o histórico completo de correções de camisa e estornos.
+ */
+export async function consultarCredenciamentosPeloPresidente(tx: Tx, jogoId: string) {
+  const jogo = await tx.jogo.findUnique({ where: { id: jogoId }, select: { id: true, status: true } });
+  if (!jogo) throw new NotFoundException("Jogo não encontrado.");
+  const [participacoes, desfeitas, alteracoes] = await Promise.all([
+    tx.participacao.findMany({ where: { jogoId, credenciadoEm: { not: null } }, select: selecaoParticipacao, orderBy: [{ inscricaoClubeId: "asc" }, { numeroCamisa: "asc" }] }),
+    tx.participacao.findMany({ where: { jogoId, credenciamentoDesfeitoEm: { not: null } }, select: { id: true, inscricaoClubeId: true, credenciamentoDesfeitoEm: true, atleta: { select: { usuario: { select: { id: true, nomeCompleto: true } } } } }, orderBy: { id: "asc" } }),
+    tx.alteracaoCredenciamento.findMany({ where: { jogoId }, select: selecaoAlteracao, orderBy: [{ registradaEm: "asc" }, { id: "asc" }] }),
+  ]);
+  return {
+    jogo,
+    participacoes: participacoes.map(apresentar),
+    desfeitas: desfeitas.map(d => ({ participacaoId: d.id, inscricaoId: d.inscricaoClubeId, atleta: d.atleta.usuario, desfeitoEm: d.credenciamentoDesfeitoEm })),
+    alteracoes: alteracoes.map(apresentarAlteracao),
+  };
 }
 
 /** Restrições do banco (camisa ou credenciamento simultâneos, estado alterado) chegam como 409. */

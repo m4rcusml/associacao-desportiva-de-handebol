@@ -172,6 +172,11 @@ classDiagram
         datetime credenciadoEm
         int numeroCamisa
         datetime entrouEmQuadraEm
+        datetime entradaAnuladaEm
+        uuid entradaAnuladaPorPresidenteId
+        uuid registradaPorPresidenteId
+        string[] irregularidades
+        datetime credenciamentoDesfeitoEm
     }
     class AlteracaoEscalacao {
         uuid id
@@ -193,6 +198,12 @@ classDiagram
         int numeroCamisaAnterior
         int numeroCamisaNova
         datetime registradaEm
+        datetime entrouEmQuadraEm
+        datetime entradaAnuladaEm
+        uuid entradaAnuladaPorPresidenteId
+        uuid registradaPorPresidenteId
+        string[] irregularidades
+        uuid presidenteId
     }
     class AcessoArbitragem {
         uuid jogoId

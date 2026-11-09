@@ -8,14 +8,16 @@ import type { Ator } from "../autorizacao/ator.js";
 import { AtorAtual, Requer } from "../autorizacao/autorizacao.decorators.js";
 import { AutorizacaoService } from "../autorizacao/autorizacao.service.js";
 import {
-  correcaoCamisaSchema, corrigirCamisaPelaArbitragem, corrigirCamisaPeloPresidente, credenciamentoSchema, credenciar, estornarCredenciamento, estornoSchema,
-  leituraQrArbitragemSchema, lerQrNoJogo, listarAtletasDoJogo, registrarEntrada, traduzirErroCredenciamento,
+  anularEntrada, consultarCredenciamentosPeloPresidente, correcaoCamisaSchema, corrigirCamisaPelaArbitragem, corrigirCamisaPeloPresidente, credenciamentoSchema,
+  credenciar, estornarCredenciamento, estornarPeloPresidente, estornoSchema, leituraQrArbitragemSchema, lerQrNoJogo, listarAtletasDoJogo, registrarEntrada,
+  registrarParticipacaoAdministrativa, registroAdministrativoSchema, traduzirErroCredenciamento,
 } from "./credenciamento.js";
 
 const uuidPipe = new ParseUUIDPipe();
 const somentePresidente = { perfis: ["presidente"] } as const;
 const corpoCorrecaoInvalido = "Dados inválidos. Informe numeroCamisaAtual e numeroCamisa (inteiros não negativos e diferentes); campos adicionais não são permitidos.";
 const corpoEstornoInvalido = "Dados inválidos. Informe somente numeroCamisa (inteiro não negativo) do credenciamento a desfazer.";
+const corpoRegistroInvalido = "Dados inválidos. Informe atletaId (UUID), numeroCamisa (inteiro não negativo) e entrouEmQuadra (booleano); campos adicionais não são permitidos.";
 
 function validar<T>(schema: { safeParse(body: unknown): { success: true; data: T } | { success: false } }, body: unknown, mensagem: string): T {
   const parsed = schema.safeParse(body);
@@ -82,8 +84,9 @@ export class CredenciamentoController {
 }
 
 /**
- * Presidente corrige a camisa somente após o encerramento do jogo (MAR-71; seção 11), sem devolver acesso à arbitragem.
- * Estorno ou outra correção de atleta que entrou em quadra ou tem lançamentos aguarda a PEN-019 residual.
+ * Presidente corrige a camisa (MAR-71; seção 11) e faz as correções administrativas (MAR-83; seção 13) somente após o
+ * encerramento do jogo, sem devolver acesso à arbitragem: registro da participação real, anulação da entrada e estorno
+ * de quem não participou. Os lançamentos são corrigidos um a um em `jogos/:jogoId/lancamentos`.
  */
 @Controller("jogos/:jogoId/credenciamentos")
 @UseGuards(SessionGuard)
@@ -91,13 +94,43 @@ export class CredenciamentoController {
 export class CredenciamentoPresidenteController {
   constructor(private readonly prisma: PrismaService, private readonly autorizacao: AutorizacaoService) {}
 
+  private emTransacao<T>(ator: Ator, operacao: (tx: Prisma.TransactionClient) => Promise<T>) {
+    return this.prisma.$transaction(async tx => {
+      await this.autorizacao.revalidar(tx, ator, somentePresidente);
+      return operacao(tx);
+    }).catch(error => { throw traduzirErroCredenciamento(error); });
+  }
+
+  @Get()
+  consultar(@AtorAtual() ator: Ator, @Param("jogoId", uuidPipe) jogoId: string) {
+    return this.emTransacao(ator, tx => consultarCredenciamentosPeloPresidente(tx, jogoId.toLowerCase()));
+  }
+
+  @Post("administrativos")
+  @HttpCode(200)
+  registrarParticipacao(@AtorAtual() ator: Ator, @Param("jogoId", uuidPipe) jogoId: string, @Body() body: unknown) {
+    const dados = validar(registroAdministrativoSchema, body, corpoRegistroInvalido);
+    return this.emTransacao(ator, tx => registrarParticipacaoAdministrativa(tx, ator.usuarioId, jogoId.toLowerCase(), dados));
+  }
+
   @Post(":atletaId/camisa")
   @HttpCode(200)
   corrigirCamisa(@AtorAtual() ator: Ator, @Param("jogoId", uuidPipe) jogoId: string, @Param("atletaId", uuidPipe) atletaId: string, @Body() body: unknown) {
     const dados = validar(correcaoCamisaSchema, body, corpoCorrecaoInvalido);
-    return this.prisma.$transaction(async tx => {
-      await this.autorizacao.revalidar(tx, ator, somentePresidente);
-      return corrigirCamisaPeloPresidente(tx, jogoId.toLowerCase(), atletaId.toLowerCase(), dados);
-    }).catch(error => { throw traduzirErroCredenciamento(error); });
+    return this.emTransacao(ator, tx => corrigirCamisaPeloPresidente(tx, jogoId.toLowerCase(), atletaId.toLowerCase(), dados, ator.usuarioId));
+  }
+
+  @Post(":atletaId/entrada/anulacao")
+  @HttpCode(200)
+  anularEntrada(@AtorAtual() ator: Ator, @Param("jogoId", uuidPipe) jogoId: string, @Param("atletaId", uuidPipe) atletaId: string, @Body() body: unknown) {
+    if (body !== undefined && (typeof body !== "object" || body === null || Object.keys(body).length > 0)) throw new BadRequestException("A anulação da entrada não recebe dados.");
+    return this.emTransacao(ator, tx => anularEntrada(tx, ator.usuarioId, jogoId.toLowerCase(), atletaId.toLowerCase()));
+  }
+
+  @Post(":atletaId/estorno")
+  @HttpCode(200)
+  estornar(@AtorAtual() ator: Ator, @Param("jogoId", uuidPipe) jogoId: string, @Param("atletaId", uuidPipe) atletaId: string, @Body() body: unknown) {
+    const dados = validar(estornoSchema, body, corpoEstornoInvalido);
+    return this.emTransacao(ator, tx => estornarPeloPresidente(tx, ator.usuarioId, jogoId.toLowerCase(), atletaId.toLowerCase(), dados));
   }
 }

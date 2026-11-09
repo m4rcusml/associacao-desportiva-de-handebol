@@ -24,7 +24,12 @@ export interface Situacao {
   numeroCamisa: number | null;
   escalado: boolean;
   credenciado: boolean;
+  /** Entrada válida: registrada e não anulada pelo presidente (MAR-83). */
   entrouEmQuadra: boolean;
+  entradaAnulada: boolean;
+  /** Registro administrativo da participação real após o encerramento (MAR-83) e o que impediria o credenciamento normal. */
+  registroAdministrativo: boolean;
+  irregularidades: ("conta_desativada" | "carteirinha_invalidada" | "suspensao")[];
   metricas: Metricas | null;
 }
 
@@ -48,7 +53,9 @@ const metricasSql = `CASE WHEN d."participacaoId" IS NOT NULL THEN jsonb_build_o
 
 const situacaoSql = Prisma.raw(`'participacaoId', p.id, 'numeroCamisa', p."numeroCamisa",
   'escalado', p."escolhidaEm" IS NOT NULL, 'credenciado', p."credenciadoEm" IS NOT NULL,
-  'entrouEmQuadra', p."entrouEmQuadraEm" IS NOT NULL, 'metricas', ${metricasSql}`);
+  'entrouEmQuadra', p."entrouEmQuadraEm" IS NOT NULL AND p."entradaAnuladaEm" IS NULL,
+  'entradaAnulada', p."entradaAnuladaEm" IS NOT NULL, 'registroAdministrativo', p."registradaPorPresidenteId" IS NOT NULL,
+  'irregularidades', to_jsonb(p.irregularidades), 'metricas', ${metricasSql}`);
 
 /** Participações que existem como escalação ou credenciamento (a retirada sem credenciamento remove a linha). */
 const participacaoVisivel = Prisma.raw(`(p."escolhidaEm" IS NOT NULL OR p."credenciadoEm" IS NOT NULL)`);
