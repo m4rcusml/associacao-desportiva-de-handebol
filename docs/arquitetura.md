@@ -88,6 +88,8 @@ Notificações (MAR-73, decisões de Marcus: destinatários, aviso mínimo e mot
   30 s). A entrega é ao menos uma vez: o `id` crescente identifica repetições. Eventos ocorridos com o dispositivo
   desconectado não são guardados para ele; ao reconectar, consulta o estado por REST.
 - **Revalidação além do handshake:** antes de cada envio, todas as conexões do jogo são revalidadas no banco; as
+  emissões síncronas de cada conexão ocorrem dentro da mesma transação da revalidação, mantendo seus bloqueios
+  até o envio. Assim, uma revogação concorrente aguarda esse envio ou já é vista pela validação. As
   não autorizadas recebem `acesso:encerrado` (motivo gravado na sessão, ou `acesso_indisponivel`) e são
   desconectadas sem o evento. Triggers com `pg_notify('arbitragem_revisada')`, também entregues só no commit,
   retiram imediatamente as conexões quando a sessão temporária é revogada (encerramento, adiamento,

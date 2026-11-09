@@ -26,7 +26,13 @@ export const cookieArbitragem = (jogoId: string) => `${producao() ? "__Host-" : 
 export function lerCookie(request: Pick<IncomingMessage, "headers">, nome: string): string | undefined {
   for (const parte of (request.headers.cookie ?? "").split(";")) {
     const separador = parte.indexOf("=");
-    if (separador > 0 && parte.slice(0, separador).trim() === nome) return decodeURIComponent(parte.slice(separador + 1).trim());
+    if (separador > 0 && parte.slice(0, separador).trim() === nome) {
+      try {
+        return decodeURIComponent(parte.slice(separador + 1).trim());
+      } catch {
+        return undefined;
+      }
+    }
   }
   return undefined;
 }

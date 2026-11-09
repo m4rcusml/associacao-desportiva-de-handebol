@@ -13,6 +13,10 @@ process.env.NOTIFICACOES_VARREDURA_MS = "400";
 const { createApp } = await import("../dist/app.js");
 const { PrismaService } = await import("../dist/infrastructure/prisma.service.js");
 const { registrarEvento } = await import("../dist/modules/notificacoes/eventos.js");
+const { NotificacoesService } = await import("../dist/modules/notificacoes/notificacoes.service.js");
+const { AuthService } = await import("../dist/modules/autenticacao/auth.service.js");
+const { hashToken } = await import("../dist/modules/arbitragem/senha.js");
+type Banco = InstanceType<typeof PrismaService>;
 
 const origin = process.env.CLIENT_ORIGIN!;
 const app = await createApp();
@@ -174,6 +178,7 @@ test("handshake exige origem do cliente, jogoId e sessão temporária válida da
   const { jogo, porSenha, designado } = await cenario();
   const outro = await cenario();
   assert.equal((await recusado(jogo, "")).message, "acesso_indisponivel");
+  assert.equal((await recusado(jogo, `handebol.arbitragem.${jogo}=%`)).message, "acesso_indisponivel", "cookie malformado não derruba a API");
   assert.equal((await recusado(jogo, presidente.cookie)).message, "acesso_indisponivel", "conta permanente não assina");
   assert.equal((await recusado(jogo, designado.cookie)).message, "acesso_indisponivel", "conta designada sem cookie temporário");
   assert.equal((await recusado(jogo, outro.porSenha.replace(outro.jogo, jogo))).message, "acesso_indisponivel", "cookie de outro jogo");
@@ -253,6 +258,72 @@ test("revogação concorrente com lançamentos: nada chega depois do aviso e nen
   assert.deepEqual(new Set(designacao.eventos("lancamento_registrado").map(e => e.referenciaId)), new Set(ids));
   const recebidosPelaSenha = senha.eventos("lancamento_registrado");
   assert.ok(recebidosPelaSenha.every(e => ids.includes(e.referenciaId!)), "só eventos confirmados enquanto autorizado");
+});
+
+test("envio mantém a autorização até emitir, mesmo se outra conexão estiver bloqueada", async () => {
+  const { jogo, porSenha, porDesignacao, designado } = await cenario();
+  // Reproduz a publicação de um evento já confirmado, isolada da varredura do app.
+  const evento = await prisma.eventoJogo.findFirstOrThrow({ where: { jogoId: jogo } });
+  let publicado = false;
+  let revogou = false;
+  let validou!: () => void;
+  const primeiraValidada = new Promise<void>(resolve => { validou = resolve; });
+  const banco = {
+    $queryRaw: async () => publicado ? [] : [{ ...evento, id: evento.id.toString() }],
+    $executeRaw: async () => { publicado = true; },
+    $transaction: async (operacao: Parameters<Banco["$transaction"]>[0]) => {
+      const resultado = await prisma.$transaction(operacao);
+      validou();
+      return resultado;
+    },
+  };
+  const envios: { token: string; aposRevogacao: boolean }[] = [];
+  const conexoes = [porSenha, porDesignacao].map(cookie => {
+    const token = decodeURIComponent(cookie.slice(cookie.indexOf("=") + 1));
+    return { data: { jogoId: jogo, token }, emit: (tipo: string) => {
+      if (tipo === "jogo:evento") envios.push({ token, aposRevogacao: revogou });
+    }, disconnect: () => undefined };
+  });
+  const publicador = new NotificacoesService(banco as unknown as Banco, app.get(AuthService)) as unknown as {
+    io: { in: () => { fetchSockets: () => Promise<typeof conexoes> } };
+    publicarPendentes: () => Promise<void>;
+  };
+  publicador.io = { in: () => ({ fetchSockets: async () => conexoes }) };
+  let liberou!: () => void;
+  let bloqueou!: (pid: number) => void;
+  const liberar = new Promise<void>(resolve => { liberou = resolve; });
+  const bloqueada = new Promise<number>(resolve => { bloqueou = resolve; });
+  const bloqueio = prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT 1 FROM "Usuario" WHERE id = ${designado.id}::uuid FOR UPDATE`;
+    const [{ pid }] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+    bloqueou(pid);
+    await liberar;
+  }, { timeout: 15_000 });
+  const pid = await bloqueada;
+  const publicacao = publicador.publicarPendentes();
+  try {
+    await primeiraValidada;
+    let aguardando = false;
+    const limite = Date.now() + 5_000;
+    while (!aguardando && Date.now() < limite) {
+      const [estado] = await prisma.$queryRaw<{ aguardando: boolean }[]>`
+        SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE ${pid}::int = ANY(pg_blocking_pids(pid))) AS aguardando`;
+      aguardando = estado.aguardando;
+      if (!aguardando) await esperar(10);
+    }
+    assert.equal(aguardando, true, "a validação da segunda conexão aguarda o bloqueio real da conta");
+    await prisma.$executeRaw`
+      UPDATE "SessaoArbitragem" SET "revogadaEm" = now(), "motivoRevogacao" = 'troca_senha'
+      WHERE "tokenHash" = ${hashToken(conexoes[0].data.token)}`;
+    revogou = true;
+  } finally {
+    liberou();
+    await Promise.all([bloqueio, publicacao]);
+  }
+  const enviadosPorSenha = envios.filter(envio => envio.token === conexoes[0].data.token);
+  assert.equal(enviadosPorSenha.length, 1);
+  assert.equal(enviadosPorSenha[0].aposRevogacao, false, "nenhum envio usa autorização anterior à revogação confirmada");
+  assert.equal(publicado, true);
 });
 
 test("retirada da designação, logout e desativação da conta de origem desconectam o dispositivo designado", async () => {

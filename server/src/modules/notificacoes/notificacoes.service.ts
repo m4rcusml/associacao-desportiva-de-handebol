@@ -195,35 +195,34 @@ export class NotificacoesService implements OnApplicationBootstrap, BeforeApplic
       const porJogo = new Map<string, typeof lote>();
       for (const evento of lote) porJogo.set(evento.jogoId, [...porJogo.get(evento.jogoId) ?? [], evento]);
       for (const [jogoId, eventos] of porJogo) {
-        const autorizadas = await this.revisar(jogoId);
-        for (const { id, tipo, referenciaId, criadoEm } of eventos) {
-          const evento: EventoNotificado = { id, jogoId, tipo, referenciaId, ocorridoEm: criadoEm.toISOString() };
-          for (const conexao of autorizadas) conexao.emit("jogo:evento", evento);
-        }
+        await this.revisar(jogoId, eventos.map(({ id, tipo, referenciaId, criadoEm }) => ({ id, jogoId, tipo, referenciaId, ocorridoEm: criadoEm.toISOString() })));
       }
       await this.prisma.$executeRaw`UPDATE "EventoJogo" SET "publicadoEm" = now() WHERE id = ANY(${lote.map(e => e.id)}::bigint[])`;
       if (lote.length < LOTE) return;
     }
   }
 
-  /** Revalida as conexões do jogo (ou todas); encerra as não autorizadas e devolve as que continuam. */
-  private async revisar(jogoId?: string): Promise<Conexao[]> {
+  /** Revalida e envia sob os mesmos bloqueios; uma revogação concorrente espera o envio ou já é vista. */
+  private async revisar(jogoId?: string, eventos: EventoNotificado[] = []) {
     const conexoes: Conexao[] = await (jogoId ? this.io!.in(sala(jogoId)) : this.io!).fetchSockets();
-    const motivos = await Promise.all(conexoes.map(conexao => this.verificar(conexao.data)));
-    return conexoes.filter((conexao, i) => {
-      const motivo = motivos[i];
-      if (!motivo) return true;
+    for (const conexao of conexoes) {
+      const motivo = await this.verificar(conexao.data, () => {
+        for (const evento of eventos) conexao.emit("jogo:evento", evento);
+      });
+      if (!motivo) continue;
       // Sem fechar o transporte: o aviso segue antes do pacote de desconexão, e o cliente não reconecta sozinho.
       conexao.emit("acesso:encerrado", { jogoId: conexao.data.jogoId, motivo });
       conexao.disconnect();
-      return false;
-    });
+    }
   }
 
   /** `null` se a sessão temporária continua autorizada no jogo; senão, o motivo a informar ao dispositivo. */
-  private async verificar({ jogoId, token }: DadosConexao): Promise<AcessoEncerrado["motivo"] | null> {
+  private async verificar({ jogoId, token }: DadosConexao, aoAutorizar?: () => void): Promise<AcessoEncerrado["motivo"] | null> {
     try {
-      await this.prisma.$transaction(tx => revalidarArbitragem(tx, jogoId, token));
+      await this.prisma.$transaction(async tx => {
+        await revalidarArbitragem(tx, jogoId, token);
+        aoAutorizar?.();
+      });
       return null;
     } catch (error) {
       if (!(error instanceof HttpException)) throw error;
