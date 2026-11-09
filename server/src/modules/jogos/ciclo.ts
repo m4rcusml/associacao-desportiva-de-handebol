@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { z } from "zod";
-import { Prisma, type StatusJogo } from "../../generated/prisma/client.js";
+import { Prisma, ResultadoJogo, type StatusJogo } from "../../generated/prisma/client.js";
 import {
   encerrarAcessoArbitragem, renovarSenha, resumirSessao, revalidarArbitragem, revalidarArbitragemOuEncerramento, revogarSessoes,
 } from "../arbitragem/acesso.js";
@@ -23,13 +23,23 @@ export const adiamentoSchema = z.strictObject({
 });
 
 /**
+ * Encerramento definitivo pela arbitragem (MAR-72): forma do encerramento e vencedor separados do placar.
+ * `vencedorInscricaoId` é obrigatório: a inscrição do clube A ou B, ou `null` para nenhum vencedor, explicitamente.
+ */
+export const encerramentoSchema = z.strictObject({
+  resultado: z.enum(ResultadoJogo),
+  vencedorInscricaoId: z.uuid().transform(id => id.toLowerCase()).nullable(),
+});
+export type DadosEncerramento = z.infer<typeof encerramentoSchema>;
+
+/**
  * Bloqueios do ciclo do jogo, sempre na ordem campeonato (FOR SHARE) → jogo (FOR NO KEY UPDATE), a mesma do
  * cancelamento do campeonato (campeonato FOR UPDATE → jogos): este aguarda o ciclo em curso ou é visto por ele,
  * sem deadlock. O bloqueio do jogo conflita com o FOR SHARE de toda operação da arbitragem (credenciamento,
  * entrada, lançamentos) e da gestão da senha: cada uma termina antes da mudança de status ou já a enxerga, e
  * duas tentativas simultâneas de iniciar, encerrar, adiar ou cancelar são executadas uma após a outra.
  */
-async function bloquearCiclo(tx: Tx, jogoId: string): Promise<StatusJogo> {
+export async function bloquearCiclo(tx: Tx, jogoId: string): Promise<StatusJogo> {
   const [referencia] = await tx.$queryRaw<{ campeonatoId: string }[]>`SELECT "campeonatoId" FROM "Jogo" WHERE id = ${jogoId}::uuid`;
   if (!referencia) throw new NotFoundException("Jogo não encontrado");
   await tx.$queryRaw`SELECT 1 FROM "Campeonato" WHERE id = ${referencia.campeonatoId}::uuid FOR SHARE`;
@@ -52,26 +62,54 @@ export async function iniciarJogo(tx: Tx, jogoId: string, token: string | undefi
   return { ...await resumirSessao(tx, jogoId, token), alterado: true };
 }
 
-/** Confirmação restrita do encerramento: estado do jogo e placar final, sem dados de sessão ou participantes. */
+/** Vencedor apresentado com o clube; `null` com o jogo finalizado significa nenhum vencedor (MAR-72). */
+export async function vencedorDo(tx: Tx, inscricaoId: string | null) {
+  if (!inscricaoId) return null;
+  const { id, clube } = await tx.inscricaoClube.findUniqueOrThrow({ where: { id: inscricaoId }, select: { id: true, clube: { select: { id: true, nome: true } } } });
+  return { inscricaoId: id, clube };
+}
+
+/** Confirmação restrita do encerramento: estado do jogo, resultado, vencedor e placar final, sem dados de sessão ou participantes. */
 async function confirmacaoEncerramento(tx: Tx, jogoId: string) {
-  const jogo = await tx.jogo.findUniqueOrThrow({ where: { id: jogoId }, select: { id: true, status: true, iniciadoEm: true, encerradoEm: true } });
-  return { jogo, placar: await placar(tx, jogoId) };
+  const { inscricaoClubeVencedorId, ...jogo } = await tx.jogo.findUniqueOrThrow({ where: { id: jogoId }, select: {
+    id: true, status: true, iniciadoEm: true, encerradoEm: true, resultado: true, inscricaoClubeVencedorId: true,
+  } });
+  return { jogo: { ...jogo, vencedor: await vencedorDo(tx, inscricaoClubeVencedorId) }, placar: await placar(tx, jogoId) };
+}
+
+/** Vencedor informado deve ser uma das inscrições do jogo (ou null, nenhum vencedor). */
+export async function exigirVencedorDoJogo(tx: Tx, jogoId: string, vencedorInscricaoId: string | null) {
+  if (vencedorInscricaoId === null) return;
+  const jogo = await tx.jogo.findUniqueOrThrow({ where: { id: jogoId }, select: { inscricaoClubeAId: true, inscricaoClubeBId: true } });
+  if (![jogo.inscricaoClubeAId, jogo.inscricaoClubeBId].includes(vencedorInscricaoId)) {
+    throw new BadRequestException("vencedorInscricaoId deve ser a inscrição do clube A ou do clube B deste jogo, ou null para nenhum vencedor.");
+  }
 }
 
 /**
- * Um árbitro autorizado encerra o jogo em andamento (RF-035, RN-031, seção 11), sem aprovação de outro. Na mesma
- * transação: status finalizado com o resultado vindo dos lançamentos já gravados, cumprimento das suspensões
- * (RF-041, RN-039) e revogação da senha e de todas as sessões temporárias do jogo (RF-029). Escritas da
- * arbitragem que aguardavam o bloqueio veem o jogo finalizado e a sessão revogada; não gravam depois.
- * Reenvio por sessão revogada por este encerramento (repetição, paralelo ou resposta perdida) recebe a mesma
- * confirmação com `alterado: false`, sem reabrir acesso nem autorizar outra operação.
+ * Um árbitro autorizado encerra definitivamente o jogo (RF-035, RN-031, seção 11, MAR-72), sem aprovação de outro,
+ * informando a forma do encerramento e o vencedor (clube do jogo ou nenhum), registrados separadamente do placar,
+ * que continua vindo dos lançamentos. Jogo em andamento encerra como normal, interrompido definitivamente ou
+ * abandono, inclusive durante uma interrupção; W.O. encerra o jogo agendado, sem início, no dia do jogo (0 a 0).
+ * Na mesma transação: status finalizado, cumprimento das suspensões (RF-041, RN-039, uma vez) e revogação da senha
+ * e de todas as sessões temporárias do jogo (RF-029). Escritas da arbitragem que aguardavam o bloqueio veem o jogo
+ * finalizado e a sessão revogada; não gravam depois. Reenvio por sessão revogada por este encerramento (repetição,
+ * paralelo ou resposta perdida) recebe a confirmação vigente com `alterado: false`, sem reabrir acesso nem autorizar
+ * outra operação; mudar o resultado depois cabe ao presidente.
  */
-export async function encerrarJogo(tx: Tx, jogoId: string, token: string | undefined) {
+export async function encerrarJogo(tx: Tx, jogoId: string, token: string | undefined, dados: DadosEncerramento) {
   await bloquearCiclo(tx, jogoId);
   const autorizacao = await revalidarArbitragemOuEncerramento(tx, jogoId, token);
   if (autorizacao.situacao === "jogo_encerrado") return { ...await confirmacaoEncerramento(tx, jogoId), alterado: false };
-  if (autorizacao.status !== "em_andamento") throw new ConflictException("Somente jogo em andamento é encerrado pela arbitragem; inicie o jogo antes de encerrá-lo.");
-  await tx.jogo.update({ where: { id: jogoId }, data: { status: "finalizado", encerradoEm: new Date() } });
+  if (dados.resultado === "wo") {
+    if (autorizacao.status !== "agendado") throw new ConflictException("W.O. encerra somente jogo ainda não iniciado; jogo iniciado encerra como normal, interrompido ou abandono.");
+  } else if (autorizacao.status !== "em_andamento") {
+    throw new ConflictException("Somente jogo em andamento é encerrado pela arbitragem; inicie o jogo antes de encerrá-lo ou registre W.O.");
+  }
+  await exigirVencedorDoJogo(tx, jogoId, dados.vencedorInscricaoId);
+  await tx.jogo.update({ where: { id: jogoId }, data: {
+    status: "finalizado", encerradoEm: new Date(), resultado: dados.resultado, inscricaoClubeVencedorId: dados.vencedorInscricaoId,
+  } });
   await registrarCumprimentos(tx, jogoId);
   await encerrarAcessoArbitragem(tx, [jogoId], "jogo_encerrado");
   // Notificação aos dispositivos após a persistência fica na MAR-73.
@@ -110,7 +148,8 @@ export async function adiarJogo(tx: Tx, cofre: CofreSenhaArbitragem, jogoId: str
 /**
  * Presidente cancela o jogo agendado (seção 10): revoga senha e sessões temporárias na mesma transação. Jogo
  * cancelado não cumpre suspensão (RN-040); escalação, credenciamentos, contas e outros jogos são preservados.
- * Repetir devolve o estado com `alterado: false`. Jogo em andamento não é cancelado (interrupção: MAR-72).
+ * Repetir devolve o estado com `alterado: false`. Jogo em andamento não é cancelado: a arbitragem o interrompe
+ * temporariamente ou o encerra como interrompido definitivamente ou abandono (MAR-72).
  */
 export async function cancelarJogo(tx: Tx, jogoId: string) {
   const status = await bloquearCiclo(tx, jogoId);

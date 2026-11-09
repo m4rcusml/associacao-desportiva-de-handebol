@@ -124,14 +124,33 @@ classDiagram
         uuid inscricaoClubeAId
         uuid inscricaoClubeBId
         string fusoHorario
-        string resultadoExcepcional
+        string resultado
         uuid inscricaoClubeVencedorId
+        datetime invalidadoEm
         datetime inicioPrevistoEm
         datetime iniciadoEm
         datetime encerradoEm
         string local
         string status
         uuid criadoPorPresidenteId
+    }
+    class InterrupcaoJogo {
+        uuid id
+        uuid jogoId
+        datetime interrompidoEm
+        datetime retomadoEm
+    }
+    class AlteracaoResultadoJogo {
+        uuid id
+        uuid jogoId
+        string tipo
+        string resultadoAnterior
+        uuid inscricaoVencedorAnteriorId
+        string resultadoNovo
+        uuid inscricaoVencedorNovoId
+        string motivo
+        uuid presidenteId
+        datetime registradaEm
     }
     class Participacao {
         uuid id
@@ -255,6 +274,8 @@ classDiagram
     Jogo "1" -- "0..*" AlteracaoEscalacao : historico da escalacao
     Tecnico "1" -- "0..*" AlteracaoEscalacao : inclui ou retira
     Jogo "1" -- "0..*" AlteracaoCredenciamento : historico de camisa e estorno
+    Jogo "1" -- "0..*" InterrupcaoJogo : pausa e retomada
+    Jogo "1" -- "0..*" AlteracaoResultadoJogo : historico de correcao e invalidacao
     Jogo "1" -- "0..1" AcessoArbitragem : configura acesso temporario
     Jogo "1" -- "0..*" Arbitragem : recebe arbitros
     Usuario "0..1" -- "0..*" Arbitragem : pode atuar como arbitro

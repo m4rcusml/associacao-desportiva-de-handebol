@@ -341,7 +341,7 @@ test("somente a arbitragem autorizada do jogo lança; encerramento concorrente i
   const operacaoId = randomUUID();
   let pedido: Promise<Response> | undefined;
   await prisma.$transaction(async tx => {
-    await tx.jogo.update({ where: { id: jogo }, data: { status: "finalizado", encerradoEm: new Date() } });
+    await tx.jogo.update({ where: { id: jogo }, data: { status: "finalizado", encerradoEm: new Date(), resultado: "normal" } });
     pedido = lancar(jogo, arbitro, lancamento(pAna, "temp_gol", operacaoId));
     await esperar(300);
   });

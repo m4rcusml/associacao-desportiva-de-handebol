@@ -235,14 +235,17 @@ export async function resumirSessao(tx: Tx, jogoId: string, token: string | unde
       id: true, status: true, local: true, fusoHorario: true, inicioPrevistoEm: true, iniciadoEm: true,
       inscricaoClubeA: { select: { id: true, clube: { select: { id: true, nome: true } } } },
       inscricaoClubeB: { select: { id: true, clube: { select: { id: true, nome: true } } } },
+      interrupcoes: { where: { retomadoEm: null }, select: { interrompidoEm: true } },
     } }),
     tx.arbitragem.findUniqueOrThrow({ where: { id: autorizada.arbitragemId }, select: { id: true, visualizacao: true } }),
     tx.sessaoArbitragem.findUniqueOrThrow({ where: { id: autorizada.sessaoId }, select: { expiraEm: true } }),
   ]);
-  const { inscricaoClubeA, inscricaoClubeB, ...dados } = jogo;
+  const { inscricaoClubeA, inscricaoClubeB, interrupcoes, ...dados } = jogo;
   return {
     jogo: {
       ...dados, inicioPrevistoLocal: dados.inicioPrevistoEm ? horaLocal(dados.inicioPrevistoEm, dados.fusoHorario) : null,
+      // Interrupção temporária em curso (MAR-72): o jogo segue em andamento, aguardando a retomada.
+      interrompidoEm: interrupcoes[0]?.interrompidoEm ?? null,
       clubeA: { inscricaoId: inscricaoClubeA.id, clube: inscricaoClubeA.clube }, clubeB: { inscricaoId: inscricaoClubeB.id, clube: inscricaoClubeB.clube },
     },
     arbitragem: { id: arbitragem.id, nomeCompleto: autorizada.nomeCompleto, visualizacao: arbitragem.visualizacao },

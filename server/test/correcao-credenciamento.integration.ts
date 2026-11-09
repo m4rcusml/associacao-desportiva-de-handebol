@@ -447,7 +447,7 @@ test("encerramento concorre com a correção; depois somente o presidente corrig
   // Correção em curso: o encerramento aguarda e termina depois, com a nova camisa preservada.
   const c1 = await emDisputa(
     tx => corrigirCamisaPelaArbitragem(tx, jogo, token, carla.id, { numeroCamisaAtual: 8, numeroCamisa: 18 }),
-    tx => encerrarJogo(tx, jogo, token),
+    tx => encerrarJogo(tx, jogo, token, { resultado: "normal", vencedorInscricaoId: null }),
   );
   assert.ok(c1.aguardou);
   assert.equal(c1.segunda.erro, null, String(c1.segunda.erro?.message));

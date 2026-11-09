@@ -286,7 +286,7 @@ test("arbitragem só muda com jogo agendado ou em andamento", async () => {
   const designados = await Promise.all([finalizado, cancelado].map(async jogo => (await (await designar(jogo.id, { nomeCompleto: "Pessoa Designada" })).json() as Jogo).arbitragens[0].id));
   // Início e encerramento do jogo vêm na MAR-69: fixtures diretas.
   await prisma.jogo.update({ where: { id: emAndamento.id }, data: { status: "em_andamento", iniciadoEm: new Date() } });
-  await prisma.jogo.update({ where: { id: finalizado.id }, data: { status: "finalizado", iniciadoEm: new Date(Date.now() - 3_600_000), encerradoEm: new Date() } });
+  await prisma.jogo.update({ where: { id: finalizado.id }, data: { status: "finalizado", iniciadoEm: new Date(Date.now() - 3_600_000), encerradoEm: new Date(), resultado: "normal" } });
   await prisma.jogo.update({ where: { id: cancelado.id }, data: { status: "cancelado" } });
 
   assert.equal((await designar(emAndamento.id, { nomeCompleto: "Pessoa Atrasada" })).status, 201);

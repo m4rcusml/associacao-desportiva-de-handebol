@@ -117,7 +117,8 @@ type Inicio = { jogo: { id: string; status: string; iniciadoEm: string }; altera
 type Encerramento = { jogo: { id: string; status: string; iniciadoEm: string; encerradoEm: string }; placar: { temp_placarClubeA: number; temp_placarClubeB: number }; alterado: boolean };
 type JogoDetalhado = { id: string; status: string; inicioPrevistoEm: string | null; inicioPrevistoLocal: string | null; local: string | null; fusoHorario: string };
 const iniciar = (jogo: string, cookie: string) => request("POST", `/arbitragem/jogos/${jogo}/inicio`, cookie);
-const encerrar = (jogo: string, cookie: string) => request("POST", `/arbitragem/jogos/${jogo}/encerramento`, cookie);
+const NORMAL = { resultado: "normal" as const, vencedorInscricaoId: null };
+const encerrar = (jogo: string, cookie: string, body: unknown = NORMAL) => request("POST", `/arbitragem/jogos/${jogo}/encerramento`, cookie, body);
 const adiar = (jogo: string, body: unknown, cookie = presidente.cookie) => request("POST", `/jogos/${jogo}/adiamento`, cookie, body);
 const cancelar = (jogo: string, cookie = presidente.cookie) => request("POST", `/jogos/${jogo}/cancelamento`, cookie);
 const credenciar = (jogo: string, cookie: string, atletaId: string, numeroCamisa: number) =>
@@ -249,7 +250,7 @@ test("escrita da arbitragem aguardando o encerramento não grava depois dele", a
   const token = decodeURIComponent(arbitro.split("=")[1]);
   let pedidos: Promise<Response>[] = [];
   const resultado = await prisma.$transaction(async tx => {
-    const encerrado = await encerrarJogo(tx, jogo, token);
+    const encerrado = await encerrarJogo(tx, jogo, token, NORMAL);
     pedidos = [lancar(jogo, arbitro, pAna), credenciar(jogo, arbitro, carla.id, 11)];
     await esperar(300);
     return encerrado;
@@ -264,7 +265,7 @@ test("escrita da arbitragem aguardando o encerramento não grava depois dele", a
   const suspensa = await suspender(campeonato, carlaOutro.id, 1);
   await ok(iniciar(outro, outroArbitro));
   await assert.rejects(prisma.$transaction(async tx => {
-    await encerrarJogo(tx, outro, decodeURIComponent(outroArbitro.split("=")[1]));
+    await encerrarJogo(tx, outro, decodeURIComponent(outroArbitro.split("=")[1]), NORMAL);
     throw new Error("falha depois de encerrar");
   }), /falha depois de encerrar/);
   assert.equal((await prisma.jogo.findUniqueOrThrow({ where: { id: outro } })).status, "em_andamento");

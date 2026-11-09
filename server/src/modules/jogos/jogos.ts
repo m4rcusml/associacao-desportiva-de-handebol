@@ -31,20 +31,40 @@ export const designacaoSchema = z.union([
 type Tx = Prisma.TransactionClient;
 type Leitura = Pick<Tx, "jogo">;
 
+/** Interrupção aberta do jogo (retomada pendente), se houver (MAR-72). */
+export async function interrupcaoAberta(tx: Pick<Tx, "interrupcaoJogo">, jogoId: string) {
+  return tx.interrupcaoJogo.findFirst({ where: { jogoId, retomadoEm: null }, select: { id: true, interrompidoEm: true } });
+}
+
+/**
+ * Lançamento novo e entrada em quadra aguardam a retomada (MAR-72); o trigger repete a regra. Chamar depois da
+ * revalidação da arbitragem, que bloqueia o jogo em FOR SHARE: a interrupção (FOR NO KEY UPDATE) aguarda ou é vista.
+ */
+export async function exigirJogoSemInterrupcao(tx: Tx, jogoId: string, operacao: string) {
+  if (await interrupcaoAberta(tx, jogoId)) throw new ConflictException(`Jogo interrompido: retome a partida antes de ${operacao}.`);
+}
+
 const clube = { select: { id: true, clube: { select: { id: true, nome: true, cidade: true } } } } as const;
 const selecaoJogo = {
   id: true, campeonatoId: true, status: true, local: true, fusoHorario: true, inicioPrevistoEm: true, iniciadoEm: true, encerradoEm: true,
+  resultado: true, inscricaoClubeVencedorId: true, invalidadoEm: true,
   criadoPorPresidenteId: true, inscricaoClubeA: clube, inscricaoClubeB: clube,
+  interrupcoes: { where: { retomadoEm: null }, select: { interrompidoEm: true } },
 } satisfies Prisma.JogoSelect;
 type JogoLido = Prisma.JogoGetPayload<{ select: typeof selecaoJogo }>;
 
 const equipe = ({ id, clube }: JogoLido["inscricaoClubeA"]) => ({ inscricaoId: id, clube });
 
-/** Resumo do jogo: instante UTC e a hora local do fuso da partida (dia do jogo para o acesso). */
-function resumirJogo({ inscricaoClubeA, inscricaoClubeB, inicioPrevistoEm, ...jogo }: JogoLido) {
+/**
+ * Resumo do jogo: instante UTC e a hora local do fuso da partida (dia do jogo para o acesso). Com o jogo finalizado,
+ * `resultado` e `vencedorInscricaoId` (null = nenhum vencedor); `interrompidoEm` só enquanto interrompido (MAR-72).
+ */
+function resumirJogo({ inscricaoClubeA, inscricaoClubeB, inicioPrevistoEm, inscricaoClubeVencedorId, interrupcoes, ...jogo }: JogoLido) {
   return {
     ...jogo, clubeA: equipe(inscricaoClubeA), clubeB: equipe(inscricaoClubeB), inicioPrevistoEm,
     inicioPrevistoLocal: inicioPrevistoEm ? horaLocal(inicioPrevistoEm, jogo.fusoHorario) : null,
+    vencedorInscricaoId: inscricaoClubeVencedorId,
+    interrompidoEm: jogo.status === "em_andamento" ? interrupcoes[0]?.interrompidoEm ?? null : null,
   };
 }
 

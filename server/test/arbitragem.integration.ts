@@ -409,7 +409,7 @@ test("encerramento e cancelamento revogam tudo; reenvio do encerramento é recon
   // Encerramento (MAR-69 usará esta integração na transação que finaliza o jogo).
   await prisma.$transaction(async tx => {
     await tx.jogo.update({ where: { id }, data: { status: "em_andamento", iniciadoEm: new Date() } });
-    await tx.jogo.update({ where: { id }, data: { status: "finalizado", encerradoEm: new Date() } });
+    await tx.jogo.update({ where: { id }, data: { status: "finalizado", encerradoEm: new Date(), resultado: "normal" } });
     assert.equal(await encerrarAcessoArbitragem(tx, [id], "jogo_encerrado"), 2);
   });
   for (const cookie of [designado, porSenha]) {

@@ -321,7 +321,7 @@ test("atrasados são credenciados com o jogo em andamento; entrada em quadra uma
     await assert.rejects(prisma.participacao.update({ where: { id: pAna.id }, data }), JSON.stringify(data));
   }
   // Encerrado o jogo, o acesso termina e o banco recusa novos credenciamentos.
-  await prisma.jogo.update({ where: { id: jogo }, data: { status: "finalizado", encerradoEm: new Date() } });
+  await prisma.jogo.update({ where: { id: jogo }, data: { status: "finalizado", encerradoEm: new Date(), resultado: "normal" } });
   await recusa(credenciar(jogo, arbitro, { atletaId: semCredenciamento.id, numeroCamisa: 5 }), 403, /finalizado/);
   const vinculo = await prisma.vinculoClube.findFirstOrThrow({ where: { atletaId: semCredenciamento.id, fim: null } });
   const carteirinha = await prisma.carteirinha.findUniqueOrThrow({ where: { atletaId: semCredenciamento.id } });
