@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from "@nestjs/common";
 import { z } from "zod";
 import { Prisma, type StatusCampeonato, type StatusJogo } from "../../generated/prisma/client.js";
 import { encerrarAcessoArbitragem } from "../arbitragem/acesso.js";
+import { registrarEvento } from "../notificacoes/eventos.js";
 import { encerrarSaldosDoCampeonato } from "../suspensoes/suspensoes.js";
 
 const texto = (max: number) => z.string().trim().min(1).max(max);
@@ -123,6 +124,7 @@ export async function transicionarCampeonato(tx: Tx, campeonatoId: string, trans
     const agendados = await tx.jogo.updateManyAndReturn({ where: { campeonatoId, status: "agendado" }, data: { status: "cancelado" }, select: { id: true } });
     // Mesma transação: senha e sessões temporárias desses jogos deixam de valer (RF-029, MAR-65).
     await encerrarAcessoArbitragem(tx, agendados.map(j => j.id), "jogo_cancelado");
+    for (const { id } of agendados) await registrarEvento(tx, id, "jogo_cancelado");
   }
   await tx.campeonato.update({ where: { id: campeonatoId }, data: { status: destino[transicao] } });
   // Mesma transação, depois do novo status: encerrar/cancelar encerra o saldo das suspensões vigentes do

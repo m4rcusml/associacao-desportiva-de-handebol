@@ -9,6 +9,7 @@ import { placar } from "../resultados/lancamentos.js";
 import { registrarCumprimentos } from "../suspensoes/suspensoes.js";
 import { horaLocal } from "./fuso.js";
 import { detalharJogo, fusoHorarioSchema, inicioPrevistoSchema, instantePrevisto, localSchema, validarFuso } from "./jogos.js";
+import { registrarEvento } from "../notificacoes/eventos.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -59,6 +60,7 @@ export async function iniciarJogo(tx: Tx, jogoId: string, token: string | undefi
   const { status } = await revalidarArbitragem(tx, jogoId, token);
   if (status === "em_andamento") return { ...await resumirSessao(tx, jogoId, token), alterado: false };
   await tx.jogo.update({ where: { id: jogoId }, data: { status: "em_andamento", iniciadoEm: new Date() } });
+  await registrarEvento(tx, jogoId, "jogo_iniciado");
   return { ...await resumirSessao(tx, jogoId, token), alterado: true };
 }
 
@@ -112,7 +114,8 @@ export async function encerrarJogo(tx: Tx, jogoId: string, token: string | undef
   } });
   await registrarCumprimentos(tx, jogoId);
   await encerrarAcessoArbitragem(tx, [jogoId], "jogo_encerrado");
-  // Notificação aos dispositivos após a persistência fica na MAR-73.
+  // Aviso publicado só após o commit (MAR-73); as sessões revogadas recebem `acesso:encerrado`.
+  await registrarEvento(tx, jogoId, "jogo_encerrado");
   return { ...await confirmacaoEncerramento(tx, jogoId), alterado: true };
 }
 
@@ -142,6 +145,7 @@ export async function adiarJogo(tx: Tx, cofre: CofreSenhaArbitragem, jogoId: str
   // Senha nova revoga as sessões por senha; em seguida, as designadas (RF-029).
   const porSenha = senhaEmitida ? (await renovarSenha(tx, cofre, jogoId, "jogo_adiado")).sessoesRevogadas : 0;
   const sessoesRevogadas = porSenha + await revogarSessoes(tx, [jogoId], "jogo_adiado");
+  await registrarEvento(tx, jogoId, "jogo_adiado");
   return { jogo: await detalharJogo(tx, jogoId), senhaRenovada: senhaEmitida, sessoesRevogadas };
 }
 
@@ -157,6 +161,7 @@ export async function cancelarJogo(tx: Tx, jogoId: string) {
   if (status !== "agendado") throw new ConflictException(`Somente jogo agendado é cancelado (jogo ${descricao(status)}).`);
   await tx.jogo.update({ where: { id: jogoId }, data: { status: "cancelado" } });
   await encerrarAcessoArbitragem(tx, [jogoId], "jogo_cancelado");
+  await registrarEvento(tx, jogoId, "jogo_cancelado");
   return { jogo: await detalharJogo(tx, jogoId), alterado: true };
 }
 

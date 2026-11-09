@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Req, Res, UseGuards } from "@nestjs/common";
 import { minutes, SkipThrottle, Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import type { IncomingMessage } from "node:http";
 import type { Request, Response } from "express";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { PrismaService } from "../../infrastructure/prisma.service.js";
@@ -21,10 +22,17 @@ const producao = () => process.env.NODE_ENV === "production";
  */
 export const cookieArbitragem = (jogoId: string) => `${producao() ? "__Host-" : ""}handebol.arbitragem.${jogoId.toLowerCase()}`;
 
-export function lerCookie(request: Request, nome: string): string | undefined {
+/** Lê um cookie da requisição HTTP ou do handshake Socket.IO. */
+export function lerCookie(request: Pick<IncomingMessage, "headers">, nome: string): string | undefined {
   for (const parte of (request.headers.cookie ?? "").split(";")) {
     const separador = parte.indexOf("=");
-    if (separador > 0 && parte.slice(0, separador).trim() === nome) return decodeURIComponent(parte.slice(separador + 1).trim());
+    if (separador > 0 && parte.slice(0, separador).trim() === nome) {
+      try {
+        return decodeURIComponent(parte.slice(separador + 1).trim());
+      } catch {
+        return undefined;
+      }
+    }
   }
   return undefined;
 }

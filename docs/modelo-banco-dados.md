@@ -179,6 +179,12 @@ finalizado, resultado/vencedor só mudam com a correção registrada em `Alterac
 inclusão. `InterrupcaoJogo` (`interrompidoEm`, `retomadoEm`) admite uma interrupção aberta por jogo, aberta e retomada
 com o jogo em andamento; a retomada é a única alteração. Com interrupção aberta, triggers recusam lançamento novo
 (não o substituto da correção) e entrada em quadra. `EstatisticasDoJogo` passa a incluir o W.O. sem início (0 a 0).
+A migração `notificacoes_jogo` (MAR-73) cria `EventoJogo`, a caixa de saída das notificações Socket.IO: `id`
+crescente (`bigserial`), `jogoId` (FK, exclusão em cascata com o jogo), `tipo` (`TipoEventoJogo`), `referenciaId`
+opcional (lançamento, atleta ou arbitragem afetados), `criadoEm` e `publicadoEm` (vazio = pendente, com índice
+parcial). A linha é gravada na transação da mudança; triggers emitem `pg_notify` (entregue só no commit) na
+inserção do evento e na revogação de `SessaoArbitragem`, exclusão de `Arbitragem` e exclusão ou mudança de
+validade de `AuthSession`, sem dados sensíveis no aviso. Não guarda dados esportivos nem pessoais.
 
 ## Convenções e implementação da herança
 
@@ -219,6 +225,7 @@ administrativas não geram linhas adicionais.
 | `Jogo`                 | `PK` `id`; clubes A e B distintos e inscritos no mesmo campeonato                                                          | `inicioPrevistoEm`, `iniciadoEm`, `encerradoEm`, `local`; `resultado` e `inscricaoClubeVencedorId` (vazio = nenhum) somente finalizado; `invalidadoEm` |
 | `InterrupcaoJogo`      | `PK` `id`; `FK` `jogoId`; uma aberta por jogo                                                                              | `retomadoEm`                                                                                                                     |
 | `AlteracaoResultadoJogo` | `PK` `id`; `FK` `jogoId`, `presidenteId`; somente inclusão                                                               | vencedores anterior/novo; `motivo` obrigatório na invalidação                                                                    |
+| `EventoJogo`           | `PK` `id` (`bigserial`); `FK` `jogoId`; índice parcial dos pendentes                                                      | `referenciaId`; `publicadoEm` até o envio                                                                                        |
 | `Participacao`         | `PK` `id`; `UNIQUE` `jogoId` + `vinculoClubeId`; `UNIQUE` `jogoId` + `inscricaoClubeId` + `numeroCamisa` quando preenchido | `escolhidaPorTecnicoId`, `escolhidaEm`, `carteirinhaId`, `credenciadoEm`, `numeroCamisa`, `entrouEmQuadraEm`                     |
 | `AcessoArbitragem`     | `PK`/`FK` `jogoId`; uma senha compartilhada por jogo                                                                       | `revogadoEm`                                                                                                                     |
 | `Arbitragem`           | `PK` `id`; `UNIQUE` `jogoId` + `usuarioId` quando preenchido                                                               | `usuarioId`, `designadoPorPresidenteId`, `designadoEm`, `acessouEm`                                                              |
@@ -343,7 +350,7 @@ temporárias do jogo, de ambos os métodos. Adiar também gera nova senha e o ac
 na implementação, sem reutilizar sessões antigas nem acrescentar um novo status por suposição.
 Cancelar ou finalizar mantém o acesso bloqueado. Contas permanentes e outros jogos não são revogados.
 Aplicar as mudanças junto da invalidação das sessões, com controle de concorrência e notificações
-apenas após persistência. Repetições de início/fim e conflitos de correção seguem requisitos, seção 11.
+apenas após persistência (`EventoJogo`, MAR-73). Repetições de início/fim e conflitos de correção seguem requisitos, seção 11.
 
 ## Métricas provisórias, correções e histórico
 
@@ -473,7 +480,8 @@ O cookie temporário não sobrescreve o da conta; sua abrangência deve alcança
 Encerrar o jogo atualiza o estado, revoga `AcessoArbitragem` e suas sessões na mesma transação.
 Escritas concorrentes precisam de controle transacional que impeça autorização anterior ao
 encerramento de permitir gravação posterior. Preservar sessões da conta e acessos a outros jogos.
-Notificações só chegam a destinatários ainda autorizados, inclusive em conexões já abertas.
+Notificações só chegam a destinatários ainda autorizados, inclusive em conexões já abertas: o publicador
+revalida cada conexão antes de enviar e retira as revogadas (MAR-73).
 
 As regras de dia de acesso, adiamento e troca de senha estão definidas na seção de arbitragem;
 PEN-022 e PEN-021 resolvidas; esclarecimentos em requisitos, seção 11.

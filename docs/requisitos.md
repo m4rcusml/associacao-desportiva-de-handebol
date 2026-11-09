@@ -440,6 +440,12 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   muda o tipo e/ou o atleta, que deve estar credenciado no mesmo jogo; o valor continua 1 por ocorrência, e erros de
   quantidade se corrigem anulando lançamentos (ou, durante o jogo, registrando outro). A anulação guarda somente a data
   e a operação, sem autoria; a auditoria completa segue na PEN-007.
+- Atualizações imediatas (MAR-73). Detalhes aprovados por Marcus (09/11/2026): somente os dispositivos da
+  arbitragem com sessão temporária válida do jogo recebem notificações; presidente e técnicos continuam consultando
+  pela API. Cada notificação é um aviso mínimo (tipo da mudança e identificador do registro afetado, sem dados
+  esportivos ou pessoais), e o dispositivo consulta o estado oficial ao recebê-la. O dispositivo cujo acesso é
+  revogado recebe o motivo gravado na própria sessão (encerramento, adiamento, cancelamento, troca de senha ou saída;
+  nos demais casos, acesso indisponível) e é desconectado.
 
 ### Credenciamento, carteirinha e fotos
 
