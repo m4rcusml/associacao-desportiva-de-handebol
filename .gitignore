@@ -12,3 +12,4 @@ coverage/
 server/src/generated/
 output/playwright/
 .playwright-cli/
+.claude/
