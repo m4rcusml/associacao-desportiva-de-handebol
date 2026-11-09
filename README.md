@@ -212,6 +212,18 @@ substituído responde 404, e o QR sozinho não autoriza nada. `POST .../credenci
 registra uma vez a entrada em quadra, somente com o jogo em andamento e a conta do atleta ativa. Suspensão,
 invalidação ou transferência posteriores preservam o credenciamento e não impedem a entrada.
 
+#### Gols e penalidades (MAR-68)
+
+Com o cookie temporário do jogo e o jogo em andamento, a arbitragem registra em `POST
+/api/arbitragem/jogos/{jogoId}/lancamentos` uma ocorrência por vez: `operacaoId` (UUID gerado pelo cliente),
+`tipo` (`temp_gol`, `temp_cartaoAmarelo`, `temp_exclusaoDoisMinutos` ou `temp_cartaoVermelho`) e `participacaoId`
+do atleta credenciado no jogo. Não há clube nem valor no corpo: o clube vem da participação e cada ocorrência vale 1.
+Reenviar a mesma operação devolve o registro existente com `alterado: false`; o mesmo `operacaoId` com outro
+conteúdo é 409 e não sobrescreve o original. A resposta traz o placar atualizado. `GET .../lancamentos` devolve o
+placar (`null` antes do início), o desempenho de cada credenciado e os lançamentos em ordem de registro. Placar e
+desempenho são as views `EstatisticasDoJogo` e `DesempenhoDoAtleta`, calculadas dos lançamentos. Lançamentos
+ainda não são corrigidos nem anulados (MAR-70).
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -514,6 +526,17 @@ repetido, substituído e sem sessão (QR não autoriza); atrasado credenciado co
 QR em curso); acessos cruzados (cookie de outro jogo, saída, designado que vira técnico de um clube, jogo de
 amanhã, sem origem). Uma migração nova; nenhuma dependência nova. Não validado: início real do jogo (MAR-69,
 os testes alteram o status no banco), correção/estorno (MAR-71) e notificação Socket.IO (MAR-73).
+
+Validação local da MAR-68 em 08/11/2026: lint, tipos/build e **121 testes de integração aprovados**,
+incluindo seis novos: gol do atleta credenciado somado ao clube da participação, penalidades só no desempenho,
+placar ausente antes do início e 0 a 0 ao iniciar; recusa de atleta escalado sem credenciamento, participação de
+outro jogo, tipo fora da lista `temp_`, valor ou clube no corpo; recusa direta no banco (alteração, exclusão,
+valor zero, sem participação, jogo agendado); clube derivado mantido após transferência; reenvio da mesma operação
+sem duplicar, mesma operação em paralelo gravada uma vez e `operacaoId` com outro conteúdo recusado sem sobrescrever;
+24 lançamentos paralelos de dois dispositivos preservados, com placar igual à soma do desempenho; rollback sem
+totais parciais; acesso sem sessão ou com sessão de outro jogo negado e encerramento concorrente impedindo a
+gravação. Uma migração nova; nenhuma dependência nova. Não validado: início/encerramento reais (MAR-69, os testes
+alteram o status no banco), correção/anulação (MAR-70) e notificação Socket.IO (MAR-73).
 
 ## Caminho feliz
 

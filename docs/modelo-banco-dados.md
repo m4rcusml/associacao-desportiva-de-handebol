@@ -142,6 +142,13 @@ ausência de credenciamento do atleta nesse jogo anterior à aplicação; é som
 cascata do jogo ou da suspensão).
 A migração `suspensao_quantidade_positiva` remove o teto inicial de 100 jogos, sem alterar a migração já
 aplicada. A API aceita inteiros positivos no intervalo do tipo `INTEGER` do PostgreSQL.
+A migração `lancamentos` (MAR-68) cria `LancamentoJogo` (`operacaoId` UUID único enviado pelo cliente, `jogoId`,
+`participacaoId`, `tipo` com os quatro valores `temp_`, `valor` e `registradoEm`) e as views `EstatisticasDoJogo`
+(`temp_placarClubeA`/`B`, somente jogos com `iniciadoEm`) e `DesempenhoDoAtleta` (as quatro métricas `temp_`, somente
+participações credenciadas), sem tabelas de totais. CHECKs: `valor` positivo e `participacaoId` obrigatório nos tipos
+atuais, todos de atleta. O trigger exige jogo em andamento (`FOR SHARE` de `Jogo`) e participação credenciada do
+mesmo jogo (`FOR SHARE`), recusa alteração e só permite exclusão na cascata do jogo. Não há coluna de autoria do
+árbitro (RN-030). `substituiLancamentoId`, anulação e o filtro de anulados nas views ficam para a MAR-70.
 
 ## Convenções e implementação da herança
 
@@ -183,7 +190,7 @@ administrativas não geram linhas adicionais.
 | `Participacao`         | `PK` `id`; `UNIQUE` `jogoId` + `vinculoClubeId`; `UNIQUE` `jogoId` + `inscricaoClubeId` + `numeroCamisa` quando preenchido | `escolhidaPorTecnicoId`, `escolhidaEm`, `carteirinhaId`, `credenciadoEm`, `numeroCamisa`, `entrouEmQuadraEm`                     |
 | `AcessoArbitragem`     | `PK`/`FK` `jogoId`; uma senha compartilhada por jogo                                                                       | `revogadoEm`                                                                                                                     |
 | `Arbitragem`           | `PK` `id`; `UNIQUE` `jogoId` + `usuarioId` quando preenchido                                                               | `usuarioId`, `designadoPorPresidenteId`, `designadoEm`, `acessouEm`                                                              |
-| `LancamentoJogo`       | `PK` `id`; `FK` `substituiLancamentoId` para o lançamento corrigido; `UNIQUE` `substituiLancamentoId` quando preenchido    | `participacaoId` somente em ocorrência geral do jogo; `substituiLancamentoId`                                                    |
+| `LancamentoJogo`       | `PK` `id`; `UNIQUE` `operacaoId`; `FK` `substituiLancamentoId` para o lançamento corrigido; `UNIQUE` `substituiLancamentoId` quando preenchido | `participacaoId` somente em ocorrência geral do jogo; `substituiLancamentoId`                                                    |
 | `EstatisticasDoJogo`   | `PK`/`FK` `jogoId`; projeção calculada                                                                                     | Registro ausente antes de iniciar o jogo                                                                                         |
 | `DesempenhoDoAtleta`   | `PK`/`FK` `participacaoId`; projeção calculada                                                                             | Registro ausente antes do credenciamento                                                                                         |
 | `RegraSuspensao`       | `PK` `id`                                                                                                                  | Nenhum; permanece inativa sem confirmação dos critérios                                                                          |

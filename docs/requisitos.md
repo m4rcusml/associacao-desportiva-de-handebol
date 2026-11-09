@@ -30,11 +30,16 @@ Desde a MAR-64, o técnico aprovado atual escala atletas do próprio clube até 
 escalação é preliminar e credenciamento e entrada em quadra continuam na MAR-67.
 Desde a MAR-65, a arbitragem entra no dia do jogo (fuso do local) pela conta designada ou por nome e
 senha do jogo, com sessão temporária própria; presidente e contas designadas consultam e trocam a senha.
-As demais operações esportivas da arbitragem (lançamentos, início/encerramento) continuam nas MAR-68 e MAR-69.
+Início e encerramento do jogo pela arbitragem continuam na MAR-69.
 Desde a MAR-66, o presidente aplica, consulta e revoga suspensões manuais; encerrar/cancelar o campeonato
 encerra os saldos. O cumprimento no encerramento do jogo está pronto para a MAR-69.
 Desde a MAR-67, a arbitragem autorizada credencia por confirmação manual ou QR, com a camisa do jogo e as
 mesmas regras de elegibilidade, e registra uma vez a entrada em quadra com o jogo em andamento.
+Desde a MAR-68, a arbitragem autorizada registra gols e penalidades `temp_` do atleta credenciado com o jogo em
+andamento; o clube vem da participação, cada ocorrência vale 1, o reenvio da mesma operação não duplica e placar e
+desempenho são calculados dos lançamentos. Correção e anulação continuam na MAR-70.
+Detalhe aprovado por Marcus (MAR-68, 08/11/2026): o lançamento exige somente o credenciamento do atleta no jogo;
+não exige entrada em quadra registrada nem conta ativa, porque registra o que ocorreu na partida.
 Limitação temporária da MAR-67, aprovada por Marcus em 08/11/2026: credenciamento e entrada não podem
 ser alterados nesta entrega. Correção de camisa e estorno do credenciamento ficam para a MAR-71,
 preservadas as permissões finais descritas na seção 11. Repetir o credenciamento com a mesma camisa

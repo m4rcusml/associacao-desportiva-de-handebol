@@ -120,6 +120,14 @@ enum TipoAlteracaoEscalacao {
   remocao
 }
 
+/// Tipos provisórios de lançamento (RF-037, RN-035, PEN-003): prefixo temp_ até confirmação do cliente.
+enum TipoLancamento {
+  temp_gol
+  temp_cartaoAmarelo
+  temp_exclusaoDoisMinutos
+  temp_cartaoVermelho
+}
+
 enum TipoEventoCarteirinha {
   invalidacao
   reativacao
@@ -319,6 +327,7 @@ model Jogo {
   participacoes         Participacao[]
   alteracoesEscalacao   AlteracaoEscalacao[]
   cumprimentosSuspensao CumprimentoSuspensao[]
+  lancamentos           LancamentoJogo[]
 
   @@index([campeonatoId, status])
   @@index([inscricaoClubeAId, campeonatoId])
@@ -375,6 +384,7 @@ model Participacao {
   credenciadoEm         DateTime?      @db.Timestamptz
   numeroCamisa          Int?
   entrouEmQuadraEm      DateTime?      @db.Timestamptz
+  lancamentos           LancamentoJogo[]
 
   @@unique([jogoId, vinculoClubeId])
   @@unique([jogoId, inscricaoClubeId, numeroCamisa])
@@ -465,4 +475,26 @@ model CumprimentoSuspensao {
 
   @@id([suspensaoId, jogoId])
   @@index([jogoId])
+}
+
+/// Ocorrência esportiva registrada pela arbitragem (RF-031/032, RN-032/033, MAR-68): fonte do placar e do
+/// desempenho, que são projeções (views `EstatisticasDoJogo` e `DesempenhoDoAtleta` da migração
+/// `lancamentos`), nunca tabelas editáveis. O clube vem da participação, sem campo próprio. `operacaoId` é o
+/// identificador enviado pelo cliente: o reenvio devolve o registro existente, sem duplicar. Somente inclusão
+/// nesta tarefa; anulação e correção com `substituiLancamentoId` ficam para a MAR-70.
+model LancamentoJogo {
+  id             String         @id @default(uuid()) @db.Uuid
+  operacaoId     String         @unique @db.Uuid
+  jogoId         String         @db.Uuid
+  jogo           Jogo           @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  /// Obrigatória para todos os tipos atuais (CHECK); ausente só em futura ocorrência geral do jogo.
+  participacaoId String?        @db.Uuid
+  participacao   Participacao?  @relation(fields: [participacaoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  tipo           TipoLancamento
+  /// Inteiro positivo, 1 por ocorrência (RF-037).
+  valor          Int            @default(1)
+  registradoEm   DateTime       @db.Timestamptz
+
+  @@index([jogoId, registradoEm])
+  @@index([participacaoId])
 }
