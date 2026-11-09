@@ -45,7 +45,7 @@ server/
       participacoes/     # Escalação (MAR-64) e credenciamento/entrada em quadra (MAR-67)
       jogos/             # Agendamento e designação (MAR-62); ciclo do jogo (MAR-69); jogos excepcionais (MAR-72)
       arbitragem/        # Acesso temporário e senha do jogo (MAR-65)
-      suspensoes/        # Suspensões manuais e cumprimento (MAR-66)
+      suspensoes/        # Suspensões manuais e automáticas e cumprimento (MAR-66/MAR-79)
       resultados/        # Lançamentos de gols e penalidades (MAR-68); correção e anulação (MAR-70)
       notificacoes/      # Caixa de saída e Socket.IO (MAR-73)
       disciplina/
@@ -292,6 +292,13 @@ paralelo. `atletasComSuspensaoVigente` é a consulta de impedimento: o credencia
 depois de bloquear a conta do atleta (`FOR SHARE`), para ver aplicações concorrentes. Ordem geral:
 campeonato → jogo → conta → suspensão, sem ciclo com escalação e transferências. Triggers repetem no banco
 as regras de aplicação, término do saldo e cumprimento.
+Suspensões automáticas (MAR-79): `reconciliarSuspensoesAutomaticas(tx, jogoId)` roda no encerramento, depois de
+`registrarCumprimentos`, e nas correções/anulações do presidente após o encerramento, na mesma transação. Compara as
+automáticas não anuladas do jogo com os vermelhos não anulados com `relatorioDisciplinar`: cria as que faltam (1 jogo,
+`aplicadaEm` lido agora) e anula (`anuladaEm`) as que perderam a ocorrência, sem tocar em revogadas ou com saldo
+encerrado. Bloqueio consultivo por jogo serializa reconciliações concorrentes; depois, contas dos atletas envolvidos
+em `FOR UPDATE` (por id), como na aplicação manual. O índice único parcial (atleta, jogo de origem, regra) sem
+anulação e o `ON CONFLICT DO NOTHING` impedem duplicação.
 Credenciamento (MAR-67): `participacoes/credenciamento.ts` expõe à sessão temporária da arbitragem a lista de
 atletas do jogo, a leitura do QR, o credenciamento (manual ou QR) e a entrada em quadra. Cada operação chama
 `revalidarArbitragem` na própria transação e depois bloqueia a conta do atleta (`FOR SHARE`: desativação,
@@ -483,5 +490,5 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 
 Métricas e detalhes disciplinares ainda pendentes continuam registrados em
 [pendencias.md](pendencias.md). Os critérios de suspensão automática foram aprovados na MAR-78
-([requisitos, seção 12](requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026));
-implementação e validação pertencem à MAR-79.
+([requisitos, seção 12](requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026))
+e implementados na MAR-79.

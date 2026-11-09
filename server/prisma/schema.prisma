@@ -171,6 +171,17 @@ enum TipoLancamento {
   temp_cartaoVermelho
 }
 
+/// Origem da suspensão (MAR-79): manual pelo presidente (RF-038) ou automática pela regra aprovada (RF-039, seção 12).
+enum OrigemSuspensao {
+  manual
+  automatica
+}
+
+/// Critérios automáticos aprovados (requisitos, seção 12): somente desqualificação com relatório disciplinar (azul).
+enum RegraSuspensao {
+  desqualificacao_com_relatorio
+}
+
 enum TipoEventoCarteirinha {
   invalidacao
   reativacao
@@ -386,6 +397,7 @@ model Jogo {
   participacoes         Participacao[]
   alteracoesEscalacao   AlteracaoEscalacao[]
   cumprimentosSuspensao CumprimentoSuspensao[]
+  suspensoesOriginadas  Suspensao[]
   lancamentos           LancamentoJogo[]
   alteracoesCredenciamento AlteracaoCredenciamento[]
   eventos               EventoJogo[]
@@ -561,11 +573,13 @@ model SessaoArbitragem {
   @@index([arbitragemId])
 }
 
-/// Suspensão manual aplicada pelo presidente (RF-038, RN-037/038/043, MAR-66): impede o atleta somente no
-/// campeonato, por quantidade de jogos. Saldo = `quantidadeJogos` − cumprimentos, nunca armazenado.
-/// Revogar (`revogadaEm`/`revogadaPor`) e encerrar o saldo com o campeonato (`saldoEncerradoEm`) são registros
-/// distintos e definitivos, que preservam a suspensão e seus cumprimentos. Origem automática, regra e jogo de
-/// origem ficam para a MAR-79. Triggers da migração `suspensoes` tornam os dados da aplicação imutáveis.
+/// Suspensão manual aplicada pelo presidente (RF-038, RN-037/038/043, MAR-66) ou automática (RF-039, MAR-79): impede o
+/// atleta somente no campeonato, por quantidade de jogos. Saldo = `quantidadeJogos` − cumprimentos, nunca armazenado.
+/// Revogar (`revogadaEm`/`revogadaPor`), encerrar o saldo com o campeonato (`saldoEncerradoEm`) e anular a automática
+/// pela retirada da ocorrência de origem (`anuladaEm`) são registros distintos e definitivos, que preservam a suspensão
+/// e seus cumprimentos. Manual: presidente, sem jogo nem regra; automática: jogo de origem e regra, sem presidente
+/// (CHECK). Índice único parcial (migração `suspensao_automatica`): uma automática não anulada por atleta/jogo/regra.
+/// Triggers das migrações `suspensoes` e `suspensao_automatica` tornam os dados da aplicação imutáveis.
 model Suspensao {
   id                      String                 @id @default(uuid()) @db.Uuid
   atletaId                String                 @db.Uuid
@@ -574,18 +588,25 @@ model Suspensao {
   campeonato              Campeonato             @relation(fields: [campeonatoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   quantidadeJogos         Int
   motivo                  String
-  aplicadaPorPresidenteId String                 @db.Uuid
-  aplicadaPor             Presidente             @relation("aplicadaPor", fields: [aplicadaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  origem                  OrigemSuspensao        @default(manual)
+  jogoOrigemId            String?                @db.Uuid
+  jogoOrigem              Jogo?                  @relation(fields: [jogoOrigemId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  regra                   RegraSuspensao?
+  aplicadaPorPresidenteId String?                @db.Uuid
+  aplicadaPor             Presidente?            @relation("aplicadaPor", fields: [aplicadaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
   aplicadaEm              DateTime               @db.Timestamptz
   revogadaEm              DateTime?              @db.Timestamptz
   revogadaPorPresidenteId String?                @db.Uuid
   revogadaPor             Presidente?            @relation("revogadaPor", fields: [revogadaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
   /// Término do saldo restante ao encerrar ou cancelar o campeonato (PEN-010); não é cumprimento nem revogação.
   saldoEncerradoEm        DateTime?              @db.Timestamptz
+  /// Automática cuja ocorrência de origem foi corrigida ou anulada (MAR-79): saldo indevido liberado, histórico preservado.
+  anuladaEm               DateTime?              @db.Timestamptz
   cumprimentos            CumprimentoSuspensao[]
 
   @@index([atletaId, campeonatoId])
   @@index([campeonatoId])
+  @@index([jogoOrigemId])
 }
 
 /// Jogo encerrado definitivamente que contou para uma suspensão (RF-041, RN-039). A chave composta impede
@@ -618,6 +639,9 @@ model LancamentoJogo {
   tipo           TipoLancamento
   /// Inteiro positivo, 1 por ocorrência (RF-037).
   valor          Int            @default(1)
+  /// Somente no vermelho, obrigatório (CHECK): desqualificação com relatório disciplinar, sinalizada pelo azul (MAR-79,
+  /// seção 12). Não é segunda infração; muda apenas por correção.
+  relatorioDisciplinar Boolean?
   registradoEm   DateTime       @db.Timestamptz
   /// Lançamento anulado por esta correção (MAR-70); cada um é substituído no máximo uma vez.
   substituiLancamentoId String?         @unique @db.Uuid

@@ -14,7 +14,7 @@ obrigações de implementar. Os responsáveis indicados são sugestões para con
 | ID      | Pendência e decisão necessária                                                                                                                            | Impacto / situação vigente                                                                                                                                                                     |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PEN-003 | Confirmar métricas por jogo e atleta: quais dados registrar, definições e forma de cálculo.                                                               | Manter os campos provisórios com prefixo temp_. Placar, gols, cartões amarelos/vermelhos e exclusões de dois minutos são a proposta atual, não a lista definitiva. RF-037.                     |
-| PEN-004 | Definir regras de suspensão automática: penalidades consideradas, limites, período de acumulação, quantidade de jogos e eventual reinício da contagem.    | Resolvida por Marcus em 09/11/2026 (MAR-78). Critérios em requisitos, seção 12; implementação/validação na MAR-79, ainda sem regras automáticas ativas.                                    |
+| PEN-004 | Definir regras de suspensão automática: penalidades consideradas, limites, período de acumulação, quantidade de jogos e eventual reinício da contagem.    | Resolvida por Marcus em 09/11/2026 (MAR-78). Critérios em requisitos, seção 12; implementados e validados na MAR-79.                                    |
 | PEN-005 | Confirmar se o presidente continuará incluindo os clubes participantes dos campeonatos.                                                                   | É o procedimento provisoriamente adotado. Se houver inscrição pelo próprio clube, definir quem solicita, quem aprova e os prazos. RF-014.                                                      |
 | PEN-008 | Ficha cadastral final, dados da carteirinha e critérios de verificação. | Parcial: campos mínimos provisórios autorizados; foto opcional e edição sem nova aprovação definidos em requisitos, seção 11. Campos finais e critérios do cliente continuam pendentes. |
 
@@ -77,7 +77,7 @@ aprovados.
 
 ## 7. Ordem sugerida de resolução
 
-1. Confirmar métricas definitivas, ficha final e inclusão de clubes com o cliente (PEN-003/PEN-008/PEN-005). Critérios automáticos da PEN-004 já aprovados; implementar na MAR-79.
+1. Confirmar métricas definitivas, ficha final e inclusão de clubes com o cliente (PEN-003/PEN-008/PEN-005). Critérios automáticos da PEN-004 aprovados e implementados (MAR-79).
 2. Detalhar correção de credenciamento com entrada/lançamentos e redução parcial de suspensão (PEN-019/PEN-009 residuais).
 3. Confirmar eventual exceção de transferência para clube eliminado/desistente (PEN-017); até lá vale o bloqueio aprovado.
 4. Detalhar condições operacionais, retenção e auditoria completa (PEN-025/PEN-026/PEN-007), sem reabrir itens já adiados.
@@ -92,7 +92,7 @@ Não são pendências:
 
 - PEN-004: critérios de suspensão automática aprovados por Marcus em 09/11/2026 (MAR-78),
   em [requisitos, seção 12](requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026).
-  A aprovação encerra a decisão; implementação e validação continuam na MAR-79.
+  A aprovação encerra a decisão; implementação e validação feitas na MAR-79.
 
 - Esclarecimentos desta rodada: PEN-006, PEN-010 a PEN-016, PEN-018, PEN-020, PEN-021 e PEN-023. Regras em [requisitos, seção 11](requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026). PEN-009/PEN-019 conservam somente os detalhes residuais acima.
 - Ciclo manual do campeonato e limites/permissões de fotos foram definidos na mesma seção.

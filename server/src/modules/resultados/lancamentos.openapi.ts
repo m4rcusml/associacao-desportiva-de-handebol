@@ -8,7 +8,7 @@ const presidente = [{ sessionCookie: [] }];
 const jogoId = { name: "jogoId", in: "path", required: true, schema: { type: "string", format: "uuid" } };
 const lancamentoId = { name: "lancamentoId", in: "path", required: true, schema: { type: "string", format: "uuid" } };
 const parameters = [jogoId];
-const lancamento = "id, operacaoId, tipo, valor (1), registradoEm, participacaoId, inscricaoId, atleta {id, nomeCompleto}, numeroCamisa, substituiLancamentoId (lançamento corrigido por este), anuladoEm e substituidoPorId (correção que o anulou)";
+const lancamento = "id, operacaoId, tipo, relatorioDisciplinar (somente no temp_cartaoVermelho: true = desqualificação com relatório/azul; null nos demais), valor (1), registradoEm, participacaoId, inscricaoId, atleta {id, nomeCompleto}, numeroCamisa, substituiLancamentoId (lançamento corrigido por este), anuladoEm e substituidoPorId (correção que o anulou)";
 const placar = "placar { clubeA {inscricaoId, clube}, temp_placarClubeA, clubeB {inscricaoId, clube}, temp_placarClubeB } ou null antes do início";
 const registros = `jogo {id, status}, ${placar}, desempenho [{ participacaoId, inscricaoId, atleta, numeroCamisa, temp_gols, temp_cartoesAmarelos, temp_exclusoesDoisMinutos, temp_cartoesVermelhos }] e lancamentos [${lancamento}] em ordem de registro; anulados continuam listados, fora do placar e do desempenho`;
 const indisponivel = {
@@ -21,6 +21,7 @@ const corpoCorrecao = { required: true, ...json(z.toJSONSchema(correcaoSchema, {
 const corpoAnulacao = { required: true, ...json(z.toJSONSchema(anulacaoSchema, { io: "input" })) };
 const respostaCorrecao = `{ lancamento (substituto), anulado (original), alterado, placar }; alterado é false no reenvio da mesma correção. lancamento: ${lancamento}`;
 const respostaAnulacao = `{ lancamento (anulado), alterado, placar }; alterado é false no reenvio da mesma anulação. lancamento: ${lancamento}`;
+const automaticas = "; pelo presidente, também suspensoesAutomaticas { criadas, anuladas } (ids das suspensões automáticas do jogo geradas ou anuladas pela reconciliação)";
 
 /** Contrato dos lançamentos de gols e penalidades (MAR-68) e de suas correções e anulações (MAR-70). */
 export const openapiLancamentos = {
@@ -29,17 +30,17 @@ export const openapiLancamentos = {
       "200": resposta(registros),
       "400": resposta("UUID inválido"), ...indisponivel, "404": resposta("Jogo não encontrado"),
     } },
-    post: { summary: "Arbitragem registra gol ou penalidade (tipos temp_) do atleta credenciado, com o jogo em andamento. O clube vem da participação e cada ocorrência vale 1. operacaoId, gerado pelo cliente, torna o reenvio seguro", security, parameters, requestBody: { required: true, ...json(z.toJSONSchema(lancamentoSchema, { io: "input" })) }, responses: {
+    post: { summary: "Arbitragem registra gol ou penalidade (tipos temp_) do atleta credenciado, com o jogo em andamento. O clube vem da participação e cada ocorrência vale 1. No vermelho, relatorioDisciplinar true registra a desqualificação com relatório disciplinar (azul), que gera um jogo de suspensão no encerramento; ausente vale false. operacaoId, gerado pelo cliente, torna o reenvio seguro", security, parameters, requestBody: { required: true, ...json(z.toJSONSchema(lancamentoSchema, { io: "input" })) }, responses: {
       "200": resposta(`{ lancamento, alterado, placar }; alterado é false no reenvio da mesma operação. lancamento: ${lancamento}; ${placar}`),
-      "400": resposta("UUID ou corpo inválido, tipo desconhecido, campos adicionais (inclusive valor ou clube)"), ...indisponivel,
+      "400": resposta("UUID ou corpo inválido, tipo desconhecido, relatorioDisciplinar fora do vermelho, campos adicionais (inclusive valor ou clube)"), ...indisponivel,
       "404": resposta("Jogo não encontrado ou participação de outro jogo/inexistente"),
       "409": resposta("Jogo não está em andamento, atleta não credenciado, operacaoId já usado com outro conteúdo ou conflito concorrente"),
     } },
   },
   "/arbitragem/jogos/{jogoId}/lancamentos/{lancamentoId}/correcao": {
-    post: { summary: "Arbitragem corrige, com o jogo em andamento, o tipo e/ou o atleta credenciado de um lançamento: anula o original e cria o substituto na mesma transação, sem apagar o anterior. A primeira correção ou anulação prevalece. operacaoId identifica a correção e o substituto", security, parameters: [jogoId, lancamentoId], requestBody: corpoCorrecao, responses: {
+    post: { summary: "Arbitragem corrige, com o jogo em andamento, o tipo, o atleta credenciado e/ou o relatório disciplinar do vermelho de um lançamento: anula o original e cria o substituto na mesma transação, sem apagar o anterior. A primeira correção ou anulação prevalece. operacaoId identifica a correção e o substituto", security, parameters: [jogoId, lancamentoId], requestBody: corpoCorrecao, responses: {
       "200": resposta(respostaCorrecao),
-      "400": resposta("UUID ou corpo inválido, campos adicionais ou correção sem alterar tipo nem atleta"), ...indisponivel,
+      "400": resposta("UUID ou corpo inválido, campos adicionais ou correção sem alterar tipo, atleta nem relatório disciplinar"), ...indisponivel,
       "404": resposta("Jogo não encontrado, lançamento de outro jogo/inexistente ou participação de outro jogo/inexistente"),
       "409": resposta(`Jogo não está em andamento; ${conflitoCorrecao}`),
     } },
@@ -58,16 +59,16 @@ export const openapiLancamentos = {
     } },
   },
   "/jogos/{jogoId}/lancamentos/{lancamentoId}/correcao": {
-    post: { summary: "Presidente corrige o tipo e/ou o atleta credenciado de um lançamento somente após o encerramento, sem devolver acesso à arbitragem nem refazer o cumprimento de suspensões. Mesmas regras da correção pela arbitragem", security: presidente, parameters: [jogoId, lancamentoId], requestBody: corpoCorrecao, responses: {
-      "200": resposta(respostaCorrecao),
-      "400": resposta("UUID ou corpo inválido, campos adicionais ou correção sem alterar tipo nem atleta"), ...semPresidente,
+    post: { summary: "Presidente corrige o tipo, o atleta credenciado e/ou o relatório disciplinar de um lançamento somente após o encerramento, sem devolver acesso à arbitragem nem refazer o cumprimento de suspensões. Mesmas regras da correção pela arbitragem. Reconcilia as suspensões automáticas do jogo: desqualificação com relatório retirada anula a automática (libera só o saldo restante, sem compensar jogos passados); acrescentada gera uma nova para os próximos jogos", security: presidente, parameters: [jogoId, lancamentoId], requestBody: corpoCorrecao, responses: {
+      "200": resposta(respostaCorrecao + automaticas),
+      "400": resposta("UUID ou corpo inválido, campos adicionais ou correção sem alterar tipo, atleta nem relatório disciplinar"), ...semPresidente,
       "404": resposta("Jogo, lançamento ou participação não encontrados neste jogo"),
       "409": resposta(`Jogo não finalizado (durante a partida, quem corrige é a arbitragem); ${conflitoCorrecao}`),
     } },
   },
   "/jogos/{jogoId}/lancamentos/{lancamentoId}/anulacao": {
-    post: { summary: "Presidente anula (exclusão lógica) um lançamento somente após o encerramento, sem devolver acesso à arbitragem. Presidente não inclui lançamentos novos", security: presidente, parameters: [jogoId, lancamentoId], requestBody: corpoAnulacao, responses: {
-      "200": resposta(respostaAnulacao),
+    post: { summary: "Presidente anula (exclusão lógica) um lançamento somente após o encerramento, sem devolver acesso à arbitragem. Presidente não inclui lançamentos novos. Anular a desqualificação com relatório anula a suspensão automática dela, liberando só o saldo restante", security: presidente, parameters: [jogoId, lancamentoId], requestBody: corpoAnulacao, responses: {
+      "200": resposta(respostaAnulacao + automaticas),
       "400": resposta("UUID ou corpo inválido"), ...semPresidente,
       "404": resposta("Jogo ou lançamento não encontrados neste jogo"),
       "409": resposta(`Jogo não finalizado; ${conflitoCorrecao}`),

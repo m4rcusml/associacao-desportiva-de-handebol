@@ -32,6 +32,8 @@ Desde a MAR-65, a arbitragem entra no dia do jogo (fuso do local) pela conta des
 senha do jogo, com sessão temporária própria; presidente e contas designadas consultam e trocam a senha.
 Desde a MAR-66, o presidente aplica, consulta e revoga suspensões manuais; encerrar/cancelar o campeonato
 encerra os saldos.
+Desde a MAR-79, o vermelho registra se a desqualificação tem relatório disciplinar (azul); com relatório, o
+encerramento do jogo gera uma suspensão automática de um jogo, e as correções do presidente a recalculam.
 Desde a MAR-69, a arbitragem autorizada inicia o jogo no dia marcado e um único árbitro o encerra; o encerramento
 registra o cumprimento das suspensões e revoga senha e sessões na mesma transação. O presidente adia (nova senha,
 sessões dos dois métodos revogadas) ou cancela (acessos revogados, sem cumprimento). Repetir início, encerramento
@@ -156,7 +158,7 @@ ainda precisa confirmá-la com o cliente.
 | ID     | Requisito                                                                                                                           | Situação                              |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | RF-038 | Permitir ao presidente suspender manualmente um atleta em um campeonato, informando a quantidade de jogos.                          | Confirmado                            |
-| RF-039 | Aplicar suspensão automática por desqualificação com relatório disciplinar, conforme seção 12.                                      | Confirmado; implementação na MAR-79       |
+| RF-039 | Aplicar suspensão automática por desqualificação com relatório disciplinar, conforme seção 12.                                      | Confirmado; implementado na MAR-79        |
 | RF-040 | Verificar impedimentos disciplinares no credenciamento e impedir participação quando houver suspensão a cumprir naquele campeonato. | Confirmado                            |
 | RF-041 | Registrar os jogos que contam para cumprimento da suspensão e apurar quantos ainda faltam.                                          | Confirmado                            |
 | RF-042 | Registrar minimamente presidente responsável e data na aplicação manual; detalhar auditoria completa em etapa posterior.            | Proposto; auditoria completa pendente |
@@ -282,7 +284,7 @@ O levantamento consolidado, incluindo casos específicos e ordem sugerida de res
 | PEN-001 | A página da arbitragem deve abrir antes do início formal para credenciar os atletas?                               | Resolvido: sim; abrir credenciamento antes e iniciar a partida depois (RF-030). |
 | PEN-002 | Para usuário cadastrado que entra por senha, verificar igualmente o impedimento de pertencer a clube participante? | Resolvido: não; acesso por senha dispensa essa conferência (RN-025).            |
 | PEN-003 | Quais métricas serão efetivamente utilizadas?                                                                      | Aguardando cliente; manter temp_.                                               |
-| PEN-004 | Quais penalidades, limites de acumulação e quantidades de jogos geram suspensão automática?                        | Resolvido por Marcus em 09/11/2026; critérios na seção 12, implementação na MAR-79.             |
+| PEN-004 | Quais penalidades, limites de acumulação e quantidades de jogos geram suspensão automática?                        | Resolvido por Marcus em 09/11/2026; critérios na seção 12, implementados na MAR-79.             |
 | PEN-005 | O presidente continuará incluindo os clubes no campeonato?                                                         | Operação provisória expressamente adotada; aguarda confirmação do cliente.      |
 | PEN-006 | Como tratar múltiplas suspensões simultâneas? | Resolvido: cumprimento em paralelo; revisões na seção 11 e PEN-009 residual. |
 | PEN-007 | Quais ações, autores, alterações e justificativas integram a auditoria completa?                                   | Necessidade reconhecida; detalhamento adiado por solicitação de Marcus.         |
@@ -513,7 +515,7 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   a arbitragem pode encerrar como normal mesmo durante uma interrupção, e o presidente pode corrigir resultado e
   vencedor de jogo já invalidado.
 - Métricas definitivas continuam pendentes; manter `temp_`. Critérios de suspensão automática
-  aprovados posteriormente estão na seção 12; implementação e validação seguem na MAR-79.
+  aprovados posteriormente estão na seção 12 e foram implementados na MAR-79.
 
 ## 12. Critérios de suspensão automática — MAR-78 — 09/11/2026
 
