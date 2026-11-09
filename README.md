@@ -858,25 +858,30 @@ em geral exigem aguardar 30 dias. Conferir a adequação desse uso antes de ampl
    que nunca vai ao client.
 2. **Vercel:** importe o repositório com *Root Directory* `client` e anote o domínio (`https://<projeto>.vercel.app`).
    Variáveis: `NEXT_PUBLIC_API_URL=/api`, `API_ORIGEM=https://<serviço>.onrender.com` e `PROXY_SEGREDO`.
+   Use o domínio canônico do frontend em `main`, ou o alias estável da branch no preview; evite a URL efêmera
+   de um deploy, que muda a cada publicação. Após o merge, o teste deve usar `https://associacao-de-handebol.vercel.app`
+   com backend em `main`; essa transição exige conferir novamente as origens configuradas.
 3. **Render:** *New → Blueprint* com este repositório. Preencha `DATABASE_URL`, `BETTER_AUTH_URL` e `CLIENT_ORIGIN`
-   (ambas com o domínio da Vercel, sem `/api`), `ARBITRAGEM_SENHA_CHAVE` e `PROXY_SEGREDO` (gere cada uma com o comando
+   (ambas com a mesma origem estável da Vercel usada pelo navegador, sem `/api`), `ARBITRAGEM_SENHA_CHAVE` e `PROXY_SEGREDO` (gere cada uma com o comando
    de [Desenvolvimento local](#desenvolvimento-local)), `SUPABASE_URL` e `SUPABASE_SECRET_KEY`. `BETTER_AUTH_SECRET` é
    gerada pelo Render. O build aplica as migrações (`db:deploy`), e o health check usa `/api/health/ready`.
 4. Copie o `PROXY_SEGREDO` do Render para a Vercel, se ainda não estiver lá, e faça um novo deploy do client.
 5. **Dados fictícios:** crie o presidente inicial executando `npm run presidente:inicial` localmente, com
    `DATABASE_URL` do teste somente nesse comando, e use contas `@example.invalid`.
-6. **Smoke hospedado:** em `server/`, execute:
+6. **Smoke hospedado:** em `server/`, configure `SMOKE_URL_PUBLICA` (origem estável da Vercel) e
+   `SMOKE_URL_API_DIRETA` (origem do Render) no arquivo local `.env.smoke.local`, ignorado pelo Git, e execute:
 
    ```sh
-   SMOKE_URL_PUBLICA=https://<projeto>.vercel.app SMOKE_URL_API_DIRETA=https://<serviço>.onrender.com SMOKE_SUPABASE_URL=https://<ref>.supabase.co SMOKE_FOTOS_BUCKET=fotos-atletas npm run smoke:hospedado
+   node --env-file=.env.smoke.local scripts/smoke-hospedado.ts
    ```
 
    Ele confere liveness/readiness, recusa do acesso direto sem segredo, origem estranha, corpo no limite das fotos (4 MB) atravessando
    a Vercel, cookies seguros, sessão isolada e logout, limite de login com IPs forjados, long-polling do Socket.IO por
    um ciclo de ping de 25 s, autorização do handshake só pelo domínio e pela origem, e a configuração privada do bucket.
-   Exporte `SMOKE_EMAIL` e `SMOKE_SENHA` juntas na sessão para validar cookies, sessão e logout; com `SMOKE_ATLETA_ID`
-   e credenciais de presidente, também envia e lê uma foto. Para consultar o bucket, exporte `SMOKE_SUPABASE_SECRET_KEY`
-   na sessão junto de `SMOKE_SUPABASE_URL` e `SMOKE_FOTOS_BUCKET`: a consulta autenticada exige HTTP 200, o bucket
+   Defina `SMOKE_EMAIL` e `SMOKE_SENHA` juntas no arquivo local para validar cookies, sessão e logout; com
+   `SMOKE_ATLETA_ID`, também envia e lê uma foto, usando presidente ou o próprio atleta (inclusive pendente).
+   Para consultar o bucket via REST, defina `SMOKE_SUPABASE_SECRET_KEY` junto de `SMOKE_SUPABASE_URL` e
+   `SMOKE_FOTOS_BUCKET`: a consulta autenticada exige HTTP 200, o bucket
    esperado e `public: false`. Não versione nem cole senha ou chave secreta no histórico do shell; somente quem
    executa o smoke fornece esses valores. Configuração parcial falha; grupos ausentes são listados como não executados.
 
@@ -884,15 +889,21 @@ Validação local da MAR-76 em 09/11/2026: lint e tipos/build de backend e clien
 smoke contra `next start` com o `proxy.ts` encaminhando para o backend local com `PROXY_SEGREDO`, com todos os checks
 aprovados, exceto o de IP forjado. Esse check falhou como esperado: o `next start` local repassa o `X-Real-IP` enviado
 pelo cliente, o que a Vercel não faz. Sem cabeçalhos forjados, o 4º login seguido respondeu 429 pelo proxy.
-Validação hospedada em 09/11/2026 (Vercel preview, Render free em Node 26.13.0, Supabase PostgreSQL 17.11 pelo
+Validação hospedada em 09/11/2026 (Vercel preview, Render free em Oregon com Node 26.13.0, Supabase PostgreSQL 17.11 pelo
 Session Pooler em `us-west-2`): 27 migrações aplicadas no build e smoke aprovado para saúde,
 recusa direta (403), origem estranha (403), cookie seguro, sessão isolada e logout (conta técnica fictícia), limite do
 login com IPs forjados (429 no 4º), long-polling com ping após 25,0 s, handshake só pelo domínio e origem, corpo de 4 MB
 pela Vercel. Um corpo de 5 MB foi recusado pela Vercel (`FUNCTION_PAYLOAD_TOO_LARGE`), daí o limite
-de 4 MB das fotos. A prova anterior de bucket privado foi **inconclusiva**: consultava objeto inexistente e aceitava
-qualquer status diferente de 200, o que também aprova bucket público. A nova consulta autenticada ainda precisa ser
-executada no ambiente hospedado. Também não validado: envio real de foto ao Storage (exige presidente e atleta)
-e WebSocket (fora do teste).
+de 4 MB das fotos. Na revisão, a prova anterior de bucket privado foi considerada **inconclusiva**: consultava objeto
+inexistente e aceitava qualquer status diferente de 200. O bucket ainda não existia e foi criado privado.
+Após corrigir `CLIENT_ORIGIN`/`BETTER_AUTH_URL` no Render para o alias estável da branch, o smoke foi repetido com
+atleta fictício pendente: envio e leitura real da foto, cookies/logout e os demais checks executados passaram.
+A única opção não executada foi a consulta REST de metadados do bucket, sem acessar a chave secreta. Em seu lugar,
+consulta SQL autenticada confirmou `storage.buckets.public = false`, zero políticas em `storage` e o objeto da foto
+existente; acesso anônimo ao objeto pela URL pública retornou HTTP 400 (`statusCode: 404`, bucket não encontrado),
+e pelo endpoint autenticado retornou HTTP 400 por falta de autorização. A leitura pela API com sessão retornou 200.
+Assim, Storage privado e envio/leitura hospedados foram validados sem extrair a chave secreta. WebSocket permanece
+fora do teste por decisão.
 
 ## Caminho feliz
 

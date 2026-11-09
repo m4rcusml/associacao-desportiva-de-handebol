@@ -154,8 +154,10 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   e fotos; usar franquia gratuita de armazenamento nesta etapa, conferindo limites antes de provisionar.
   Serviço de e-mail adiado. Fotos: limites/permissões definidos em requisitos, seção 11, e implementados com
   validação local na MAR-75 (arquitetura). A MAR-76 provisionou o teste e validou encaminhamento pela Vercel,
-  segredo do proxy, readiness, cookies, IP e long-polling em 09/11/2026 (README). A prova anterior de bucket privado
-  era inconclusiva; faltam executar a nova consulta autenticada e o envio/leitura real de foto no Storage hospedado.
+  segredo do proxy, readiness, cookies, IP e long-polling em 09/11/2026 (README). Na revisão, criou-se o bucket privado
+  e validou-se envio/leitura real por atleta fictício pendente. SQL autenticado confirmou bucket privado, zero políticas
+  e objeto existente; a leitura anônima foi recusada. A consulta REST de metadados do smoke não foi executada,
+  sem extrair a chave secreta; a prova alternativa está no README.
   Limites gratuitos conferidos documentalmente em 09/11/2026, após provisionar, sem evidência de conferência prévia
   (fontes e cotas no README). Produção e custos correspondentes serão avaliados posteriormente.
 - PEN-032 parcialmente resolvida: npm e lockfile versionado, versões estáveis recentes compatíveis,
@@ -173,5 +175,5 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   após transação e conflitos. Não exige questionário técnico ao usuário; decisões de comportamento
   ainda indefinidas precisam ser esclarecidas; PEN-023 foi resolvida nesta rodada. Eventos, publicação após
   a transação e reconexão definidos e validados localmente na MAR-73 (arquitetura); destinatários, conteúdo do
-  aviso e motivo da revogação aprovados por Marcus (requisitos, seção 11). Falta validar Socket.IO na
-  implantação de teste (MAR-76).
+  aviso e motivo da revogação aprovados por Marcus (requisitos, seção 11). Socket.IO por long-polling validado na
+  implantação de teste (MAR-76); WebSocket ficou fora por decisão de escopo.

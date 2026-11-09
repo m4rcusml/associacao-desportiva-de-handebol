@@ -422,7 +422,8 @@ Implementação da MAR-75 (09/11/2026), validada localmente:
   troca `Atleta.fotoChave` com a linha bloqueada. Falha no envio ou na transação preserva a foto atual, e o
   objeto novo é removido se o banco confirmadamente não o referencia. O anterior é removido após o commit; se
   essa remoção falhar, resta um órfão, nunca uma referência inválida. A limpeza de órfãos está no README.
-- A prova hospedada (bucket privado, políticas, chave secreta e limites gratuitos) fica na MAR-76.
+- A prova hospedada de envio/leitura, bucket privado e ausência de políticas foi concluída na revisão da MAR-76,
+  sem extrair a chave secreta; método e limites gratuitos registrados no README.
 
 Referências da validação de imagens: [Sharp 0.35.5](https://sharp.pixelplumbing.com/changelog/v0.35.5/),
 [metadados](https://sharp.pixelplumbing.com/api-input/), [saída dos pixels](https://sharp.pixelplumbing.com/api-output/) e
@@ -530,12 +531,15 @@ Implantação de teste provisionada na MAR-76 (passo a passo e evidências do sm
 - Render free sem pre-deploy: migrações versionadas aplicadas no fim do build; uma instância.
 - Banco pelo Session Pooler do Supabase (IPv4 e modo sessão, exigido pelo `LISTEN`), com TLS sem verificação do
   certificado (`sslmode=require&uselibpqcompat=true`) no teste; verificação com a CA do Supabase fica para produção.
-- `BETTER_AUTH_URL` e `CLIENT_ORIGIN` usam o domínio da Vercel; `PROXY_SEGREDO` é obrigatório em produção.
+- `BETTER_AUTH_URL` e `CLIENT_ORIGIN` usam a mesma origem estável da Vercel acessada pelo navegador (domínio
+  canônico em `main`, alias da branch em preview), evitando URLs efêmeras de deploy; `PROXY_SEGREDO` é obrigatório em produção.
 
-Em 09/11/2026, Vercel preview, Render free com Node 26.13.0 e Supabase PostgreSQL 17.11 pelo Session Pooler
+Em 09/11/2026, Vercel preview, Render free em Oregon com Node 26.13.0 e Supabase PostgreSQL 17.11 pelo Session Pooler
 em `us-west-2` passaram pelo smoke de saúde, origem, cookies/isolamento/logout, IP não forjável,
-long-polling (ping após 25,0 s) e corpo de 4 MB; 27 migrações aplicadas. A prova anterior de bucket privado
-era inconclusiva; a nova consulta autenticada e o envio/leitura real de foto ainda aguardam execução hospedada.
+long-polling (ping após 25,0 s) e corpo de 4 MB; 27 migrações aplicadas. A revisão criou o bucket privado e validou
+envio/leitura real pela API com atleta fictício pendente. SQL autenticado confirmou bucket privado, zero políticas
+de Storage e objeto existente; a leitura anônima desse objeto foi recusada. A consulta REST de metadados do smoke
+não foi executada, sem extrair a chave secreta; as evidências alternativas estão no README.
 Os limites gratuitos foram conferidos documentalmente após o provisionamento, em 09/11/2026 (README).
 
 A estimativa de porte é de dezenas a poucas centenas, sem dimensionamento confirmado de
@@ -546,13 +550,11 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 1. Retomar a prova de recuperação/reset da PEN-030 quando esse fluxo for implementado. Cookies, TLS/proxy e
    Socket.IO por long-polling hospedados passaram na MAR-76; sessão temporária, escritas esportivas e revogação
    HTTP e Socket.IO concorrentes foram validadas localmente (MAR-65 a 73).
-2. Completar a prova hospedada do Storage privado pela nova consulta autenticada do smoke e pelo envio/leitura
-   real de foto. A checagem anterior de objeto inexistente não comprovava a privacidade do bucket.
-3. Manter em código o contrato da API (OpenAPI, com eventos Socket.IO na extensão `x-socketio`). Eventos,
+2. Manter em código o contrato da API (OpenAPI, com eventos Socket.IO na extensão `x-socketio`). Eventos,
    publicação após transação e reconexão foram definidos na MAR-73; comportamentos de produto ainda indefinidos
    exigem esclarecimento com Marcus.
-4. Retomar serviço de e-mail, recuperação de senha e sua validação em etapa posterior.
-5. Detalhar produção, logs e backup/restauração posteriormente, sem bloquear o início local.
+3. Retomar serviço de e-mail, recuperação de senha e sua validação em etapa posterior.
+4. Detalhar produção, logs e backup/restauração posteriormente, sem bloquear o início local.
 
 Decisões das MAR-80/81/82 estão em requisitos, seções 13 a 15: correção administrativa,
 redução de suspensão, ficha/carteirinha e métricas. A aprovação não comprova implementação;
