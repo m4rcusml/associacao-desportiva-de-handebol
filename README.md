@@ -41,6 +41,7 @@ Não versione o valor gerado. As outras variáveis estão nos `.env.example`:
 | `BETTER_AUTH_SECRET` | Segredo local aleatório, mantido no backend. |
 | `ARBITRAGEM_SENHA_CHAVE` | Chave AES-256 (32 bytes em hex) da cópia cifrada da senha da arbitragem; fora do banco e do repositório. Trocá-la torna ilegíveis as cópias existentes. |
 | `PORT` | Porta da API, padrão 3001. |
+| `NOTIFICACOES_VARREDURA_MS` | Opcional. Intervalo da varredura das notificações Socket.IO (padrão 30000): reprocessa eventos não publicados e retira conexões revogadas sem aviso do banco (expiração, virada do dia, vínculo). |
 | `NEXT_PUBLIC_API_URL` | Opcional em `client/.env.local`, conforme `client/.env.example`; padrão `http://localhost:3001/api`. Incorporado no build do Next. |
 
 Use `localhost` nas duas URLs do navegador; não misture com `127.0.0.1`.
@@ -269,6 +270,18 @@ adia o jogo agendado em `POST /api/jogos/{jogoId}/adiamento` (`inicioPrevisto` l
 `fusoHorario` e `local` opcionais): gera nova senha, se já emitida, e revoga as sessões dos dois métodos. Cancela o
 jogo agendado em `POST /api/jogos/{jogoId}/cancelamento`, revogando os acessos; jogo cancelado não conta para
 suspensões, e repetir devolve `alterado: false`. Escalação, credenciamentos, contas e outros jogos são preservados.
+
+#### Notificações em tempo real (MAR-73)
+
+Os dispositivos da arbitragem conectam o Socket.IO em `/api/socket.io` (mesmo servidor da API), com
+`auth: { jogoId }`, o cookie temporário daquele jogo e a origem `CLIENT_ORIGIN`; conta permanente, outro jogo ou
+outra origem são recusados. O servidor envia `jogo:evento` (`id`, `jogoId`, `tipo`, `referenciaId`,
+`ocorridoEm`) depois do commit de cada mudança do jogo: escalação, credenciamento, entrada em quadra, início,
+pausa, retomada, encerramento, adiamento, cancelamento, lançamentos e visualização. O aviso não traz dados: o
+dispositivo consulta a API REST ao recebê-lo e ao (re)conectar, e ignora `id` repetido. A conexão que deixa de estar
+autorizada recebe `acesso:encerrado` com o motivo da própria sessão (`troca_senha`, `jogo_encerrado`, `jogo_adiado`,
+`jogo_cancelado`, `saida`) ou `acesso_indisponivel`, e é desconectada. Contrato completo na extensão `x-socketio` de
+`GET /api/openapi.json`; mecanismo de publicação na [arquitetura](docs/arquitetura.md#acesso-público-e-comunicação).
 
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
@@ -624,6 +637,18 @@ somente pelo presidente após o encerramento, com conflito pelo `atual` divergen
 invalidação definitiva, placar e cumprimentos preservados e W.O. mudando só o vencedor. Testes existentes passaram a
 informar resultado e vencedor no encerramento. Uma migração nova; nenhuma dependência nova. Não validado: notificação
 Socket.IO (MAR-73) e retomada em outro dia com sessão expirada (coberta pela regra de acesso de jogo iniciado).
+
+Validação local da MAR-73 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado,
+`npm audit --omit=dev` sem alertas e **157 testes de integração aprovados**, incluindo sete novos com dois clientes
+Socket.IO automatizados (sem frontend): handshake recusado sem cookie, com cookie de conta ou de outro jogo, `jogoId`
+inválido e outra origem; aviso mínimo com o mesmo `id` nos dois dispositivos após o commit, rollback e operação
+recusada sem evento, repetição sem evento novo e eventos marcados como publicados; troca de senha retirando só as
+sessões por senha; doze lançamentos concorrentes com a troca, sem evento após o aviso e sem perda para quem continua;
+retirada da designação, logout e desativação da conta de origem; adiamento, cancelamento e encerramento com o motivo
+da sessão; reconexão com estado recuperado por REST, reprocessamento de evento pendente sem NOTIFY (mesmo `id`) e
+revogação sem NOTIFY (transferência para clube do jogo) retirada pela varredura. Uma migração nova; dependências
+novas `socket.io` e `pg` (e `socket.io-client`/`@types/pg` de desenvolvimento). Não validado: Socket.IO pelo
+encaminhamento Vercel/Render e cookies `__Host-` hospedados (MAR-76) e mais de uma instância (fora do escopo).
 
 ## Caminho feliz
 

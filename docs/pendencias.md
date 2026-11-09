@@ -131,7 +131,7 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   HTTP validados. Client não usa SSR de sessão; será preciso validar seu repasse de cookies/cache
   quando introduzido. Arbitragem temporária (MAR-65) validada localmente: cookie separado por jogo,
   revalidação transacional e revogação concorrente com troca de senha, retirada e desativação. Escritas
-  esportivas reais e o ciclo do jogo foram validados localmente (MAR-67 a 69); revogação Socket.IO continua fora da entrega, assim como TLS/proxy/cookies hospedados. Recuperação e prova
+  esportivas reais e o ciclo do jogo foram validados localmente (MAR-67 a 69), e a revogação Socket.IO em conexões abertas na MAR-73; TLS/proxy/cookies e Socket.IO hospedados continuam fora da entrega. Recuperação e prova
   de reset seguem adiadas. A escolha está encerrada; a PEN-030 **não está totalmente encerrada**.
   Regras atuais da arbitragem substituem as pendências
   históricas da conclusão: PEN-022 e PEN-021 resolvidas.
@@ -151,4 +151,7 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   de lint e a limitação de suporte do ESLint 9 continuam registrados na arquitetura.
 - PEN-033: equipe define os contratos em código/OpenAPI e detalha eventos, reconexão, publicação
   após transação e conflitos. Não exige questionário técnico ao usuário; decisões de comportamento
-  ainda indefinidas precisam ser esclarecidas; PEN-023 foi resolvida nesta rodada.
+  ainda indefinidas precisam ser esclarecidas; PEN-023 foi resolvida nesta rodada. Eventos, publicação após
+  a transação e reconexão definidos e validados localmente na MAR-73 (arquitetura); destinatários, conteúdo do
+  aviso e motivo da revogação aprovados por Marcus (requisitos, seção 11). Falta validar Socket.IO na
+  implantação de teste (MAR-76).

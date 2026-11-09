@@ -5,6 +5,7 @@ import { type Ator, carregarAtor } from "../autorizacao/ator.js";
 import { clubeImpeditivo } from "../jogos/jogos.js";
 import { horaLocal } from "../jogos/fuso.js";
 import { type CofreSenhaArbitragem, conferirSenha, gerarSenha, hashSenha, hashToken, novoToken } from "./senha.js";
+import { registrarEvento } from "../notificacoes/eventos.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -258,7 +259,9 @@ export async function resumirSessao(tx: Tx, jogoId: string, token: string | unde
 /** Linha ou banco (RF-028): muda só a tela apresentada (RN-029), para todos os dispositivos desta arbitragem. */
 export async function alterarVisualizacao(tx: Tx, jogoId: string, token: string | undefined, visualizacao: VisualizacaoArbitragem) {
   const { arbitragemId } = await revalidarArbitragem(tx, jogoId, token);
-  await tx.arbitragem.update({ where: { id: arbitragemId }, data: { visualizacao } });
+  const { count } = await tx.arbitragem.updateMany({ where: { id: arbitragemId, OR: [{ visualizacao: null }, { visualizacao: { not: visualizacao } }] }, data: { visualizacao } });
+  // Os outros dispositivos da mesma arbitragem atualizam a tela (MAR-73); repetir a mesma escolha não avisa.
+  if (count > 0) await registrarEvento(tx, jogoId, "visualizacao_alterada", arbitragemId);
   return resumirSessao(tx, jogoId, token);
 }
 

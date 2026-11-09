@@ -47,6 +47,7 @@ server/
       arbitragem/        # Acesso temporário e senha do jogo (MAR-65)
       suspensoes/        # Suspensões manuais e cumprimento (MAR-66)
       resultados/        # Lançamentos de gols e penalidades (MAR-68); correção e anulação (MAR-70)
+      notificacoes/      # Caixa de saída e Socket.IO (MAR-73)
       disciplina/
     infrastructure/      # Banco, e-mail e armazenamento
   prisma/                # Esquema e migrações
@@ -61,9 +62,9 @@ A organização interna deve ser detalhada ao iniciar cada módulo.
 
 ## Acesso público e comunicação
 
-Um domínio público atende a interface em `/`, encaminha `/api` ao backend e reserva
-um caminho próprio para Socket.IO, ainda a definir. O encaminhamento é feito pela infraestrutura;
-não torna as duas aplicações uma implantação única.
+Um domínio público atende a interface em `/` e encaminha `/api` ao backend; o Socket.IO usa
+`/api/socket.io`, no mesmo servidor HTTP do NestJS, e segue o mesmo encaminhamento. O encaminhamento é feito pela
+infraestrutura; não torna as duas aplicações uma implantação única.
 
 O cliente envia operações pela API REST. O backend autoriza, valida e persiste em transação;
 somente depois da confirmação notifica os dispositivos autorizados do jogo.
@@ -71,8 +72,34 @@ O frontend consulta o estado oficial ao reconectar para recuperar mudanças não
 Identificadores de operação impedem que reenvios produzam lançamentos duplicados.
 
 O banco é a fonte dos registros. Receber uma notificação não substitui a confirmação de gravação.
-O mecanismo de publicação confiável após a transação e de tratamento de conflitos ainda será
-detalhado antes de implementar resultados em tempo real.
+
+Notificações (MAR-73, decisões de Marcus: destinatários, aviso mínimo e motivo da revogação):
+
+- **Destinatários:** somente sessões temporárias da arbitragem do jogo. O handshake exige a origem exata do
+  cliente, `auth.jogoId` e o cookie `handebol.arbitragem.{jogoId}`, revalidado por `revalidarArbitragem`, como nas
+  escritas. Conta permanente (presidente, técnico) não assina; continua consultando por REST.
+- **Conteúdo:** `jogo:evento` com `id`, `jogoId`, `tipo`, `referenciaId` e `ocorridoEm`, sem dados esportivos ou
+  pessoais; o dispositivo consulta o estado oficial por REST. Não há eventos do cliente: comandos seguem pela API.
+- **Publicação após a transação:** cada operação que altera o jogo grava `EventoJogo` (caixa de saída) na própria
+  transação, somente quando `alterado: true`. Um trigger executa `pg_notify('evento_jogo')`, que o PostgreSQL
+  entrega só no commit: rollback não deixa linha nem aviso. O publicador mantém uma conexão `LISTEN` dedicada (`pg`),
+  lê os pendentes em ordem de `id`, envia e grava `publicadoEm`. Pendentes por queda do processo ou da conexão são
+  enviados na inicialização, na reconexão do `LISTEN` e na varredura periódica (`NOTIFICACOES_VARREDURA_MS`, padrão
+  30 s). A entrega é ao menos uma vez: o `id` crescente identifica repetições. Eventos ocorridos com o dispositivo
+  desconectado não são guardados para ele; ao reconectar, consulta o estado por REST.
+- **Revalidação além do handshake:** antes de cada envio, todas as conexões do jogo são revalidadas no banco; as
+  não autorizadas recebem `acesso:encerrado` (motivo gravado na sessão, ou `acesso_indisponivel`) e são
+  desconectadas sem o evento. Triggers com `pg_notify('arbitragem_revisada')`, também entregues só no commit,
+  retiram imediatamente as conexões quando a sessão temporária é revogada (encerramento, adiamento,
+  cancelamento, troca de senha, saída), a designação é retirada ou uma sessão de conta termina (logout,
+  desativação). Expiração, virada do dia sem início e mudanças de vínculo ou aprovação são retiradas pela varredura.
+  Uma conexão aceita entra na sala do jogo e dispara nova revisão, fechando a corrida com uma revogação confirmada
+  entre o handshake e a entrada na sala.
+- **Escala:** uma instância, sem Redis nem adaptador entre réplicas; revisões e publicações são serializadas no
+  processo. Várias réplicas exigirão adaptador Socket.IO e disputa dos pendentes (`FOR UPDATE SKIP LOCKED`).
+
+Conflitos continuam tratados pelas operações REST (409 com o registro atualizado); a notificação apenas avisa a
+mudança confirmada.
 
 ## Autenticação e sessões
 
@@ -203,7 +230,7 @@ os triggers de inscrição e jogo bloqueiam a mesma linha com `FOR SHARE`, de mo
 inscrições e jogos concorrentes se serializam e o trigger do campeonato confere as pré-condições
 com as alterações confirmadas. Repetir uma transição devolve `alterado: false`. Na mesma transação,
 cancelar revoga a arbitragem dos jogos cancelados (MAR-65) e encerrar/cancelar encerra o saldo das
-suspensões vigentes depois de gravar o status (MAR-66); notificações (MAR-73) continuam pendentes.
+suspensões vigentes depois de gravar o status (MAR-66); cada jogo cancelado gera seu evento (MAR-73).
 Jogos (MAR-62): `modules/jogos` agenda jogos e designa a arbitragem, somente ao presidente. A hora
 local é convertida em instante por `Intl` no fuso IANA do jogo (`fuso.ts`), conferido também em
 `pg_timezone_names`; o fuso do navegador não participa. Agendar bloqueia a linha `Campeonato`
@@ -323,8 +350,9 @@ misturar estados de transações diferentes na resposta sem alterar o isolamento
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,
 conta inativa/sem domínio e replays paralelos após logout. Cadastro de atleta, login, recarga,
-rota protegida e logout passaram no navegador local. Isso **não** comprova arbitragem temporária,
-revogação HTTP/Socket.IO concorrente com escritas esportivas nem TLS/proxy hospedado. PEN-030
+rota protegida e logout passaram no navegador local. A arbitragem temporária e a revogação HTTP concorrente
+foram validadas depois (MAR-65 a 72), e a revogação Socket.IO em conexões abertas na MAR-73, localmente.
+Isso **não** comprova TLS/proxy hospedado nem Socket.IO pelo encaminhamento Vercel/Render. PEN-030
 permanece parcialmente aberta. Reset e uso único concorrente serão validados quando retomados.
 Não há Redis nem serviço de e-mail nesta entrega.
 
@@ -383,6 +411,8 @@ QR não dá acesso público. Integração com Storage e políticas ainda não im
 | Express / tipos Express | 5.2.1 / 5.0.6 | Dependências diretas para montagem do handler e parsers, compatíveis com Nest instalado. |
 | Zod | 4.6.7 | Mesmo validador de e-mail do Better Auth fixado; schema estrito do cadastro. |
 | @nestjs/throttler | 6.7.1 | Pacote oficial Nest; peers aceitam Nest 12; limite de `/api/cadastros`. |
+| Socket.IO / socket.io-client | 4.8.4 | Servidor montado no HTTP do Nest, sem `@nestjs/websockets`; o cliente só nos testes do backend (MAR-73). |
+| pg / @types/pg | 8.23.1 | Já trazido pelo adaptador Prisma; dependência direta para a conexão `LISTEN` das notificações. |
 
 TypeScript 7 e ESLint 10 não foram selecionados por incompatibilidade com as ferramentas
 consultadas. O registro npm sinaliza ESLint 9 como descontinuado; ele foi mantido apenas por
@@ -436,15 +466,16 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 
 ## Decisões ainda necessárias
 
-1. Completar a prova da PEN-030 com as escritas esportivas da arbitragem (MAR-67 a 69) e a revogação
-   Socket.IO (MAR-73); a sessão temporária e a revogação HTTP concorrente foram validadas na MAR-65. Contas permanentes, migrações, seed e prova local de
-   cadastro/logout já foram validados; comandos no [README](../README.md#desenvolvimento-local).
+1. Completar a prova da PEN-030 na implantação de teste (cookies, TLS/proxy e Socket.IO pelo encaminhamento);
+   sessão temporária, escritas esportivas e revogação HTTP e Socket.IO concorrentes foram validadas localmente
+   (MAR-65 a 73). Contas permanentes, migrações, seed e prova local de cadastro/logout já foram validados; comandos
+   no [README](../README.md#desenvolvimento-local).
 2. Detalhar e validar implantação de teste, encaminhamento, cookies, segredos, IP real do cliente
    para os limites de tentativa (`trust proxy` e `advanced.ipAddress`) e verificações;
    implementar limites e permissões das fotos definidos nos requisitos.
-3. Definir em código o contrato da API (documentado em OpenAPI), eventos, conflitos, publicação
-   após transação e reconexão. A equipe conduz as decisões técnicas; comportamentos de produto
-   ainda indefinidos exigem esclarecimento com Marcus.
+3. Manter em código o contrato da API (OpenAPI, com eventos Socket.IO na extensão `x-socketio`). Eventos,
+   publicação após transação e reconexão foram definidos na MAR-73; comportamentos de produto ainda indefinidos
+   exigem esclarecimento com Marcus.
 4. Retomar serviço de e-mail, recuperação de senha e sua validação em etapa posterior.
 5. Detalhar produção, logs e backup/restauração posteriormente, sem bloquear o início local.
 

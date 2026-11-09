@@ -21,6 +21,7 @@ import { CredenciamentoController, CredenciamentoPresidenteController } from "./
 import { ArbitragemController } from "./modules/arbitragem/arbitragem.controller.js";
 import { CofreSenhaArbitragem } from "./modules/arbitragem/senha.js";
 import { SuspensoesController } from "./modules/suspensoes/suspensoes.controller.js";
+import { NotificacoesService } from "./modules/notificacoes/notificacoes.service.js";
 import { LancamentosController, LancamentosPresidenteController } from "./modules/resultados/lancamentos.controller.js";
 
 @Module({
@@ -33,6 +34,6 @@ import { LancamentosController, LancamentosPresidenteController } from "./module
       : "Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.",
   })],
   controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController, CampeonatosController, JogosController, AtletasController, EscalacaoController, ArbitragemController, CredenciamentoController, CredenciamentoPresidenteController, SuspensoesController, LancamentosController, LancamentosPresidenteController, CicloJogoController],
-  providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService, CofreSenhaArbitragem],
+  providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService, CofreSenhaArbitragem, NotificacoesService],
 })
 export class AppModule {}

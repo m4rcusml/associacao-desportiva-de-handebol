@@ -5,6 +5,7 @@ import { resumirSessao, revalidarArbitragem } from "../arbitragem/acesso.js";
 import { placar } from "../resultados/lancamentos.js";
 import { bloquearCiclo, exigirVencedorDoJogo, vencedorDo } from "./ciclo.js";
 import { interrupcaoAberta } from "./jogos.js";
+import { registrarEvento } from "../notificacoes/eventos.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -38,6 +39,7 @@ export async function interromperJogo(tx: Tx, jogoId: string, token: string | un
   if (status !== "em_andamento") throw new ConflictException("Somente jogo em andamento é interrompido.");
   if (await interrupcaoAberta(tx, jogoId)) return estadoInterrupcao(tx, jogoId, token, false);
   await tx.interrupcaoJogo.create({ data: { jogoId, interrompidoEm: new Date() } });
+  await registrarEvento(tx, jogoId, "jogo_interrompido");
   return estadoInterrupcao(tx, jogoId, token, true);
 }
 
@@ -52,6 +54,7 @@ export async function retomarJogo(tx: Tx, jogoId: string, token: string | undefi
   const aberta = await interrupcaoAberta(tx, jogoId);
   if (!aberta) return estadoInterrupcao(tx, jogoId, token, false);
   await tx.interrupcaoJogo.update({ where: { id: aberta.id }, data: { retomadoEm: new Date() } });
+  await registrarEvento(tx, jogoId, "jogo_retomado");
   return estadoInterrupcao(tx, jogoId, token, true);
 }
 
@@ -128,6 +131,7 @@ export async function corrigirResultado(tx: Tx, presidenteId: string, jogoId: st
     VALUES (gen_random_uuid(), ${jogoId}::uuid, 'correcao', ${vigente.resultado}::"ResultadoJogo", ${vigente.vencedor}::uuid,
       ${dados.novo.resultado}::"ResultadoJogo", ${dados.novo.vencedorInscricaoId}::uuid, ${presidenteId}::uuid, now())`;
   await tx.jogo.update({ where: { id: jogoId }, data: { resultado: dados.novo.resultado, inscricaoClubeVencedorId: dados.novo.vencedorInscricaoId } });
+  await registrarEvento(tx, jogoId, "resultado_corrigido");
   return { ...await consultarResultado(tx, jogoId), alterado: true };
 }
 
@@ -144,5 +148,6 @@ export async function invalidarJogo(tx: Tx, presidenteId: string, jogoId: string
     VALUES (gen_random_uuid(), ${jogoId}::uuid, 'invalidacao', ${jogo.resultado}::"ResultadoJogo", ${jogo.inscricaoClubeVencedorId}::uuid,
       ${jogo.resultado}::"ResultadoJogo", ${jogo.inscricaoClubeVencedorId}::uuid, ${motivo}, ${presidenteId}::uuid, now())`;
   await tx.$executeRaw`UPDATE "Jogo" SET "invalidadoEm" = now() WHERE id = ${jogoId}::uuid`;
+  await registrarEvento(tx, jogoId, "jogo_invalidado");
   return { ...await consultarResultado(tx, jogoId), alterado: true };
 }

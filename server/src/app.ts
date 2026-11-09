@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import { toNodeHandler } from "better-auth/node";
 import { AppModule } from "./app.module.js";
 import { AuthService } from "./modules/autenticacao/auth.service.js";
+import { NotificacoesService } from "./modules/notificacoes/notificacoes.service.js";
 
 export async function createApp() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
@@ -28,6 +29,8 @@ export async function createApp() {
   });
   app.use(json({ limit: "16kb" }));
   app.use(urlencoded({ extended: false, limit: "16kb" }));
+  // Socket.IO no mesmo servidor HTTP, em caminho próprio (MAR-73); o Express não processa essas requisições.
+  app.get(NotificacoesService).anexar(app.getHttpServer());
   app.enableShutdownHooks();
   return app;
 }
