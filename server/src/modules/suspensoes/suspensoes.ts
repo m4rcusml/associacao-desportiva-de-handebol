@@ -1,10 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { z } from "zod";
 import { Prisma, type StatusCampeonato, type StatusJogo } from "../../generated/prisma/client.js";
 
 const uuid = z.uuid().transform(id => id.toLowerCase());
 
-/** Suspensão manual (RF-038): quantidade positiva de jogos e motivo. Sem redução parcial (PEN-009). */
+/** Suspensão manual (RF-038): quantidade positiva de jogos e motivo. */
 export const novaSuspensaoSchema = z.strictObject({
   atletaId: uuid,
   quantidadeJogos: z.int32().positive(),
@@ -13,32 +14,50 @@ export const novaSuspensaoSchema = z.strictObject({
 
 export const filtroSuspensoesSchema = z.strictObject({ atletaId: uuid.optional() });
 
+const justificativa = z.string().trim().min(1).max(500);
+/** Revogação exige justificativa (MAR-84, requisitos seção 14). */
+export const revogacaoSuspensaoSchema = z.strictObject({ justificativa });
+/** Redução define o novo total de jogos, de 0 até o total atual − 1 (decisão de Marcus, MAR-84), com justificativa. */
+export const reducaoSuspensaoSchema = z.strictObject({ novaQuantidade: z.int32().nonnegative(), justificativa });
+
 type Tx = Prisma.TransactionClient;
 
 /**
- * Situação derivada, nunca armazenada: `vigente` impede o atleta no campeonato (RF-040); `cumprida` atingiu a
- * quantidade de jogos; `revogada` pelo presidente; `saldo_encerrado` com o término/cancelamento do campeonato;
- * `anulada`, automática cuja ocorrência de origem foi corrigida ou anulada (MAR-79), com os cumprimentos preservados.
+ * Total atual em SQL (alias `s`): o da última redução ou, sem redução, a punição original (MAR-84). O saldo é este total
+ * menos os cumprimentos, nunca negativo.
+ */
+const totalAtual = Prisma.sql`COALESCE(s."quantidadeReduzida", s."quantidadeJogos")`;
+
+/**
+ * Situação derivada, nunca armazenada: `vigente` impede o atleta no campeonato (RF-040); `cumprida` atingiu o total
+ * atual de jogos (inclusive por redução); `revogada` pelo presidente; `saldo_encerrado` com o término/cancelamento do
+ * campeonato; `anulada`, automática cuja ocorrência de origem foi corrigida ou anulada (MAR-79), com os cumprimentos preservados.
  */
 export type SituacaoSuspensao = "vigente" | "cumprida" | "revogada" | "saldo_encerrado" | "anulada";
 
 const pessoa = { select: { usuario: { select: { id: true, nomeCompleto: true } } } } as const;
 const selecaoSuspensao = {
-  id: true, campeonatoId: true, origem: true, regra: true, jogoOrigemId: true, quantidadeJogos: true, motivo: true, aplicadaEm: true,
-  revogadaEm: true, saldoEncerradoEm: true, anuladaEm: true,
+  id: true, campeonatoId: true, origem: true, regra: true, jogoOrigemId: true, quantidadeJogos: true, quantidadeReduzida: true,
+  motivo: true, aplicadaEm: true, revogadaEm: true, justificativaRevogacao: true, saldoEncerradoEm: true, anuladaEm: true,
   atleta: pessoa, aplicadaPor: pessoa, revogadaPor: pessoa,
   cumprimentos: { select: { jogoId: true, registradoEm: true }, orderBy: [{ registradoEm: "asc" }, { jogoId: "asc" }] },
+  reducoes: {
+    select: { id: true, quantidadeAnterior: true, novaQuantidade: true, justificativa: true, reduzidaEm: true, herdadaDeReducaoId: true, reduzidaPor: pessoa },
+    orderBy: [{ reduzidaEm: "asc" }, { quantidadeAnterior: "desc" }],
+  },
 } satisfies Prisma.SuspensaoSelect;
 type LinhaSuspensao = Prisma.SuspensaoGetPayload<{ select: typeof selecaoSuspensao }>;
 
-function apresentar({ atleta, aplicadaPor, revogadaPor, cumprimentos, ...dados }: LinhaSuspensao) {
+function apresentar({ atleta, aplicadaPor, revogadaPor, cumprimentos, reducoes, quantidadeReduzida, ...dados }: LinhaSuspensao) {
+  const quantidadeAtual = quantidadeReduzida ?? dados.quantidadeJogos;
   const jogosCumpridos = cumprimentos.length;
-  const saldo = Math.max(0, dados.quantidadeJogos - jogosCumpridos);
+  const saldo = Math.max(0, quantidadeAtual - jogosCumpridos);
   const situacao: SituacaoSuspensao = dados.revogadaEm ? "revogada" : dados.saldoEncerradoEm ? "saldo_encerrado"
     : dados.anuladaEm ? "anulada" : saldo === 0 ? "cumprida" : "vigente";
   return {
-    ...dados, atleta: atleta.usuario, aplicadaPor: aplicadaPor?.usuario ?? null, revogadaPor: revogadaPor?.usuario ?? null,
+    ...dados, quantidadeAtual, atleta: atleta.usuario, aplicadaPor: aplicadaPor?.usuario ?? null, revogadaPor: revogadaPor?.usuario ?? null,
     situacao, jogosCumpridos, jogosRestantes: situacao === "vigente" ? saldo : 0, cumprimentos,
+    reducoes: reducoes.map(({ reduzidaPor, ...reducao }) => ({ ...reducao, reduzidaPor: reduzidaPor?.usuario ?? null })),
   };
 }
 
@@ -71,7 +90,7 @@ export async function atletasComSuspensaoVigente(db: Pick<Tx, "$queryRaw">, camp
     SELECT DISTINCT s."atletaId" FROM "Suspensao" s
     WHERE s."campeonatoId" = ${campeonatoId}::uuid AND s."atletaId" = ANY(${atletaIds}::uuid[])
       AND s."revogadaEm" IS NULL AND s."saldoEncerradoEm" IS NULL AND s."anuladaEm" IS NULL
-      AND (SELECT count(*) FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id) < s."quantidadeJogos"`;
+      AND (SELECT count(*) FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id) < ${totalAtual}`;
   return new Set(linhas.map(l => l.atletaId));
 }
 
@@ -101,25 +120,73 @@ export async function aplicarSuspensao(tx: Tx, campeonatoId: string, presidenteI
   return detalharSuspensao(tx, campeonatoId, id);
 }
 
+type EstadoDecisao = {
+  revogada: boolean; encerrada: boolean; anulada: boolean; quantidadeReduzida: number | null; quantidadeAtual: number; jogosCumpridos: number;
+};
+
 /**
- * Presidente revoga suspensão vigente, preservando aplicação e cumprimentos (PEN-009 parcial: sem redução
- * parcial nem justificativa obrigatória). Repetir devolve `alterado: false`; suspensão cumprida ou com saldo
- * encerrado não é revogada.
+ * Bloqueia a suspensão (FOR UPDATE) para uma decisão do presidente e relê seu estado numa instrução nova, que enxerga o
+ * último cumprimento confirmado enquanto o bloqueio era aguardado. Só esta linha é bloqueada: o cumprimento, que bloqueia
+ * contas e suspensões nessa ordem, não forma ciclo com a decisão.
  */
-export async function revogarSuspensao(tx: Tx, campeonatoId: string, suspensaoId: string, presidenteId: string) {
+async function bloquearParaDecisao(tx: Tx, campeonatoId: string, suspensaoId: string): Promise<EstadoDecisao> {
   await tx.$queryRaw`
     SELECT id FROM "Suspensao" WHERE id = ${suspensaoId}::uuid AND "campeonatoId" = ${campeonatoId}::uuid FOR UPDATE`;
-  // Uma instrução nova enxerga o último cumprimento confirmado enquanto o bloqueio era aguardado.
-  const [linha] = await tx.$queryRaw<{ revogada: boolean; encerrada: boolean; anulada: boolean; cumprida: boolean }[]>`
+  const [linha] = await tx.$queryRaw<EstadoDecisao[]>`
     SELECT s."revogadaEm" IS NOT NULL AS revogada, s."saldoEncerradoEm" IS NOT NULL AS encerrada, s."anuladaEm" IS NOT NULL AS anulada,
-      (SELECT count(*) FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id) >= s."quantidadeJogos" AS cumprida
+      s."quantidadeReduzida", ${totalAtual} AS "quantidadeAtual",
+      (SELECT count(*)::int FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id) AS "jogosCumpridos"
     FROM "Suspensao" s WHERE s.id = ${suspensaoId}::uuid AND s."campeonatoId" = ${campeonatoId}::uuid`;
   if (!linha) throw new NotFoundException("Suspensão não encontrada neste campeonato");
-  if (linha.revogada) return { suspensao: await detalharSuspensao(tx, campeonatoId, suspensaoId), alterado: false };
-  if (linha.encerrada) throw new ConflictException("O saldo desta suspensão já foi encerrado com o campeonato.");
-  if (linha.anulada) throw new ConflictException("Esta suspensão automática foi anulada com a retirada da ocorrência de origem.");
-  if (linha.cumprida) throw new ConflictException("A suspensão já foi cumprida e não pode ser revogada.");
-  await tx.suspensao.update({ where: { id: suspensaoId }, data: { revogadaEm: new Date(), revogadaPorPresidenteId: presidenteId } });
+  return linha;
+}
+
+function exigirDecidivel(estado: EstadoDecisao, acao: "revogada" | "reduzida") {
+  if (estado.encerrada) throw new ConflictException("O saldo desta suspensão já foi encerrado com o campeonato.");
+  if (estado.anulada) throw new ConflictException("Esta suspensão automática foi anulada com a retirada da ocorrência de origem.");
+  if (estado.jogosCumpridos >= estado.quantidadeAtual) throw new ConflictException(`A suspensão já foi cumprida e não pode ser ${acao}.`);
+}
+
+/**
+ * Presidente revoga suspensão vigente com justificativa (MAR-84), preservando aplicação, reduções e cumprimentos.
+ * Repetir devolve `alterado: false` sem alterar a justificativa registrada; suspensão cumprida, anulada ou com saldo
+ * encerrado não é revogada. Revogada não volta a valer, nem por recálculo automático.
+ */
+export async function revogarSuspensao(tx: Tx, campeonatoId: string, suspensaoId: string, presidenteId: string, dados: z.infer<typeof revogacaoSuspensaoSchema>) {
+  const estado = await bloquearParaDecisao(tx, campeonatoId, suspensaoId);
+  if (estado.revogada) return { suspensao: await detalharSuspensao(tx, campeonatoId, suspensaoId), alterado: false };
+  exigirDecidivel(estado, "revogada");
+  await tx.suspensao.update({
+    where: { id: suspensaoId },
+    data: { revogadaEm: new Date(), revogadaPorPresidenteId: presidenteId, justificativaRevogacao: dados.justificativa },
+  });
+  return { suspensao: await detalharSuspensao(tx, campeonatoId, suspensaoId), alterado: true };
+}
+
+/**
+ * Presidente reduz suspensão manual ou automática vigente para um novo total menor que o atual (requisitos seção 14,
+ * MAR-84). A punição original (`quantidadeJogos`), as reduções anteriores e os cumprimentos são preservados; o saldo é o
+ * novo total menos os jogos já cumpridos, nunca negativo, sem compensar ausências. Reduzir para o total já vigente
+ * devolve `alterado: false` (repetição); total maior que o atual é recusado, pois a redução não aumenta a punição.
+ */
+export async function reduzirSuspensao(tx: Tx, campeonatoId: string, suspensaoId: string, presidenteId: string, dados: z.infer<typeof reducaoSuspensaoSchema>) {
+  const estado = await bloquearParaDecisao(tx, campeonatoId, suspensaoId);
+  if (estado.revogada) throw new ConflictException("Suspensão revogada não é reduzida.");
+  if (estado.quantidadeReduzida === dados.novaQuantidade && !estado.encerrada && !estado.anulada) {
+    return { suspensao: await detalharSuspensao(tx, campeonatoId, suspensaoId), alterado: false };
+  }
+  exigirDecidivel(estado, "reduzida");
+  if (dados.novaQuantidade >= estado.quantidadeAtual) {
+    throw new ConflictException(`A redução deve definir um total menor que o atual (${estado.quantidadeAtual} jogo(s)).`);
+  }
+  const reduzidaEm = new Date();
+  await tx.reducaoSuspensao.create({
+    data: {
+      id: randomUUID(), suspensaoId, quantidadeAnterior: estado.quantidadeAtual, novaQuantidade: dados.novaQuantidade,
+      justificativa: dados.justificativa, reduzidaPorPresidenteId: presidenteId, reduzidaEm,
+    },
+  });
+  await tx.suspensao.update({ where: { id: suspensaoId }, data: { quantidadeReduzida: dados.novaQuantidade } });
   return { suspensao: await detalharSuspensao(tx, campeonatoId, suspensaoId), alterado: true };
 }
 
@@ -133,7 +200,7 @@ export async function encerrarSaldosDoCampeonato(tx: Tx, campeonatoId: string) {
   return tx.$executeRaw`
     UPDATE "Suspensao" s SET "saldoEncerradoEm" = ${agora}
     WHERE s."campeonatoId" = ${campeonatoId}::uuid AND s."revogadaEm" IS NULL AND s."saldoEncerradoEm" IS NULL AND s."anuladaEm" IS NULL
-      AND (SELECT count(*) FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id) < s."quantidadeJogos"`;
+      AND (SELECT count(*) FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id) < ${totalAtual}`;
 }
 
 /**
@@ -164,7 +231,7 @@ export async function registrarCumprimentos(tx: Tx, jogoId: string): Promise<str
       JOIN "Jogo" j ON j.id = ${jogoId}::uuid AND j."campeonatoId" = s."campeonatoId"
     WHERE s."revogadaEm" IS NULL AND s."saldoEncerradoEm" IS NULL AND s."anuladaEm" IS NULL AND s."aplicadaEm" < j."encerradoEm"
       AND s."jogoOrigemId" IS DISTINCT FROM j.id
-      AND (SELECT count(*) FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id) < s."quantidadeJogos"
+      AND (SELECT count(*) FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id) < ${totalAtual}
       AND NOT EXISTS (SELECT 1 FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id AND c."jogoId" = j.id)
       AND EXISTS (
         SELECT 1 FROM "VinculoClube" v JOIN "InscricaoClube" i ON i."clubeId" = v."clubeId"
@@ -214,7 +281,10 @@ export const MOTIVO_DESQUALIFICACAO_COM_RELATORIO = "Suspensão automática: des
  * - Atleta com a ocorrência e sem automática não anulada do jogo: recebe uma, aplicada agora (vale para os jogos que
  *   terminarem depois; a participação já credenciada é preservada, PEN-011). Exige campeonato planejado/em andamento.
  * - Automática vigente ou cumprida sem a ocorrência: anulada (`anuladaEm`), liberando só o saldo restante; cumprimentos
- *   e jogos passados não mudam e não há compensação. Revogada ou com saldo encerrado não muda.
+ *   e jogos passados não mudam e não há compensação. Revogada ou com saldo encerrado não muda, e a revogada impede nova
+ *   automática do mesmo atleta/jogo/regra (não é reativada).
+ * - Redução administrativa (MAR-84): o recálculo não altera o total de automática existente, e a recriada após uma
+ *   anulação herda o menor total já decidido para o mesmo atleta/jogo/regra; vale o menor entre regra e redução.
  *
  * Idempotente: repetir não duplica (índice único parcial + `ON CONFLICT`). Duas reconciliações do mesmo jogo se
  * serializam por um bloqueio consultivo da transação; a segunda enxerga o que a primeira confirmou. Depois dele, as
@@ -257,7 +327,34 @@ export async function reconciliarSuspensoesAutomaticas(tx: Tx, jogoId: string): 
     ORDER BY d."atletaId"
     ON CONFLICT ("atletaId", "jogoOrigemId", regra) WHERE "anuladaEm" IS NULL DO NOTHING
     RETURNING id`;
+  await herdarReducoes(tx, criadas.map(c => c.id));
   return { criadas: criadas.map(c => c.id).sort(), anuladas: anuladas.map(a => a.id).sort() };
+}
+
+/**
+ * Automática recriada após a anulação da anterior do mesmo atleta/jogo/regra herda o menor total definido por redução
+ * (decisão de Marcus, MAR-84): a correção não aumenta novamente a punição. A herança é registrada como redução sem
+ * presidente nem justificativa, apontando para a decisão original.
+ */
+async function herdarReducoes(tx: Tx, suspensaoIds: string[]) {
+  if (suspensaoIds.length === 0) return;
+  const herancas = await tx.$queryRaw<{ suspensaoId: string; quantidadeAnterior: number; novaQuantidade: number; origemId: string }[]>`
+    SELECT DISTINCT ON (n.id) n.id AS "suspensaoId", n."quantidadeJogos" AS "quantidadeAnterior", r."novaQuantidade",
+      COALESCE(r."herdadaDeReducaoId", r.id) AS "origemId"
+    FROM "Suspensao" n
+      JOIN "Suspensao" a ON a."atletaId" = n."atletaId" AND a."jogoOrigemId" = n."jogoOrigemId" AND a.regra = n.regra
+        AND a.id <> n.id AND a."anuladaEm" IS NOT NULL
+      JOIN "ReducaoSuspensao" r ON r."suspensaoId" = a.id
+    WHERE n.id = ANY(${suspensaoIds}::uuid[]) AND r."novaQuantidade" < n."quantidadeJogos"
+    ORDER BY n.id, r."novaQuantidade", r."reduzidaEm"`;
+  const reduzidaEm = new Date();
+  for (const heranca of herancas) {
+    await tx.$executeRaw`
+      INSERT INTO "ReducaoSuspensao" (id, "suspensaoId", "quantidadeAnterior", "novaQuantidade", "herdadaDeReducaoId", "reduzidaEm")
+      VALUES (${randomUUID()}::uuid, ${heranca.suspensaoId}::uuid, ${heranca.quantidadeAnterior}, ${heranca.novaQuantidade},
+        ${heranca.origemId}::uuid, ${reduzidaEm})`;
+    await tx.$executeRaw`UPDATE "Suspensao" SET "quantidadeReduzida" = ${heranca.novaQuantidade} WHERE id = ${heranca.suspensaoId}::uuid`;
+  }
 }
 
 /** Restrições do banco (campeonato encerrado concorrente, dados alterados) chegam como 409. */

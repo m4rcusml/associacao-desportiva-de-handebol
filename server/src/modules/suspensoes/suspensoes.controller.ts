@@ -5,13 +5,17 @@ import { SessionGuard } from "../autenticacao/session.guard.js";
 import type { Ator } from "../autorizacao/ator.js";
 import { AtorAtual, Requer } from "../autorizacao/autorizacao.decorators.js";
 import { AutorizacaoService } from "../autorizacao/autorizacao.service.js";
-import { aplicarSuspensao, filtroSuspensoesSchema, listarSuspensoes, novaSuspensaoSchema, revogarSuspensao, traduzirErroSuspensao } from "./suspensoes.js";
+import {
+  aplicarSuspensao, filtroSuspensoesSchema, listarSuspensoes, novaSuspensaoSchema, reducaoSuspensaoSchema, reduzirSuspensao, revogacaoSuspensaoSchema,
+  revogarSuspensao, traduzirErroSuspensao,
+} from "./suspensoes.js";
 
 const somentePresidente = { perfis: ["presidente"] } as const;
 const uuidPipe = new ParseUUIDPipe();
 
 /**
- * Suspensões manuais (RF-038/041, MAR-66): somente o presidente aplica, revoga e consulta saldo e jogos cumpridos.
+ * Suspensões manuais (RF-038/041, MAR-66): somente o presidente aplica, reduz e revoga com justificativa (MAR-84) e
+ * consulta saldo e jogos cumpridos; a redução e a revogação valem também para as automáticas (MAR-79).
  * Visibilidade para atleta, técnico e público fica para as tarefas que dependem dela (MAR-67/MAR-74). O
  * cumprimento é registrado no encerramento do jogo (`registrarCumprimentos`), sem rota própria.
  */
@@ -45,7 +49,17 @@ export class SuspensoesController {
 
   @Post(":suspensaoId/revogar")
   @HttpCode(200)
-  revogar(@AtorAtual() ator: Ator, @Param("campeonatoId", uuidPipe) campeonatoId: string, @Param("suspensaoId", uuidPipe) suspensaoId: string) {
-    return this.emTransacao(ator, (tx, presidenteId) => revogarSuspensao(tx, campeonatoId.toLowerCase(), suspensaoId.toLowerCase(), presidenteId));
+  revogar(@AtorAtual() ator: Ator, @Param("campeonatoId", uuidPipe) campeonatoId: string, @Param("suspensaoId", uuidPipe) suspensaoId: string, @Body() body: unknown) {
+    const parsed = revogacaoSuspensaoSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException("Dados inválidos. Informe justificativa (1 a 500 caracteres); campos adicionais não são permitidos.");
+    return this.emTransacao(ator, (tx, presidenteId) => revogarSuspensao(tx, campeonatoId.toLowerCase(), suspensaoId.toLowerCase(), presidenteId, parsed.data));
+  }
+
+  @Post(":suspensaoId/reduzir")
+  @HttpCode(200)
+  reduzir(@AtorAtual() ator: Ator, @Param("campeonatoId", uuidPipe) campeonatoId: string, @Param("suspensaoId", uuidPipe) suspensaoId: string, @Body() body: unknown) {
+    const parsed = reducaoSuspensaoSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException("Dados inválidos. Informe novaQuantidade (inteiro de 0 em diante) e justificativa (1 a 500 caracteres); campos adicionais não são permitidos.");
+    return this.emTransacao(ator, (tx, presidenteId) => reduzirSuspensao(tx, campeonatoId.toLowerCase(), suspensaoId.toLowerCase(), presidenteId, parsed.data));
   }
 }

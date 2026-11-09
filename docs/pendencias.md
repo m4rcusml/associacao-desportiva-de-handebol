@@ -25,7 +25,7 @@ Condução sugerida: Marcus com o cliente.
 | ID      | Caso em aberto                                                                                                                    | Decisão necessária                                                                                                                                                                       |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PEN-006 | Suspensões simultâneas no mesmo campeonato. | Resolvido: cumprir em paralelo, inclusive manual com automática. Requisitos, seção 11. |
-| PEN-009 | Revogação, redução parcial e recálculo de suspensão. | Presidente revoga com histórico; correção de penalidade recalcula automática sem compensar ausências ou alterar jogos passados. Resolvida por Marcus em 09/11/2026 (MAR-81): redução, justificativa e interação com recálculo definidas em requisitos, seção 14. Implementação/validação pendentes. |
+| PEN-009 | Revogação, redução parcial e recálculo de suspensão. | Presidente revoga com histórico; correção de penalidade recalcula automática sem compensar ausências ou alterar jogos passados. Resolvida por Marcus em 09/11/2026 (MAR-81): redução, justificativa e interação com recálculo definidas em requisitos, seção 14. Implementada e validada localmente na MAR-84. |
 | PEN-010 | Saldo ao terminar/cancelar campeonato. | Resolvido: encerrar saldo e preservar histórico, sem transportar. Requisitos, seção 11. |
 | PEN-011 | Nova suspensão depois do credenciamento. | Resolvido: preservar participação no jogo já credenciado; impedimento vale para próximos jogos. |
 | PEN-012 | Jogos interrompidos, abandonados, W.O. ou invalidados. | Resolvido: cumprimento uma vez no encerramento definitivo; preservar estatísticas/placar; vencedor separado. Adiados/cancelados não contam enquanto não realizados. Requisitos, seção 11; representação e permissões detalhadas na MAR-72. |
@@ -78,7 +78,7 @@ aprovados.
 ## 7. Ordem sugerida de resolução
 
 1. PEN-003/PEN-005/PEN-008 resolvidas para esta versão na MAR-82 (requisitos, seção 15); preparar adequação de carteirinha e migração das métricas. Critérios automáticos da PEN-004 aprovados e implementados na MAR-79.
-2. PEN-009 e PEN-019 resolvidas nas MAR-81 e MAR-80; a seção 13 foi implementada na MAR-83 e a seção 14 aguarda a MAR-84.
+2. PEN-009 e PEN-019 resolvidas nas MAR-81 e MAR-80; as seções 13 e 14 foram implementadas nas MAR-83 e MAR-84.
 3. Confirmar eventual exceção de transferência para clube eliminado/desistente (PEN-017); até lá vale o bloqueio aprovado.
 4. Detalhar condições operacionais, retenção e auditoria completa (PEN-025/PEN-026/PEN-007), sem reabrir itens já adiados.
 5. Decidir escopo dos pedidos históricos (PEN-027 a PEN-029).
@@ -94,7 +94,7 @@ Não são pendências:
   09/11/2026; fonte em [requisitos, seção 15](requisitos.md#15-ficha-carteirinha-e-métricas--mar-82--09112026).
 
 - PEN-009: redução, justificativa e interação com recálculo aprovadas por Marcus na MAR-81 em
-  09/11/2026; critérios em [requisitos, seção 14](requisitos.md#14-redução-parcial-e-justificativa-de-suspensão--mar-81--09112026), ainda sem implementação.
+  09/11/2026; critérios em [requisitos, seção 14](requisitos.md#14-redução-parcial-e-justificativa-de-suspensão--mar-81--09112026), implementados na MAR-84.
 
 - PEN-019: correção administrativa aprovada por Marcus na MAR-80 em 09/11/2026;
   critérios em [requisitos, seção 13](requisitos.md#13-correção-administrativa-de-credenciamento--mar-80--09112026), implementados na MAR-83.

@@ -193,8 +193,10 @@ O presidente suspende atleta aprovado (conta ativa ou desativada) em campeonato 
 registrando quem aplicou e quando. Suspensões simultâneas do mesmo atleta coexistem e são cumpridas em
 paralelo. `GET` na mesma rota (filtro opcional `atletaId`) mostra a situação (`vigente`, `cumprida`,
 `revogada` ou `saldo_encerrado`), jogos cumpridos e restantes; o saldo é derivado dos cumprimentos.
-`POST .../suspensoes/{suspensaoId}/revogar` revoga a vigente, preservando aplicação e jogos cumpridos
-(repetir devolve `alterado: false`; cumprida ou com saldo encerrado responde 409). Encerrar ou cancelar o
+`POST .../suspensoes/{suspensaoId}/revogar` (`justificativa` obrigatória, 1 a 500 caracteres) revoga a vigente,
+preservando aplicação, reduções e jogos cumpridos e registrando presidente, data e justificativa (repetir devolve
+`alterado: false` com a justificativa original; cumprida ou com saldo encerrado responde 409). Revogações anteriores
+à MAR-84 ficam sem justificativa. Encerrar ou cancelar o
 campeonato encerra o saldo restante, sem transportá-lo. O cumprimento é registrado no encerramento do jogo
 (MAR-69): cada jogo finalizado do clube conta uma vez para
 cada suspensão vigente, mesmo sem escalação, exceto o jogo em que o atleta já estava credenciado antes da
@@ -217,6 +219,21 @@ anulação do presidente após o encerramento reconcilia o jogo e devolve `suspe
 retirar a ocorrência anula a automática (`anuladaEm`, situação `anulada`), liberando só o saldo restante, sem
 alterar jogos passados nem compensar ausências; acrescentá-la gera uma nova, aplicada a partir da correção.
 Revogada ou com saldo encerrado não muda.
+
+#### Redução de suspensões (MAR-84)
+
+`POST /api/campeonatos/{campeonatoId}/suspensoes/{suspensaoId}/reduzir` (`novaQuantidade` inteira de 0 até o total
+atual − 1 e `justificativa` de 1 a 500 caracteres) reduz suspensão manual ou automática vigente
+([requisitos, seção 14](docs/requisitos.md#14-redução-parcial-e-justificativa-de-suspensão--mar-81--09112026)).
+`quantidadeJogos` continua sendo a punição original; `quantidadeAtual` é o total vigente e `reducoes` lista cada
+decisão (total anterior e novo, presidente, justificativa e data). O saldo é `quantidadeAtual` menos os jogos já
+cumpridos, nunca negativo: cinco jogos com dois cumpridos reduzidos para três deixam um; para um ou dois, nenhum,
+sem apagar cumprimentos nem compensar ausências. Repetir o total vigente devolve `alterado: false`; total igual ou
+maior que o atual, ou suspensão cumprida, revogada, anulada ou com saldo encerrado, responde 409. O recálculo
+automático não altera o total reduzido, e a automática recriada para o mesmo atleta/jogo/regra depois de uma
+anulação herda o menor total já decidido (redução herdada, sem presidente nem justificativa próprios, apontando para
+a decisão original em `herdadaDeReducaoId`). Anular a ocorrência de origem segue anulando a automática reduzida, com
+a decisão preservada no histórico.
 
 Na revisão da MAR-79, a migração `20261109100000_suspensao_automatica` foi corrigida para preencher
 os vermelhos legados, inclusive anulados: a transação desabilita somente `LancamentoJogo_validar` durante
