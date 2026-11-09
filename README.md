@@ -329,6 +329,21 @@ autorizada recebe `acesso:encerrado` com o motivo da própria sessão (`troca_se
 `jogo_cancelado`, `saida`) ou `acesso_indisponivel`, e é desconectada. Contrato completo na extensão `x-socketio` de
 `GET /api/openapi.json`; mecanismo de publicação na [arquitetura](docs/arquitetura.md#acesso-público-e-comunicação).
 
+#### Resultados e histórico esportivo (MAR-74)
+
+Somente leitura, com sessão de conta e sem divulgação pública. `GET /api/jogos/{jogoId}/desempenho` devolve o resumo
+do jogo (status, campeonato, datas, `resultado`, `vencedorInscricaoId` separado do placar, `invalidadoEm` e
+`interrompido`), o placar (`null` antes do início, salvo W.O.) e as participações dos dois clubes, com `escalado`,
+`credenciado`, `entrouEmQuadra`, camisa e `metricas` (`null` sem credenciamento). Consultam o presidente e o técnico
+aprovado do clube que hoje treina um dos clubes do jogo, que vê os atletas dos dois clubes.
+`GET /api/atletas/{atletaId}/historico` devolve o atleta com o clube atual, os totais (participações escaladas,
+credenciadas e com entrada em quadra, mais as quatro métricas) e os jogos do mais recente ao mais antigo, cada um com o
+clube representado naquele jogo, o adversário e o placar do ponto de vista do atleta. Consultam o próprio atleta, os
+presidentes e o técnico aprovado do clube atual do atleta, inclusive os jogos por clubes anteriores. Métricas e totais
+somam somente lançamentos válidos, inclusive de jogos excepcionais e invalidados (sinalizados por `invalidadoEm`);
+correções e anulações do presidente se refletem na consulta seguinte. Nenhuma das duas expõe e-mail ou lançamentos
+anulados. A arbitragem continua consultando o próprio jogo em `GET /api/arbitragem/jogos/{jogoId}/lancamentos`.
+
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
 Não altere migrações já aplicadas. Em teste/produção, aplique as mesmas com `db:deploy`.
@@ -730,6 +745,16 @@ aguardando o trigger. O banco descartável foi removido; bancos existentes e seu
 A migração incremental de bloqueios é a terceira da MAR-79; o aviso sobre o checksum do backfill está na seção
 de suspensões automáticas. Os checks hospedados são conferidos na PR; esta validação local não comprova
 implantação. Não revalidado: ambiente hospedado e consultas da MAR-74.
+
+Validação local da MAR-74 em 09/11/2026: lint, tipos/build e **183/183 testes de integração aprovados**, incluindo
+três novos: métricas do jogo com escalação, credenciamento sem escalação e entrada distintos, gol anulado fora do
+placar, correção do presidente após o encerramento refletida nos totais sem mudar o placar, vermelho com azul contado
+uma vez e vencedor diferente do placar; acesso dos técnicos dos dois clubes, recusa ao técnico de outro clube, ao
+atleta e sem sessão, e troca de técnico retirando e concedendo acesso; histórico com clube preservado após a
+transferência, jogo interrompido e invalidado somado e sinalizado, escalação sem credenciamento sem métricas,
+acesso do próprio atleta, do presidente e do técnico atual, recusa ao técnico do clube anterior, a outro atleta e a
+conta não aprovada, sem e-mail nas respostas; e contrato OpenAPI. Nenhuma migração ou dependência nova. Não validado:
+ambiente hospedado (MAR-76) e visibilidade de suspensões para atleta/técnico, que não fez parte da MAR-74.
 
 ## Caminho feliz
 

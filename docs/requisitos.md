@@ -34,6 +34,13 @@ Desde a MAR-66, o presidente aplica, consulta e revoga suspensões manuais; ence
 encerra os saldos.
 Desde a MAR-79, o vermelho registra se a desqualificação tem relatório disciplinar (azul); com relatório, o
 encerramento do jogo gera uma suspensão automática de um jogo, e as correções do presidente a recalculam.
+Desde a MAR-74, o presidente e o técnico atual de um dos clubes consultam as métricas de cada jogo, e o próprio
+atleta, o presidente e o técnico do clube atual do atleta consultam seu histórico esportivo, com o clube representado
+em cada jogo e as etapas da participação (escalado, credenciado, entrou em quadra) distinguidas.
+Detalhes aprovados por Marcus (MAR-74, 09/11/2026): nos jogos do próprio clube, o técnico vê o jogo inteiro (placar,
+resultado, vencedor e métricas dos atletas dos dois clubes); o técnico atual vê o histórico completo dos atletas que
+hoje pertencem ao clube, inclusive os jogos por clubes anteriores; jogos invalidados continuam somados aos totais,
+sinalizados como invalidados.
 Desde a MAR-69, a arbitragem autorizada inicia o jogo no dia marcado e um único árbitro o encerra; o encerramento
 registra o cumprimento das suspensões e revoga senha e sessões na mesma transação. O presidente adia (nova senha,
 sessões dos dois métodos revogadas) ou cancela (acessos revogados, sem cumprimento). Repetir início, encerramento
@@ -404,7 +411,8 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
 - Listagem e consulta de clubes com o técnico atual (id e nome) são visíveis a qualquer conta
   autenticada e ativa, inclusive com aprovação pendente; somente o presidente vê também se a conta
   do técnico está ativa. A listagem pública usada no cadastro continua mínima (id, nome e cidade),
-  sem técnico. Quem verá dados esportivos sem login será decidido com a MAR-74 (MAR-56).
+  sem técnico. A MAR-74 não abriu dados esportivos sem login: resultados e histórico exigem sessão, e a
+  divulgação pública continua sem escopo (PEN-028).
 
 ### Campeonato, acesso e concorrência
 
@@ -498,7 +506,8 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   desativada, e campeonato planejado ou em andamento, sem exigir que o clube atual esteja inscrito.
   Jogo do clube já em andamento na aplicação, sem credenciamento do atleta, conta para o cumprimento;
   somente o jogo em que ele já estava credenciado antes da aplicação é preservado. Por ora só o
-  presidente consulta suspensões; a visibilidade para atleta, técnico e público segue a MAR-67/MAR-74.
+  presidente consulta suspensões; a MAR-74 tratou somente resultados e histórico, e a visibilidade das suspensões
+  para atleta, técnico e público continua sem decisão.
 - Interrompidos definitivamente, abandonados, W.O. e invalidados contam para cumprimento;
   adiados/cancelados não contam enquanto não realizados. A partida que será retomada permanece
   o mesmo jogo e só conta uma vez no encerramento definitivo.
