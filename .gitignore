@@ -13,3 +13,4 @@ server/src/generated/
 output/playwright/
 .playwright-cli/
 .claude/
+server/.fotos-local/

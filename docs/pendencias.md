@@ -137,7 +137,8 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   históricas da conclusão: PEN-022 e PEN-021 resolvidas.
 - PEN-031 parcialmente resolvida: Vercel para frontend, Render para backend e Supabase para banco
   e fotos; usar franquia gratuita de armazenamento nesta etapa, conferindo limites antes de provisionar.
-  Serviço de e-mail adiado. Fotos: limites/permissões definidos em requisitos, seção 11; faltam configurações de implantação;
+  Serviço de e-mail adiado. Fotos: limites/permissões definidos em requisitos, seção 11, e implementados com
+  validação local na MAR-75 (arquitetura); faltam o bucket hospedado e suas configurações de implantação (MAR-76);
   produção e custos correspondentes serão avaliados posteriormente.
 - PEN-032 parcialmente resolvida: npm e lockfile versionado, versões estáveis recentes compatíveis,
   preferência por Node.js LTS e scripts convencionais. Estrutura mínima de `client/` e `server/`

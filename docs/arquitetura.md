@@ -341,7 +341,22 @@ Não há Redis nem serviço de e-mail nesta entrega.
 Fotos opcionais JPEG/PNG/WebP de até 5 MB; validar conteúdo e tamanho no backend.
 Armazenamento privado, com consulta autorizada pelo backend ou URL assinada de curta duração.
 Permissões em [requisitos, seção 11](requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026);
-QR não dá acesso público. Integração com Storage e políticas ainda não implementadas.
+QR não dá acesso público.
+
+Implementação da MAR-75 (09/11/2026), validada localmente:
+
+- O backend é o único cliente do Storage: bucket privado, chave secreta somente no servidor e API REST
+  do Supabase por `fetch`, sem dependência nova. Não há URL pública nem assinada; toda leitura passa pela
+  API, que revalida a permissão. Sem as variáveis do Supabase, um diretório local (`FOTOS_DIRETORIO`)
+  serve ao desenvolvimento e aos testes, nunca em produção; sem nenhuma configuração, as rotas de fotos respondem 503.
+- Envio como corpo binário com `Content-Type` da imagem; 5 MB contados como 5 × 1024 × 1024 bytes. O formato é
+  conferido pelo conteúdo (assinatura e estrutura mínima), e deve coincidir com o `Content-Type`. A imagem não é
+  decodificada nem reprocessada: metadados embutidos (por exemplo, EXIF com localização) são preservados.
+- Cada envio grava um objeto novo (`atletas/<atletaId>/<uuid>.<ext>`, sem sobrescrita) antes da transação que
+  troca `Atleta.fotoChave` com a linha bloqueada. Falha no envio ou na transação preserva a foto atual, e o
+  objeto novo é removido se o banco confirmadamente não o referencia. O anterior é removido após o commit; se
+  essa remoção falhar, resta um órfão, nunca uma referência inválida. A limpeza de órfãos está no README.
+- A prova hospedada (bucket privado, políticas, chave secreta e limites gratuitos) fica na MAR-76.
 
 ## Desenvolvimento e banco
 

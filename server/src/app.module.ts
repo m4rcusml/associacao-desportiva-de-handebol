@@ -22,6 +22,8 @@ import { ArbitragemController } from "./modules/arbitragem/arbitragem.controller
 import { CofreSenhaArbitragem } from "./modules/arbitragem/senha.js";
 import { SuspensoesController } from "./modules/suspensoes/suspensoes.controller.js";
 import { LancamentosController, LancamentosPresidenteController } from "./modules/resultados/lancamentos.controller.js";
+import { FotosArbitragemController, FotosController } from "./modules/fotos/fotos.controller.js";
+import { ArmazenamentoFotos, criarArmazenamentoFotos } from "./modules/fotos/armazenamento.js";
 
 @Module({
   imports: [ThrottlerModule.forRoot({
@@ -32,7 +34,10 @@ import { LancamentosController, LancamentosPresidenteController } from "./module
       ? "Muitas tentativas de entrada na arbitragem. Aguarde alguns minutos e tente novamente."
       : "Muitas tentativas de cadastro. Aguarde alguns minutos e tente novamente.",
   })],
-  controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController, CampeonatosController, JogosController, AtletasController, EscalacaoController, ArbitragemController, CredenciamentoController, CredenciamentoPresidenteController, SuspensoesController, LancamentosController, LancamentosPresidenteController, CicloJogoController],
-  providers: [PrismaService, AuthService, SessionGuard, AutorizacaoService, CofreSenhaArbitragem],
+  controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController, CampeonatosController, JogosController, AtletasController, EscalacaoController, ArbitragemController, CredenciamentoController, CredenciamentoPresidenteController, SuspensoesController, LancamentosController, LancamentosPresidenteController, CicloJogoController, FotosController, FotosArbitragemController],
+  providers: [
+    PrismaService, AuthService, SessionGuard, AutorizacaoService, CofreSenhaArbitragem,
+    { provide: ArmazenamentoFotos, useFactory: () => criarArmazenamentoFotos() },
+  ],
 })
 export class AppModule {}

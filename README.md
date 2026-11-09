@@ -41,6 +41,8 @@ Não versione o valor gerado. As outras variáveis estão nos `.env.example`:
 | `BETTER_AUTH_SECRET` | Segredo local aleatório, mantido no backend. |
 | `ARBITRAGEM_SENHA_CHAVE` | Chave AES-256 (32 bytes em hex) da cópia cifrada da senha da arbitragem; fora do banco e do repositório. Trocá-la torna ilegíveis as cópias existentes. |
 | `PORT` | Porta da API, padrão 3001. |
+| `FOTOS_DIRETORIO` | Diretório local das fotos dos atletas, somente fora de produção; ignorado quando o Supabase está configurado. |
+| `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_FOTOS_BUCKET` | Opcionais localmente, definidas juntas: Storage do Supabase com bucket privado. A chave secreta fica só no backend. |
 | `NEXT_PUBLIC_API_URL` | Opcional em `client/.env.local`, conforme `client/.env.example`; padrão `http://localhost:3001/api`. Incorporado no build do Next. |
 
 Use `localhost` nas duas URLs do navegador; não misture com `127.0.0.1`.
@@ -223,6 +225,22 @@ feita devolve `alterado: false`. Cada correção e estorno grava em `AlteracaoCr
 alterado. Depois do encerramento, somente o presidente corrige a camisa, em
 `POST /api/jogos/{jogoId}/credenciamentos/{atletaId}/camisa`, sem reabrir a arbitragem. Estorno ou outra correção
 de atleta que entrou ou tem lançamentos fica para o presidente quando a PEN-019 for detalhada.
+
+#### Fotos privadas dos atletas (MAR-75)
+
+O próprio atleta (inclusive pendente de aprovação) ou um presidente envia ou substitui a foto em
+`PUT /api/atletas/{atletaId}/foto`, com o arquivo como corpo binário e `Content-Type` `image/jpeg`, `image/png` ou
+`image/webp`. Até 5 MB (5 × 1024 × 1024 bytes): acima, 413; conteúdo que não é imagem desses formatos ou diverge do
+`Content-Type`, 415. A troca não exige nem altera a aprovação, e a resposta não traz chave nem URL.
+`GET /api/atletas/{atletaId}/foto` entrega o arquivo ao próprio atleta, aos presidentes e ao técnico atual, aprovado,
+do clube atual do atleta; após uma transferência, o técnico anterior perde o acesso. A arbitragem lê, com o cookie
+temporário do jogo, em `GET /api/arbitragem/jogos/{jogoId}/atletas/{atletaId}/foto`, somente atleta escalado ou
+credenciado nesse jogo. A leitura do QR não traz a foto. Storage indisponível responde 503 e preserva a foto atual.
+
+Limpeza de órfãos: uma falha ao remover a foto substituída (ou ao descartar um envio recusado) deixa um objeto sem
+referência, registrado em log como sujeito à limpeza. Para limpar, liste os objetos do prefixo `atletas/<atletaId>/`
+no bucket (ou em `FOTOS_DIRETORIO`) e remova os que não forem o `Atleta.fotoChave` atual desse atleta. Faça isso
+fora de envios em andamento: um objeto recém-enviado fica sem referência até o commit da sua transação.
 
 #### Gols e penalidades (MAR-68)
 
@@ -624,6 +642,17 @@ somente pelo presidente após o encerramento, com conflito pelo `atual` divergen
 invalidação definitiva, placar e cumprimentos preservados e W.O. mudando só o vencedor. Testes existentes passaram a
 informar resultado e vencedor no encerramento. Uma migração nova; nenhuma dependência nova. Não validado: notificação
 Socket.IO (MAR-73) e retomada em outro dia com sessão expirada (coberta pela regra de acesso de jogo iniciado).
+
+Validação local da MAR-75 em 09/11/2026: lint, tipos/build e **159 testes de integração aprovados**, incluindo nove
+novos com armazenamento em diretório local: envio e substituição pelo atleta e pelo presidente sem alterar aprovação
+nem carteirinha, com remoção do arquivo anterior; conteúdo falso, truncado ou divergente do `Content-Type`, corpo vazio,
+limite de 5 MB (aceito no limite exato, recusado com um byte a mais); acesso cruzado de colegas, técnicos de outro clube,
+técnico pendente e técnico anterior após transferência; arbitragem com sessão do jogo para escalado e credenciado,
+recusada sem cookie, com cookie de outro jogo, após a saída e para atleta fora do jogo; QR sem foto; Storage indisponível,
+falha na persistência após o envio (arquivo novo removido) e falha ao remover o anterior (órfão sem referência
+inválida); envios simultâneos; adaptador Supabase contra servidor HTTP fictício (endpoint autenticado, sem upsert e sem
+URL pública) e contrato OpenAPI. Nenhuma migração e nenhuma dependência nova. Não validado: Supabase Storage real,
+bucket privado hospedado e suas políticas (MAR-76).
 
 ## Caminho feliz
 
