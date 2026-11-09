@@ -2,11 +2,12 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { randomInt, randomUUID } from "node:crypto";
+import { setTimeout } from "node:timers/promises";
 import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
-import { anularPelaArbitragem, corrigirPelaArbitragem } from "../dist/modules/resultados/lancamentos.js";
+import { anularPelaArbitragem, corrigirPelaArbitragem, registrarLancamento } from "../dist/modules/resultados/lancamentos.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
@@ -309,6 +310,60 @@ test("reenvio da mesma correção ou anulação não duplica; identificador de o
   await recusa(request("POST", `${ARBITRAGEM}/${jogo}/lancamentos`, arbitro, lancamento(pAna, "temp_gol", anulacao)), 409, /operacaoId já usado/);
   await recusa(anular(jogo, arbitro, terceiro.id, gol.operacaoId), 409, /operacaoId já usado/);
   assert.deepEqual(resumo(await registros(jogo, arbitro)).placar, [0, 1]);
+});
+
+test("registro e anulação em jogos distintos disputam o mesmo operacaoId, sem confirmar duas operações", async () => {
+  const registro = await cenario();
+  const anulacao = await cenario();
+  for (const primeira of ["registro", "anulacao"] as const) {
+    const operacaoId = randomUUID();
+    const gol = await lancar(anulacao.jogo, anulacao.arbitro, anulacao.pAna);
+    let gravou!: () => void;
+    let liberar!: () => void;
+    let conectou!: (pid: number) => void;
+    const gravada = new Promise<void>(resolve => { gravou = resolve; });
+    const liberacao = new Promise<void>(resolve => { liberar = resolve; });
+    const conectada = new Promise<number>(resolve => { conectou = resolve; });
+    const operacoes = {
+      registro: (tx: Parameters<typeof registrarLancamento>[0]) => registrarLancamento(tx, registro.jogo, decodeURIComponent(registro.arbitro.split("=")[1]), {
+        operacaoId, tipo: "temp_gol", participacaoId: registro.pAna,
+      }),
+      anulacao: (tx: Parameters<typeof anularPelaArbitragem>[0]) => anularPelaArbitragem(tx, anulacao.jogo, decodeURIComponent(anulacao.arbitro.split("=")[1]), gol.id, { operacaoId }),
+    };
+    const vencedora = prisma.$transaction(async tx => {
+      const resultado = await operacoes[primeira](tx);
+      gravou();
+      await liberacao;
+      return resultado;
+    }, { timeout: 15_000 });
+    await gravada;
+    let terminou = false;
+    const concorrente = prisma.$transaction(async tx => {
+      const [conexao] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+      conectou(conexao.pid);
+      return operacoes[primeira === "registro" ? "anulacao" : "registro"](tx);
+    }, { timeout: 15_000 }).then(valor => ({ valor, erro: null }), erro => ({ valor: null, erro })).finally(() => { terminou = true; });
+    try {
+      const pid = await conectada;
+      const limite = Date.now() + 5_000;
+      // A primeira escrita ainda não confirmou: espere a concorrente terminar (bug) ou aguardar o lock.
+      while (!terminou) {
+        const [estado] = await prisma.$queryRaw<{ aguardando: boolean }[]>`
+          SELECT wait_event = 'advisory' AS aguardando FROM pg_stat_activity WHERE pid = ${pid}`;
+        if (estado?.aguardando) break;
+        assert.ok(Date.now() < limite, "requisição concorrente não chegou à disputa do identificador");
+        await setTimeout(10);
+      }
+    } finally {
+      liberar();
+    }
+    assert.equal((await vencedora).alterado, true);
+    const resultado = await concorrente;
+    assert.equal(resultado.erro?.getStatus(), 409, "identificador em uso por outra operação deve receber conflito");
+    assert.match(resultado.erro.message, /operacaoId já usado/);
+    assert.equal(await prisma.lancamentoJogo.count({ where: { operacaoId } }), primeira === "registro" ? 1 : 0);
+    assert.equal(await prisma.lancamentoJogo.count({ where: { anulacaoOperacaoId: operacaoId } }), primeira === "anulacao" ? 1 : 0);
+  }
 });
 
 test("falha na transação desfaz a correção e a anulação por inteiro", async () => {

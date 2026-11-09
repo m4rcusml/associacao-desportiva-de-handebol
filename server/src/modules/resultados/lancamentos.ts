@@ -60,6 +60,11 @@ const lerPorAnulacao = (tx: Tx, anulacaoOperacaoId: string) => tx.lancamentoJogo
 const lerPorId = (tx: Tx, id: string) => tx.lancamentoJogo.findUniqueOrThrow({ where: { id }, select: selecaoLancamento });
 const operacaoUsada = () => new ConflictException("operacaoId já usado em outro lançamento. Gere um novo identificador para uma nova ocorrência.");
 
+/** Serializa o mesmo identificador entre registro, correção e anulação, que usam colunas UNIQUE distintas. */
+async function bloquearOperacao(tx: Tx, operacaoId: string) {
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${operacaoId}::text, 70070))::text`;
+}
+
 /**
  * Reenvio da mesma operação: o registro existente é devolvido com `alterado: false`. Conteúdo diferente com o
  * mesmo identificador (outro jogo, tipo ou participação) é conflito e nunca sobrescreve o original.
@@ -75,13 +80,14 @@ async function repeticao(tx: Tx, jogoId: string, dados: z.infer<typeof lancament
 
 /**
  * Arbitragem autorizada registra gol ou penalidade do atleta credenciado com o jogo em andamento (RF-031/032,
- * RN-032/033). Ordem dos bloqueios: jogo → arbitragem → sessão (revalidação) → participação (FOR SHARE) →
+ * RN-032/033). Ordem dos bloqueios: jogo → arbitragem → sessão (revalidação) → operação → participação (FOR SHARE) →
  * inserção, cujo trigger repete as regras com os mesmos bloqueios. Lançamentos simultâneos de operações
  * diferentes são todos preservados; a mesma operação enviada em paralelo grava uma vez (`ON CONFLICT`).
  * Placar e desempenho são lidos das projeções na mesma transação, já com o lançamento.
  */
 export async function registrarLancamento(tx: Tx, jogoId: string, token: string | undefined, dados: z.infer<typeof lancamentoSchema>) {
   const { status } = await revalidarArbitragem(tx, jogoId, token);
+  await bloquearOperacao(tx, dados.operacaoId);
   const anterior = await repeticao(tx, jogoId, dados);
   if (anterior) return anterior;
   if (await lerPorAnulacao(tx, dados.operacaoId)) throw operacaoUsada();
@@ -173,9 +179,10 @@ async function repeticaoCorrecao(tx: Tx, jogoId: string, lancamentoId: string, d
 /**
  * Correção (RF-034/036, RN-034, MAR-70): na mesma transação anula o lançamento e cria o substituto, com outro tipo
  * e/ou atleta credenciado do mesmo jogo; `valor` continua 1 por ocorrência (MAR-68). O original não muda nem é
- * apagado. Bloqueios: jogo (na autorização) → lançamento (FOR UPDATE) → participação (FOR SHARE).
+ * apagado. Bloqueios: jogo (na autorização) → operação → lançamento (FOR UPDATE) → participação (FOR SHARE).
  */
 async function corrigir(tx: Tx, corretor: Corretor, status: string, jogoId: string, lancamentoId: string, dados: z.infer<typeof correcaoSchema>) {
+  await bloquearOperacao(tx, dados.operacaoId);
   const anterior = await repeticaoCorrecao(tx, jogoId, lancamentoId, dados);
   if (anterior) return anterior;
   exigirStatus(corretor, status);
@@ -217,6 +224,7 @@ async function repeticaoAnulacao(tx: Tx, jogoId: string, lancamentoId: string, o
 
 /** Anulação (exclusão lógica, RN-034, MAR-70): o lançamento continua gravado e deixa de contar nas projeções. */
 async function anular(tx: Tx, corretor: Corretor, status: string, jogoId: string, lancamentoId: string, { operacaoId }: z.infer<typeof anulacaoSchema>) {
+  await bloquearOperacao(tx, operacaoId);
   const anterior = await repeticaoAnulacao(tx, jogoId, lancamentoId, operacaoId);
   if (anterior) return anterior;
   exigirStatus(corretor, status);
