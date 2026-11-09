@@ -38,6 +38,8 @@ mesmas regras de elegibilidade, e registra uma vez a entrada em quadra com o jog
 Desde a MAR-68, a arbitragem autorizada registra gols e penalidades `temp_` do atleta credenciado com o jogo em
 andamento; o clube vem da participação, cada ocorrência vale 1, o reenvio da mesma operação não duplica e placar e
 desempenho são calculados dos lançamentos. Correção e anulação continuam na MAR-70.
+Detalhe aprovado por Marcus (MAR-68, 08/11/2026): o lançamento exige somente o credenciamento do atleta no jogo;
+não exige entrada em quadra registrada nem conta ativa, porque registra o que ocorreu na partida.
 Limitação temporária da MAR-67, aprovada por Marcus em 08/11/2026: credenciamento e entrada não podem
 ser alterados nesta entrega. Correção de camisa e estorno do credenciamento ficam para a MAR-71,
 preservadas as permissões finais descritas na seção 11. Repetir o credenciamento com a mesma camisa
