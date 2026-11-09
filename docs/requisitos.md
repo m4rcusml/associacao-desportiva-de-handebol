@@ -53,7 +53,7 @@ Desde a MAR-72, o encerramento informa a forma (normal, interrompido definitivam
 e invalida o jogo após o encerramento, com histórico (detalhes na seção 11).
 Desde a MAR-67, a arbitragem autorizada credencia por confirmação manual ou QR, com a camisa do jogo e as
 mesmas regras de elegibilidade, e registra uma vez a entrada em quadra com o jogo em andamento.
-Desde a MAR-68, a arbitragem autorizada registra gols e penalidades `temp_` do atleta credenciado com o jogo em
+Desde a MAR-68, a arbitragem autorizada registra gols e penalidades do atleta credenciado com o jogo em
 andamento; o clube vem da participação, cada ocorrência vale 1, o reenvio da mesma operação não duplica e placar e
 desempenho são calculados dos lançamentos. Correção e anulação continuam na MAR-70.
 Detalhe aprovado por Marcus (MAR-68, 08/11/2026): o lançamento exige somente o credenciamento do atleta no jogo;
@@ -225,7 +225,7 @@ A inclusão de clubes pelo presidente foi confirmada por Marcus para esta versã
 | RN-032 | Todo gol deve identificar o atleta responsável; não se lança gol diretamente para clube sem identificar o atleta. | Confirmado |
 | RN-033 | O gol individual deve refletir automaticamente no placar do clube representado naquele jogo.                      | Confirmado |
 | RN-034 | Correções de lançamentos devem preservar o registro do que foi corrigido.                                         | Confirmado |
-| RN-035 | Métricas confirmadas na seção 15. Identificadores legados temp_ permanecem até migração compatível em tarefa própria.    | Confirmado |
+| RN-035 | Métricas confirmadas na seção 15, com identificadores definitivos desde a MAR-85 (seção 6).                       | Confirmado |
 | RN-036 | Histórico do atleta resulta dos registros de cada jogo e deve continuar preservado após mudanças de clube.        | Confirmado |
 
 ### 4.5. Disciplina
@@ -270,16 +270,19 @@ tempo máximo de resposta ou disponibilidade. Esses temas não devem ser tratado
 assumidos. Exportação, doações e patrocínios aparecem nas anotações iniciais, mas não foram
 detalhados nem aprovados nas rodadas que originaram este documento.
 
-## 6. Métricas aprovadas e identificadores atuais
+## 6. Métricas aprovadas e identificadores
 
-| Contexto                      | Identificadores provisórios                                                       |
-| ----------------------------- | --------------------------------------------------------------------------------- |
-| Placar do jogo                | temp_placarClubeA, temp_placarClubeB                                              |
-| Desempenho individual no jogo | temp_gols, temp_cartoesAmarelos, temp_exclusoesDoisMinutos, temp_cartoesVermelhos |
+| Contexto                      | Identificadores                                               |
+| ----------------------------- | ------------------------------------------------------------- |
+| Tipos de lançamento           | gol, cartaoAmarelo, exclusaoDoisMinutos, cartaoVermelho       |
+| Placar do jogo                | placarClubeA, placarClubeB                                    |
+| Desempenho individual no jogo | gols, cartoesAmarelos, exclusoesDoisMinutos, cartoesVermelhos |
 
-A lista e os cálculos desta versão foram confirmados na MAR-82 (seção 15). Os identificadores
-atuais acima continuam com `temp_` até migração compatível em tarefa própria; esta entrega
-documental não altera banco/API. Penalidades não definem sozinhas o critério de suspensão
+A lista e os cálculos desta versão foram confirmados na MAR-82 (seção 15). Na MAR-85 o prefixo
+legado `temp_` foi removido de banco, views, API/OpenAPI, testes e documentação, sem período de
+transição (decisão de Marcus em 09/11/2026, sem consumidores externos): valores `temp_` passam a ser
+recusados como tipo inválido. `cartoesVermelhos` conta desqualificações; o azul (`relatorioDisciplinar`)
+não soma outra. Penalidades não definem sozinhas o critério de suspensão
 automática, aprovado separadamente na seção 12.
 
 ## 7. Pendências e perguntas de esclarecimento
@@ -291,7 +294,7 @@ O levantamento consolidado, incluindo casos específicos e ordem sugerida de res
 | ------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
 | PEN-001 | A página da arbitragem deve abrir antes do início formal para credenciar os atletas?                               | Resolvido: sim; abrir credenciamento antes e iniciar a partida depois (RF-030). |
 | PEN-002 | Para usuário cadastrado que entra por senha, verificar igualmente o impedimento de pertencer a clube participante? | Resolvido: não; acesso por senha dispensa essa conferência (RN-025).            |
-| PEN-003 | Quais métricas serão efetivamente utilizadas?                                                                      | Resolvida para esta versão na MAR-82, seção 15; migração dos identificadores temp_ pendente.                                               |
+| PEN-003 | Quais métricas serão efetivamente utilizadas?                                                                      | Resolvida para esta versão na MAR-82, seção 15; identificadores migrados na MAR-85 (seção 6).                                              |
 | PEN-004 | Quais penalidades, limites de acumulação e quantidades de jogos geram suspensão automática?                        | Resolvido por Marcus em 09/11/2026; critérios na seção 12, implementados na MAR-79.             |
 | PEN-005 | O presidente continuará incluindo os clubes no campeonato?                                                         | Resolvida na MAR-82, seção 15: presidente inclui; sem solicitação pelo clube nesta versão.      |
 | PEN-006 | Como tratar múltiplas suspensões simultâneas? | Resolvido: cumprimento em paralelo, seção 11; redução e recálculo definidos na MAR-81, seção 14. |
@@ -525,10 +528,10 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   e a invalidação é definitiva e preserva placar, estatísticas e cumprimentos. Também aprovado por Marcus na MAR-72:
   a arbitragem pode encerrar como normal mesmo durante uma interrupção, e o presidente pode corrigir resultado e
   vencedor de jogo já invalidado.
-- Métricas desta versão foram confirmadas posteriormente na seção 15; identificadores atuais
-  `temp_` aguardam migração compatível. Critérios automáticos estão na seção 12, com redução e
+- Métricas desta versão foram confirmadas posteriormente na seção 15; os identificadores perderam
+  o prefixo `temp_` na MAR-85. Critérios automáticos estão na seção 12, com redução e
   recálculo na seção 14. A suspensão automática da seção 12 foi implementada na MAR-79 e a redução na MAR-84;
-  a migração dos identificadores segue para a MAR-85.
+  a migração dos identificadores e a adequação da carteirinha foram feitas na MAR-85.
 
 ## 12. Critérios de suspensão automática — MAR-78 — 09/11/2026
 
@@ -657,6 +660,8 @@ Exemplos de aceite: dois gols válidos e um anulado contam dois; transferir um g
 do mesmo clube muda os totais individuais sem mudar o placar; vermelho acompanhado de azul
 conta uma desqualificação; atleta sem foto mantém carteirinha utilizável, sem e-mail exibido.
 
-A confirmação das métricas encerra a decisão de produto. A migração dos identificadores legados
-`temp_` e a adequação das consultas de carteirinha devem ser implementadas e validadas em tarefa
-própria, [MAR-85](https://linear.app/marcusml/issue/MAR-85), sem renomeação de banco/API nesta entrega documental.
+A confirmação das métricas encerra a decisão de produto. Implementado na
+[MAR-85](https://linear.app/marcusml/issue/MAR-85): carteirinha (do próprio atleta e na consulta do presidente)
+com clube atual e indicação de foto (`possuiFoto`; a imagem segue na rota protegida de fotos), sem e-mail, e
+identificadores sem o prefixo `temp_` (seção 6). Ficha, aprovação e inclusão de clubes pelo presidente já
+atendiam a decisão e não mudaram.

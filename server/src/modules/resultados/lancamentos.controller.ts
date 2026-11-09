@@ -14,7 +14,7 @@ import {
 
 const uuidPipe = new ParseUUIDPipe();
 const somentePresidente = { perfis: ["presidente"] } as const;
-const corpoLancamentoInvalido = "Dados inválidos. Informe operacaoId (UUID), tipo (temp_gol, temp_cartaoAmarelo, temp_exclusaoDoisMinutos ou temp_cartaoVermelho) e participacaoId (UUID); relatorioDisciplinar (booleano) somente no temp_cartaoVermelho; campos adicionais não são permitidos.";
+const corpoLancamentoInvalido = "Dados inválidos. Informe operacaoId (UUID), tipo (gol, cartaoAmarelo, exclusaoDoisMinutos ou cartaoVermelho) e participacaoId (UUID); relatorioDisciplinar (booleano) somente no cartaoVermelho; campos adicionais não são permitidos.";
 const corpoAnulacaoInvalido = "Dados inválidos. Informe somente operacaoId (UUID) gerado para esta anulação.";
 
 function validar<T>(schema: { safeParse(body: unknown): { success: true; data: T } | { success: false } }, body: unknown, mensagem: string): T {

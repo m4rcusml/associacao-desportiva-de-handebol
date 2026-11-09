@@ -13,10 +13,10 @@ obrigações de implementar. Os responsáveis indicados são sugestões para con
 
 | ID      | Pendência e decisão necessária                                                                                                                            | Impacto / situação vigente                                                                                                                                                                     |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PEN-003 | Confirmar métricas por jogo e atleta: quais dados registrar, definições e forma de cálculo.                                                               | Resolvida para esta versão por Marcus em 09/11/2026 (MAR-82): lista e cálculos em requisitos, seção 15. Identificadores legados temp_ aguardam migração compatível; aprovação não comprova implementação.                     |
+| PEN-003 | Confirmar métricas por jogo e atleta: quais dados registrar, definições e forma de cálculo.                                                               | Resolvida para esta versão por Marcus em 09/11/2026 (MAR-82): lista e cálculos em requisitos, seção 15. Identificadores sem o prefixo temp_ e carteirinha adequada na MAR-85.                     |
 | PEN-004 | Definir regras de suspensão automática: penalidades consideradas, limites, período de acumulação, quantidade de jogos e eventual reinício da contagem.    | Resolvida por Marcus em 09/11/2026 (MAR-78). Critérios em requisitos, seção 12; implementados e validados localmente na MAR-79.                                    |
 | PEN-005 | Confirmar se o presidente continuará incluindo os clubes participantes dos campeonatos.                                                                   | Resolvida para esta versão por Marcus em 09/11/2026 (MAR-82): presidente inclui os clubes; sem solicitação pelo próprio clube. RF-014; requisitos, seção 15.                                                      |
-| PEN-008 | Ficha cadastral final, dados da carteirinha e critérios de verificação. | Resolvida para esta versão por Marcus em 09/11/2026 (MAR-82): ficha, carteirinha e critérios de aprovação em requisitos, seção 15. Confirmar implementação/validação em tarefa própria; não ampliar dados pessoais. |
+| PEN-008 | Ficha cadastral final, dados da carteirinha e critérios de verificação. | Resolvida para esta versão por Marcus em 09/11/2026 (MAR-82): ficha, carteirinha e critérios de aprovação em requisitos, seção 15. Carteirinha adequada e validada na MAR-85; não ampliar dados pessoais. |
 
 ## 2. Regras disciplinares e efeitos posteriores
 
@@ -77,7 +77,7 @@ aprovados.
 
 ## 7. Ordem sugerida de resolução
 
-1. PEN-003/PEN-005/PEN-008 resolvidas para esta versão na MAR-82 (requisitos, seção 15); preparar adequação de carteirinha e migração das métricas. Critérios automáticos da PEN-004 aprovados e implementados na MAR-79.
+1. PEN-003/PEN-005/PEN-008 resolvidas para esta versão na MAR-82 (requisitos, seção 15); carteirinha e identificadores das métricas adequados na MAR-85. Critérios automáticos da PEN-004 aprovados e implementados na MAR-79.
 2. PEN-009 e PEN-019 resolvidas nas MAR-81 e MAR-80; as seções 13 e 14 foram implementadas nas MAR-83 e MAR-84.
 3. Confirmar eventual exceção de transferência para clube eliminado/desistente (PEN-017); até lá vale o bloqueio aprovado.
 4. Detalhar condições operacionais, retenção e auditoria completa (PEN-025/PEN-026/PEN-007), sem reabrir itens já adiados.

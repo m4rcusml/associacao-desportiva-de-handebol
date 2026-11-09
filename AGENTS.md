@@ -30,6 +30,7 @@ Consulte os documentos conforme a tarefa, mantendo as definições detalhadas em
 ## Orientações de trabalho
 
 - Faça a menor alteração que resolva o pedido e preserve mudanças existentes que não pertençam à tarefa.
+- O agente que implementou uma tarefa não revisa nem faz o merge da própria PR; a revisão cabe a outro agente. Ao abrir a PR, complemente a descrição com tudo o que o revisor precisa saber: escopo e o que ficou fora, decisões tomadas com o usuário e seus motivos, alternativas descartadas, pontos de risco e onde concentrar a atenção, migrações e efeitos em dados existentes, verificações executadas com resultados e o que não foi validado.
 - Ao revisar uma PR, leia a descrição e todos os comentários existentes, incluindo comentários de revisão no código, para considerar esclarecimentos e decisões registrados na discussão.
 - Se a revisão identificar erros, lance um subagente para corrigi-los. Se alguma decisão ou comportamento precisar de validação do usuário, pergunte antes de prosseguir com essa parte. Após as correções, revise novamente e execute as verificações aplicáveis; se não houver problemas pendentes e as verificações passarem, faça o merge da PR sem pedir nova autorização.
 - Consulte os scripts e comandos no README e nos manifests. Execute as verificações adequadas à alteração e informe o que foi validado e o que permanece pendente.

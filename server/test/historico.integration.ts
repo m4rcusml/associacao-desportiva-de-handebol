@@ -108,16 +108,16 @@ const entrar = (jogo: string, arbitro: string, atletaId: string) => ok(request("
 const iniciar = (jogo: string, arbitro: string) => ok(request("POST", `/arbitragem/jogos/${jogo}/inicio`, arbitro));
 const encerrar = (jogo: string, arbitro: string, resultado: string, vencedorInscricaoId: string | null) =>
   ok(request("POST", `/arbitragem/jogos/${jogo}/encerramento`, arbitro, { resultado, vencedorInscricaoId }));
-const lancar = async (jogo: string, arbitro: string, participacaoId: string, tipo = "temp_gol", extra: object = {}) =>
+const lancar = async (jogo: string, arbitro: string, participacaoId: string, tipo = "gol", extra: object = {}) =>
   (await ok<{ lancamento: { id: string } }>(request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, arbitro, { operacaoId: randomUUID(), tipo, participacaoId, ...extra }))).lancamento.id;
 
-type Metricas = { temp_gols: number; temp_cartoesAmarelos: number; temp_exclusoesDoisMinutos: number; temp_cartoesVermelhos: number };
+type Metricas = { gols: number; cartoesAmarelos: number; exclusoesDoisMinutos: number; cartoesVermelhos: number };
 type Situacao = { participacaoId: string; numeroCamisa: number | null; escalado: boolean; credenciado: boolean; entrouEmQuadra: boolean; metricas: Metricas | null };
 type ResumoJogo = { id: string; status: string; resultado: string | null; vencedorInscricaoId: string | null; invalidadoEm: string | null; interrompido: boolean; campeonato: { id: string } };
 type ClubeNoJogo = { inscricaoId: string; clube: { id: string; nome: string } };
 type Desempenho = {
   jogo: ResumoJogo;
-  placar: { clubeA: ClubeNoJogo; temp_placarClubeA: number; clubeB: ClubeNoJogo; temp_placarClubeB: number } | null;
+  placar: { clubeA: ClubeNoJogo; placarClubeA: number; clubeB: ClubeNoJogo; placarClubeB: number } | null;
   participacoes: (Situacao & { inscricaoId: string; atleta: { id: string; nomeCompleto: string } })[];
 };
 type Historico = {
@@ -127,7 +127,7 @@ type Historico = {
 };
 const desempenho = (jogo: string, cookie: string) => request("GET", `/jogos/${jogo}/desempenho`, cookie);
 const historico = (atletaId: string, cookie: string) => request("GET", `/atletas/${atletaId}/historico`, cookie);
-const metricas = (m: Metricas | null) => m && [m.temp_gols, m.temp_cartoesAmarelos, m.temp_exclusoesDoisMinutos, m.temp_cartoesVermelhos];
+const metricas = (m: Metricas | null) => m && [m.gols, m.cartoesAmarelos, m.exclusoesDoisMinutos, m.cartoesVermelhos];
 const etapas = (s: Situacao) => [s.escalado, s.credenciado, s.entrouEmQuadra];
 
 before(async () => {
@@ -181,20 +181,20 @@ test("métricas do jogo somam lançamentos válidos, distinguem etapas e separam
   await lancar(jogo.id, arbitro, pAna);
   const golAnulado = await lancar(jogo.id, arbitro, pAna);
   const golCorrigido = await lancar(jogo.id, arbitro, pAna);
-  await lancar(jogo.id, arbitro, pAna, "temp_cartaoAmarelo");
+  await lancar(jogo.id, arbitro, pAna, "cartaoAmarelo");
   await lancar(jogo.id, arbitro, pBruno);
-  await lancar(jogo.id, arbitro, pBruno, "temp_exclusaoDoisMinutos");
-  await lancar(jogo.id, arbitro, pBruno, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  await lancar(jogo.id, arbitro, pBruno, "exclusaoDoisMinutos");
+  await lancar(jogo.id, arbitro, pBruno, "cartaoVermelho", { relatorioDisciplinar: true });
   assert.equal((await request("POST", `/arbitragem/jogos/${jogo.id}/lancamentos/${golAnulado}/anulacao`, arbitro, { operacaoId: randomUUID() })).status, 200);
 
   // Abandono com vencedor B apesar do placar 2 x 1 para A: o vencedor não deriva do placar.
   await encerrar(jogo.id, arbitro, "abandono", jogo.inscricaoB);
   // Após o encerramento o presidente corrige um gol de Ana para Dani, do mesmo clube: totais mudam, placar não.
-  assert.equal((await request("POST", `/jogos/${jogo.id}/lancamentos/${golCorrigido}/correcao`, presidente.cookie, { operacaoId: randomUUID(), tipo: "temp_gol", participacaoId: pDani })).status, 200);
+  assert.equal((await request("POST", `/jogos/${jogo.id}/lancamentos/${golCorrigido}/correcao`, presidente.cookie, { operacaoId: randomUUID(), tipo: "gol", participacaoId: pDani })).status, 200);
 
   const visto = await ok<Desempenho>(desempenho(jogo.id.toUpperCase(), presidente.cookie));
   assert.deepEqual([visto.jogo.status, visto.jogo.resultado, visto.jogo.vencedorInscricaoId, visto.jogo.invalidadoEm, visto.jogo.interrompido], ["finalizado", "abandono", jogo.inscricaoB, null, false]);
-  assert.deepEqual([visto.placar?.temp_placarClubeA, visto.placar?.temp_placarClubeB], [2, 1], "gol anulado fora do placar");
+  assert.deepEqual([visto.placar?.placarClubeA, visto.placar?.placarClubeB], [2, 1], "gol anulado fora do placar");
   assert.deepEqual(visto.participacoes.map(p => [p.atleta.nomeCompleto, p.numeroCamisa, ...etapas(p), metricas(p.metricas)]), [
     ["Ana", 7, true, true, true, [1, 1, 0, 0]],
     ["Dani", 8, false, true, false, [1, 0, 0, 0]],
@@ -251,7 +251,7 @@ test("histórico preserva o clube de cada jogo após transferência, soma jogos 
   const pAna2 = await credenciar(j2.id, arbitro2, ana.id, 11);
   await iniciar(j2.id, arbitro2);
   await lancar(j2.id, arbitro2, pAna2);
-  await lancar(j2.id, arbitro2, pAna2, "temp_cartaoAmarelo");
+  await lancar(j2.id, arbitro2, pAna2, "cartaoAmarelo");
   await encerrar(j2.id, arbitro2, "interrompido", null);
   assert.equal((await request("POST", `/jogos/${j2.id}/invalidacao`, presidente.cookie, { motivo: "Atleta irregular no adversário" })).status, 200);
 
@@ -275,7 +275,7 @@ test("histórico preserva o clube de cada jogo após transferência, soma jogos 
   assert.deepEqual([jogo1.jogo.vencedorInscricaoId, jogo1.jogo.invalidadoEm], [j1.inscricaoA, null]);
   assert.deepEqual(proprio.totais, {
     participacoes: { escaladas: 2, credenciadas: 2, comEntradaEmQuadra: 1 },
-    temp_gols: 3, temp_cartoesAmarelos: 1, temp_exclusoesDoisMinutos: 0, temp_cartoesVermelhos: 0,
+    gols: 3, cartoesAmarelos: 1, exclusoesDoisMinutos: 0, cartoesVermelhos: 0,
   }, "invalidado conta; anulado não");
   assert.ok(!JSON.stringify(proprio).includes("@example.invalid"), "sem e-mail");
 
@@ -294,7 +294,7 @@ test("histórico preserva o clube de cada jogo após transferência, soma jogos 
 
   // Atleta sem jogos: histórico vazio com totais zerados.
   const vazio = await ok<Historico>(historico(pendente.id, presidente.cookie));
-  assert.deepEqual([vazio.jogos, vazio.totais.temp_gols, vazio.totais.participacoes.credenciadas], [[], 0, 0]);
+  assert.deepEqual([vazio.jogos, vazio.totais.gols, vazio.totais.participacoes.credenciadas], [[], 0, 0]);
 });
 
 test("histórico com ID de técnico é recusado sem disputar o bloqueio de uma substituição concorrente", async () => {

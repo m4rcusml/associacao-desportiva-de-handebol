@@ -118,7 +118,7 @@ const estornar = (jogo: string, cookie: string, atletaId: string, numeroCamisa: 
 const entrar = (jogo: string, cookie: string, atletaId: string) => ok<{ participacao: Participacao }>(request("POST", `${ARBITRAGEM}/${jogo}/credenciamentos/${atletaId}/entrada`, cookie));
 const iniciar = (jogo: string, cookie: string) => ok(request("POST", `${ARBITRAGEM}/${jogo}/inicio`, cookie));
 const lancar = async (jogo: string, cookie: string, participacaoId: string) =>
-  (await ok<{ lancamento: { id: string } }>(request("POST", `${ARBITRAGEM}/${jogo}/lancamentos`, cookie, { operacaoId: randomUUID(), tipo: "temp_gol", participacaoId }))).lancamento;
+  (await ok<{ lancamento: { id: string } }>(request("POST", `${ARBITRAGEM}/${jogo}/lancamentos`, cookie, { operacaoId: randomUUID(), tipo: "gol", participacaoId }))).lancamento;
 const historico = (jogoId: string) => prisma.alteracaoCredenciamento.findMany({ where: { jogoId }, orderBy: [{ registradaEm: "asc" }, { id: "asc" }] });
 const camisas = async (jogo: string) => Object.fromEntries((await prisma.participacao.findMany({
   where: { jogoId: jogo, credenciadoEm: { not: null } }, select: { numeroCamisa: true, atleta: { select: { usuario: { select: { nomeCompleto: true } } } } },
@@ -391,7 +391,7 @@ test("lançamento e entrada concorrem com o estorno: quem bloqueia a participaç
 
   // Lançamento em curso: o estorno aguarda e encontra o gol.
   const l1 = await emDisputa(
-    tx => registrarLancamento(tx, jogo, token, { operacaoId: randomUUID(), tipo: "temp_gol", participacaoId: pAna }),
+    tx => registrarLancamento(tx, jogo, token, { operacaoId: randomUUID(), tipo: "gol", participacaoId: pAna }),
     tx => estornarCredenciamento(tx, jogo, token, ana.id, { numeroCamisa: 7 }),
   );
   assert.ok(l1.aguardou);
@@ -401,7 +401,7 @@ test("lançamento e entrada concorrem com o estorno: quem bloqueia a participaç
   // Estorno em curso: o lançamento aguarda e não encontra mais a participação credenciada.
   const l2 = await emDisputa(
     tx => estornarCredenciamento(tx, jogo, token, bruno.id, { numeroCamisa: 9 }),
-    tx => registrarLancamento(tx, jogo, token, { operacaoId: randomUUID(), tipo: "temp_gol", participacaoId: pBruno }),
+    tx => registrarLancamento(tx, jogo, token, { operacaoId: randomUUID(), tipo: "gol", participacaoId: pBruno }),
   );
   assert.ok(l2.aguardou);
   assert.ok([404, 409].includes(l2.segunda.erro?.getStatus?.() ?? 0), String(l2.segunda.erro?.message));

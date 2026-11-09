@@ -22,15 +22,15 @@ export const lancamentoSchema = z.strictObject({
   tipo: z.enum(TipoLancamento),
   participacaoId: uuid(),
   relatorioDisciplinar: z.boolean().optional(),
-}).refine(l => l.tipo === "temp_cartaoVermelho" || l.relatorioDisciplinar === undefined, {
-  message: "relatorioDisciplinar só é informado no temp_cartaoVermelho", path: ["relatorioDisciplinar"],
-}).transform(l => ({ ...l, relatorioDisciplinar: l.tipo === "temp_cartaoVermelho" ? l.relatorioDisciplinar ?? false : null }));
+}).refine(l => l.tipo === "cartaoVermelho" || l.relatorioDisciplinar === undefined, {
+  message: "relatorioDisciplinar só é informado no cartaoVermelho", path: ["relatorioDisciplinar"],
+}).transform(l => ({ ...l, relatorioDisciplinar: l.tipo === "cartaoVermelho" ? l.relatorioDisciplinar ?? false : null }));
 
 type Lancamento = z.infer<typeof lancamentoSchema>;
 /** Dados de lançamento ou correção; sem `relatorioDisciplinar`, o vermelho fica sem relatório (como no corpo HTTP). */
 export type DadosLancamento = Omit<Lancamento, "relatorioDisciplinar"> & { relatorioDisciplinar?: boolean | null };
 const normalizar = (dados: DadosLancamento): Lancamento =>
-  ({ ...dados, relatorioDisciplinar: dados.tipo === "temp_cartaoVermelho" ? dados.relatorioDisciplinar ?? false : null });
+  ({ ...dados, relatorioDisciplinar: dados.tipo === "cartaoVermelho" ? dados.relatorioDisciplinar ?? false : null });
 
 /** Correção (MAR-70): o mesmo corpo do lançamento; `operacaoId` identifica a correção e o substituto criado. */
 export const correcaoSchema = lancamentoSchema;
@@ -60,12 +60,12 @@ export async function placar(tx: Tx, jogoId: string) {
     inscricaoClubeA: { select: { id: true, clube: { select: { id: true, nome: true } } } },
     inscricaoClubeB: { select: { id: true, clube: { select: { id: true, nome: true } } } },
   } });
-  const [estatisticas] = await tx.$queryRaw<{ temp_placarClubeA: number; temp_placarClubeB: number }[]>`
-    SELECT "temp_placarClubeA", "temp_placarClubeB" FROM "EstatisticasDoJogo" WHERE "jogoId" = ${jogoId}::uuid`;
+  const [estatisticas] = await tx.$queryRaw<{ placarClubeA: number; placarClubeB: number }[]>`
+    SELECT "placarClubeA", "placarClubeB" FROM "EstatisticasDoJogo" WHERE "jogoId" = ${jogoId}::uuid`;
   if (!estatisticas) return null;
   return {
-    clubeA: { inscricaoId: jogo.inscricaoClubeA.id, clube: jogo.inscricaoClubeA.clube }, temp_placarClubeA: estatisticas.temp_placarClubeA,
-    clubeB: { inscricaoId: jogo.inscricaoClubeB.id, clube: jogo.inscricaoClubeB.clube }, temp_placarClubeB: estatisticas.temp_placarClubeB,
+    clubeA: { inscricaoId: jogo.inscricaoClubeA.id, clube: jogo.inscricaoClubeA.clube }, placarClubeA: estatisticas.placarClubeA,
+    clubeB: { inscricaoId: jogo.inscricaoClubeB.id, clube: jogo.inscricaoClubeB.clube }, placarClubeB: estatisticas.placarClubeB,
   };
 }
 
@@ -317,16 +317,16 @@ async function registrosDoJogo(tx: Tx, jogoId: string, status: string) {
     placar: Awaited<ReturnType<typeof placar>>;
     desempenho: {
       participacaoId: string; inscricaoId: string; atleta: { id: string; nomeCompleto: string }; numeroCamisa: number;
-      temp_gols: number; temp_cartoesAmarelos: number; temp_exclusoesDoisMinutos: number; temp_cartoesVermelhos: number;
+      gols: number; cartoesAmarelos: number; exclusoesDoisMinutos: number; cartoesVermelhos: number;
     }[];
     lancamentos: (Omit<ReturnType<typeof apresentar>, "registradoEm" | "anuladoEm"> & { registradoEm: string; anuladoEm: string | null })[];
   }[]>`
     SELECT
       (SELECT jsonb_build_object(
         'clubeA', jsonb_build_object('inscricaoId', a.id, 'clube', jsonb_build_object('id', ca.id, 'nome', ca.nome)),
-        'temp_placarClubeA', e."temp_placarClubeA",
+        'placarClubeA', e."placarClubeA",
         'clubeB', jsonb_build_object('inscricaoId', b.id, 'clube', jsonb_build_object('id', cb.id, 'nome', cb.nome)),
-        'temp_placarClubeB', e."temp_placarClubeB")
+        'placarClubeB', e."placarClubeB")
        FROM "EstatisticasDoJogo" e
        JOIN "Jogo" j ON j.id = e."jogoId"
        JOIN "InscricaoClube" a ON a.id = j."inscricaoClubeAId" JOIN "Clube" ca ON ca.id = a."clubeId"

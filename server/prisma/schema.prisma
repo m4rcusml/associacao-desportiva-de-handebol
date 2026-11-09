@@ -171,12 +171,12 @@ enum IrregularidadeParticipacao {
   suspensao
 }
 
-/// Tipos provisórios de lançamento (RF-037, RN-035, PEN-003): prefixo temp_ até confirmação do cliente.
+/// Tipos de lançamento confirmados na MAR-82 (RF-037, RN-035, requisitos seção 15); prefixo temp_ removido na MAR-85.
 enum TipoLancamento {
-  temp_gol
-  temp_cartaoAmarelo
-  temp_exclusaoDoisMinutos
-  temp_cartaoVermelho
+  gol
+  cartaoAmarelo
+  exclusaoDoisMinutos
+  cartaoVermelho
 }
 
 /// Origem da suspensão (MAR-79): manual pelo presidente (RF-038) ou automática pela regra aprovada (RF-039, seção 12).

@@ -104,7 +104,7 @@ async function recusa(response: Promise<Response>, status: number, mensagem?: Re
   return JSON.parse(texto);
 }
 
-type Placar = { temp_placarClubeA: number; temp_placarClubeB: number };
+type Placar = { placarClubeA: number; placarClubeB: number };
 type Vencedor = { inscricaoId: string; clube: { id: string; nome: string } } | null;
 type Encerramento = { jogo: { status: string; iniciadoEm: string | null; encerradoEm: string; resultado: string; vencedor: Vencedor }; placar: Placar; alterado: boolean };
 type Interrupcao = { jogo: { status: string; interrompidoEm: string | null }; interrupcoes: { interrompidoEm: string; retomadoEm: string | null }[]; alterado: boolean };
@@ -126,7 +126,7 @@ const invalidar = (jogo: string, motivo: unknown, cookie = presidente.cookie) =>
 const credenciar = (jogo: string, cookie: string, atletaId: string, numeroCamisa: number) =>
   request("POST", `/arbitragem/jogos/${jogo}/credenciamentos`, cookie, { atletaId, numeroCamisa });
 const entrar = (jogo: string, cookie: string, atletaId: string) => request("POST", `/arbitragem/jogos/${jogo}/credenciamentos/${atletaId}/entrada`, cookie);
-const lancar = (jogo: string, cookie: string, participacaoId: string, tipo = "temp_gol") =>
+const lancar = (jogo: string, cookie: string, participacaoId: string, tipo = "gol") =>
   request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, cookie, { operacaoId: randomUUID(), tipo, participacaoId });
 async function suspender(campeonato: string, atletaId: string, quantidadeJogos: number) {
   const response = await request("POST", `/campeonatos/${campeonato}/suspensoes`, presidente.cookie, { atletaId, quantidadeJogos, motivo: "Conduta antidesportiva" });
@@ -134,7 +134,7 @@ async function suspender(campeonato: string, atletaId: string, quantidadeJogos: 
   return (await response.json()).id as string;
 }
 const cumprimentos = (suspensaoId: string) => prisma.cumprimentoSuspensao.findMany({ where: { suspensaoId }, select: { jogoId: true } });
-const placarDe = (p: Placar | null) => p && [p.temp_placarClubeA, p.temp_placarClubeB];
+const placarDe = (p: Placar | null) => p && [p.placarClubeA, p.placarClubeB];
 
 /** Ana (A) e Bruno (B) credenciados; Carla (A) sem credenciamento; Duda (A) suspensa por 3 jogos; arbitragem por senha. */
 async function cenario() {
@@ -193,7 +193,7 @@ test("interrupção mantém o mesmo jogo em andamento, pausa lançamentos e entr
   // Durante a interrupção: sem lançamento novo nem entrada em quadra, inclusive direto no banco; credenciamento continua.
   await recusa(lancar(jogo, arbitro, pAna), 409, /interrompido/);
   await recusa(entrar(jogo, arbitro, ana.id), 409, /interrompido/);
-  await assert.rejects(prisma.lancamentoJogo.create({ data: { operacaoId: randomUUID(), jogoId: jogo, participacaoId: pAna, tipo: "temp_gol", registradoEm: new Date() } }));
+  await assert.rejects(prisma.lancamentoJogo.create({ data: { operacaoId: randomUUID(), jogoId: jogo, participacaoId: pAna, tipo: "gol", registradoEm: new Date() } }));
   await assert.rejects(prisma.participacao.update({ where: { id: pAna }, data: { entrouEmQuadraEm: new Date() } }));
   assert.equal((await credenciar(jogo, arbitro, carla.id, 11)).status, 200);
   assert.deepEqual(await cumprimentos(suspensao), [], "interrupção temporária não cumpre");
@@ -316,12 +316,12 @@ test("W.O. sem início fica 0 a 0, cumpre suspensão uma vez e exige jogo não i
 test("abandono sem vencedor preserva placar e estatísticas individuais", async () => {
   const { jogo, arbitro, pAna, pBruno } = await cenario();
   await iniciar(jogo, arbitro);
-  for (const [p, tipo] of [[pAna, "temp_gol"], [pBruno, "temp_gol"], [pBruno, "temp_cartaoAmarelo"]] as const) await ok(lancar(jogo, arbitro, p, tipo));
+  for (const [p, tipo] of [[pAna, "gol"], [pBruno, "gol"], [pBruno, "cartaoAmarelo"]] as const) await ok(lancar(jogo, arbitro, p, tipo));
   const fim = await ok<Encerramento>(encerrar(jogo, arbitro, encerramento("abandono", null)));
   assert.deepEqual([fim.jogo.resultado, fim.jogo.vencedor, placarDe(fim.placar)], ["abandono", null, [1, 1]]);
-  const registros = await ok<{ desempenho: { participacaoId: string; temp_gols: number; temp_cartoesAmarelos: number }[] }>(request("GET", `/jogos/${jogo}/lancamentos`, presidente.cookie));
+  const registros = await ok<{ desempenho: { participacaoId: string; gols: number; cartoesAmarelos: number }[] }>(request("GET", `/jogos/${jogo}/lancamentos`, presidente.cookie));
   const de = (id: string) => registros.desempenho.find(d => d.participacaoId === id)!;
-  assert.deepEqual([de(pAna).temp_gols, de(pBruno).temp_gols, de(pBruno).temp_cartoesAmarelos], [1, 1, 1]);
+  assert.deepEqual([de(pAna).gols, de(pBruno).gols, de(pBruno).cartoesAmarelos], [1, 1, 1]);
   const detalhe = await ok<JogoDetalhado>(request("GET", `/jogos/${jogo}`, presidente.cookie));
   assert.deepEqual([detalhe.status, detalhe.resultado, detalhe.vencedorInscricaoId, detalhe.invalidadoEm], ["finalizado", "abandono", null, null]);
 });
@@ -371,7 +371,7 @@ test("após o encerramento somente o presidente corrige o resultado e invalida, 
   ]);
   assert.ok(final.alteracoes.every(a => a.presidente.id === presidente.id));
   assert.deepEqual(await cumprimentos(suspensao), [{ jogoId: jogo }], "correção e invalidação não recontam");
-  await recusa(request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, arbitro, { operacaoId: randomUUID(), tipo: "temp_gol", participacaoId: pAna }), 401);
+  await recusa(request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, arbitro, { operacaoId: randomUUID(), tipo: "gol", participacaoId: pAna }), 401);
 
   // Banco: alteração sem histórico, desfazer invalidação e apagar o histórico são recusados.
   await assert.rejects(prisma.jogo.update({ where: { id: jogo }, data: { inscricaoClubeVencedorId: inscricaoA } }));

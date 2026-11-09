@@ -8,9 +8,9 @@ const presidente = [{ sessionCookie: [] }];
 const jogoId = { name: "jogoId", in: "path", required: true, schema: { type: "string", format: "uuid" } };
 const lancamentoId = { name: "lancamentoId", in: "path", required: true, schema: { type: "string", format: "uuid" } };
 const parameters = [jogoId];
-const lancamento = "id, operacaoId, tipo, relatorioDisciplinar (somente no temp_cartaoVermelho: true = desqualificação com relatório/azul; null nos demais), valor (1), registradoEm, participacaoId, inscricaoId, atleta {id, nomeCompleto}, numeroCamisa, substituiLancamentoId (lançamento corrigido por este), anuladoEm e substituidoPorId (correção que o anulou)";
-const placar = "placar { clubeA {inscricaoId, clube}, temp_placarClubeA, clubeB {inscricaoId, clube}, temp_placarClubeB } ou null antes do início";
-const registros = `jogo {id, status}, ${placar}, desempenho [{ participacaoId, inscricaoId, atleta, numeroCamisa, temp_gols, temp_cartoesAmarelos, temp_exclusoesDoisMinutos, temp_cartoesVermelhos }] e lancamentos [${lancamento}] em ordem de registro; anulados continuam listados, fora do placar e do desempenho`;
+const lancamento = "id, operacaoId, tipo, relatorioDisciplinar (somente no cartaoVermelho: true = desqualificação com relatório/azul; null nos demais), valor (1), registradoEm, participacaoId, inscricaoId, atleta {id, nomeCompleto}, numeroCamisa, substituiLancamentoId (lançamento corrigido por este), anuladoEm e substituidoPorId (correção que o anulou)";
+const placar = "placar { clubeA {inscricaoId, clube}, placarClubeA, clubeB {inscricaoId, clube}, placarClubeB } ou null antes do início";
+const registros = `jogo {id, status}, ${placar}, desempenho [{ participacaoId, inscricaoId, atleta, numeroCamisa, gols, cartoesAmarelos, exclusoesDoisMinutos, cartoesVermelhos }] e lancamentos [${lancamento}] em ordem de registro; anulados continuam listados, fora do placar e do desempenho`;
 const indisponivel = {
   "401": resposta("Sem cookie temporário, sessão revogada/expirada, designação retirada, conta designada desativada ou sessão de conta de origem encerrada"),
   "403": resposta("Fora do dia do jogo no fuso do local, jogo sem data, finalizado ou cancelado, vínculo impeditivo da arbitragem designada ou origem não autorizada"),
@@ -30,7 +30,7 @@ export const openapiLancamentos = {
       "200": resposta(registros),
       "400": resposta("UUID inválido"), ...indisponivel, "404": resposta("Jogo não encontrado"),
     } },
-    post: { summary: "Arbitragem registra gol ou penalidade (tipos temp_) do atleta credenciado, com o jogo em andamento. O clube vem da participação e cada ocorrência vale 1. No vermelho, relatorioDisciplinar true registra a desqualificação com relatório disciplinar (azul), que gera um jogo de suspensão no encerramento; ausente vale false. operacaoId, gerado pelo cliente, torna o reenvio seguro", security, parameters, requestBody: { required: true, ...json(z.toJSONSchema(lancamentoSchema, { io: "input" })) }, responses: {
+    post: { summary: "Arbitragem registra gol ou penalidade (gol, cartaoAmarelo, exclusaoDoisMinutos ou cartaoVermelho) do atleta credenciado, com o jogo em andamento. O clube vem da participação e cada ocorrência vale 1. No vermelho, relatorioDisciplinar true registra a desqualificação com relatório disciplinar (azul), que gera um jogo de suspensão no encerramento; ausente vale false. operacaoId, gerado pelo cliente, torna o reenvio seguro", security, parameters, requestBody: { required: true, ...json(z.toJSONSchema(lancamentoSchema, { io: "input" })) }, responses: {
       "200": resposta(`{ lancamento, alterado, placar }; alterado é false no reenvio da mesma operação. lancamento: ${lancamento}; ${placar}`),
       "400": resposta("UUID ou corpo inválido, tipo desconhecido, relatorioDisciplinar fora do vermelho, campos adicionais (inclusive valor ou clube)"), ...indisponivel,
       "404": resposta("Jogo não encontrado ou participação de outro jogo/inexistente"),

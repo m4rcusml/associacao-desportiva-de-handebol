@@ -90,9 +90,9 @@ const iniciarJogo = (jogoId: string) => prisma.jogo.update({ where: { id: jogoId
 
 type Pessoa = { id: string; nomeCompleto: string };
 type Lancamento = { id: string; operacaoId: string; tipo: string; valor: number; registradoEm: string; participacaoId: string; inscricaoId: string; atleta: Pessoa; numeroCamisa: number };
-type Placar = { clubeA: { inscricaoId: string; clube: { id: string } }; temp_placarClubeA: number; clubeB: { inscricaoId: string; clube: { id: string } }; temp_placarClubeB: number };
+type Placar = { clubeA: { inscricaoId: string; clube: { id: string } }; placarClubeA: number; clubeB: { inscricaoId: string; clube: { id: string } }; placarClubeB: number };
 type Resultado = { lancamento: Lancamento; alterado: boolean; placar: Placar };
-type Desempenho = { participacaoId: string; inscricaoId: string; atleta: Pessoa; numeroCamisa: number; temp_gols: number; temp_cartoesAmarelos: number; temp_exclusoesDoisMinutos: number; temp_cartoesVermelhos: number };
+type Desempenho = { participacaoId: string; inscricaoId: string; atleta: Pessoa; numeroCamisa: number; gols: number; cartoesAmarelos: number; exclusoesDoisMinutos: number; cartoesVermelhos: number };
 type Registros = { jogo: { id: string; status: string }; placar: Placar | null; desempenho: Desempenho[]; lancamentos: Lancamento[] };
 
 async function ok<T = Resultado>(response: Promise<Response>): Promise<T> {
@@ -109,11 +109,11 @@ async function recusa(response: Promise<Response>, status: number, mensagem?: Re
 const credenciar = async (jogo: string, cookie: string, atletaId: string, numeroCamisa: number) =>
   (await ok<{ participacao: { participacaoId: string } }>(request("POST", `/arbitragem/jogos/${jogo}/credenciamentos`, cookie, { atletaId, numeroCamisa }))).participacao.participacaoId;
 const lancar = (jogo: string, cookie: string, body: unknown) => request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, cookie, body);
-const lancamento = (participacaoId: string, tipo = "temp_gol", operacaoId: string = randomUUID()) => ({ operacaoId, tipo, participacaoId });
+const lancamento = (participacaoId: string, tipo = "gol", operacaoId: string = randomUUID()) => ({ operacaoId, tipo, participacaoId });
 const registros = (jogo: string, cookie: string) => ok<Registros>(request("GET", `/arbitragem/jogos/${jogo}/lancamentos`, cookie));
 const resumo = (r: Pick<Registros, "placar" | "desempenho">) => ({
-  placar: r.placar && [r.placar.temp_placarClubeA, r.placar.temp_placarClubeB],
-  desempenho: Object.fromEntries(r.desempenho.map(d => [d.atleta.nomeCompleto, [d.temp_gols, d.temp_cartoesAmarelos, d.temp_exclusoesDoisMinutos, d.temp_cartoesVermelhos]])),
+  placar: r.placar && [r.placar.placarClubeA, r.placar.placarClubeB],
+  desempenho: Object.fromEntries(r.desempenho.map(d => [d.atleta.nomeCompleto, [d.gols, d.cartoesAmarelos, d.exclusoesDoisMinutos, d.cartoesVermelhos]])),
 });
 
 /** Dois clubes inscritos, Ana (A) e Bruno (B) credenciados, Carla (A) sem credenciamento e sessão de arbitragem. */
@@ -172,11 +172,11 @@ test("gol identifica o atleta credenciado e soma ao clube da participação; pen
 
   const gol = await ok(lancar(jogo.toUpperCase(), arbitro, lancamento(pAna.toUpperCase())));
   assert.equal(gol.alterado, true);
-  assert.deepEqual([gol.lancamento.tipo, gol.lancamento.valor, gol.lancamento.atleta.nomeCompleto, gol.lancamento.numeroCamisa, gol.lancamento.participacaoId], ["temp_gol", 1, "Ana", 7, pAna]);
+  assert.deepEqual([gol.lancamento.tipo, gol.lancamento.valor, gol.lancamento.atleta.nomeCompleto, gol.lancamento.numeroCamisa, gol.lancamento.participacaoId], ["gol", 1, "Ana", 7, pAna]);
   assert.equal(gol.lancamento.inscricaoId, inicial.placar!.clubeA.inscricaoId, "clube derivado da participação");
-  assert.deepEqual([gol.placar.temp_placarClubeA, gol.placar.temp_placarClubeB], [1, 0]);
+  assert.deepEqual([gol.placar.placarClubeA, gol.placar.placarClubeB], [1, 0]);
 
-  for (const [p, tipo] of [[pAna, "temp_gol"], [pBruno, "temp_gol"], [pAna, "temp_cartaoAmarelo"], [pBruno, "temp_exclusaoDoisMinutos"], [pBruno, "temp_exclusaoDoisMinutos"], [pBruno, "temp_cartaoVermelho"]] as const) {
+  for (const [p, tipo] of [[pAna, "gol"], [pBruno, "gol"], [pAna, "cartaoAmarelo"], [pBruno, "exclusaoDoisMinutos"], [pBruno, "exclusaoDoisMinutos"], [pBruno, "cartaoVermelho"]] as const) {
     assert.equal((await ok(lancar(jogo, arbitro, lancamento(p, tipo)))).alterado, true);
   }
   const atual = await registros(jogo, arbitro);
@@ -191,10 +191,11 @@ test("gol identifica o atleta credenciado e soma ao clube da participação; pen
   await recusa(lancar(jogo, arbitro, lancamento(pCarlaOutro)), 404, /Participação não encontrada/);
   await recusa(lancar(jogo, arbitro, lancamento(randomUUID())), 404);
   await recusa(lancar(jogo, arbitro, lancamento(pCarla)), 409, /Somente atleta credenciado/);
-  await recusa(lancar(jogo, arbitro, lancamento(pCarla, "temp_cartaoVermelho")), 409, /Somente atleta credenciado/);
+  await recusa(lancar(jogo, arbitro, lancamento(pCarla, "cartaoVermelho")), 409, /Somente atleta credenciado/);
 
-  // Corpo inválido: tipo fora da lista temp_, valor ou clube informados, identificadores ausentes.
-  for (const body of [{}, { tipo: "temp_gol", participacaoId: pAna }, { operacaoId: randomUUID(), participacaoId: pAna }, { ...lancamento(pAna), tipo: "gol" },
+  // Corpo inválido: tipo fora da lista (inclusive o legado temp_gol, removido na MAR-85), valor ou clube informados, identificadores ausentes.
+  for (const body of [{}, { tipo: "gol", participacaoId: pAna }, { operacaoId: randomUUID(), participacaoId: pAna }, { ...lancamento(pAna), tipo: "temp_gol" },
+    { ...lancamento(pAna), tipo: "assistencia" },
     { ...lancamento(pAna), valor: 2 }, { ...lancamento(pAna), inscricaoClubeId: inicial.placar!.clubeA.inscricaoId }, { ...lancamento(pAna), operacaoId: "x" }]) {
     await recusa(lancar(jogo, arbitro, body), 400);
   }
@@ -202,10 +203,10 @@ test("gol identifica o atleta credenciado e soma ao clube da participação; pen
 
   // O banco repete as regras: somente inclusão, valor positivo, participação obrigatória e credenciada no mesmo jogo.
   const primeiro = atual.lancamentos[0];
-  await assert.rejects(prisma.lancamentoJogo.update({ where: { id: primeiro.id }, data: { tipo: "temp_cartaoAmarelo" } }));
+  await assert.rejects(prisma.lancamentoJogo.update({ where: { id: primeiro.id }, data: { tipo: "cartaoAmarelo" } }));
   await assert.rejects(prisma.lancamentoJogo.delete({ where: { id: primeiro.id } }));
   const direto = (data: Partial<{ participacaoId: string | null; valor: number; jogoId: string }>) =>
-    prisma.lancamentoJogo.create({ data: { operacaoId: randomUUID(), jogoId: jogo, participacaoId: pAna, tipo: "temp_gol", registradoEm: new Date(), ...data } });
+    prisma.lancamentoJogo.create({ data: { operacaoId: randomUUID(), jogoId: jogo, participacaoId: pAna, tipo: "gol", registradoEm: new Date(), ...data } });
   await assert.rejects(direto({ valor: 0 }));
   await assert.rejects(direto({ participacaoId: null }));
   await assert.rejects(direto({ participacaoId: pCarlaOutro }));
@@ -220,30 +221,30 @@ test("transferência posterior ao credenciamento não muda o clube do gol (RN-00
   // Campeonato ainda planejado: a transferência é permitida e não reescreve a participação.
   await prisma.$transaction(tx => transferirAtleta(tx, ana.id, presidente.id, { clubeAtualId: a, clubeDestinoId: b }));
   const gol = await ok(lancar(jogo, arbitro, lancamento(pAna)));
-  assert.deepEqual([gol.placar.temp_placarClubeA, gol.placar.temp_placarClubeB], [1, 0]);
+  assert.deepEqual([gol.placar.placarClubeA, gol.placar.placarClubeB], [1, 0]);
 });
 
 test("reenvio da mesma operação não duplica; conteúdo diferente com o mesmo identificador é conflito", async () => {
   const { a, b, campeonato, jogo, arbitro, carla, pAna, pBruno } = await cenario();
   await iniciarJogo(jogo);
   const operacaoId = randomUUID();
-  const primeiro = await ok(lancar(jogo, arbitro, lancamento(pAna, "temp_gol", operacaoId)));
-  const reenvio = await ok(lancar(jogo, arbitro, lancamento(pAna, "temp_gol", operacaoId.toUpperCase())));
-  assert.deepEqual([reenvio.alterado, reenvio.lancamento.id, reenvio.lancamento.registradoEm, reenvio.placar.temp_placarClubeA], [false, primeiro.lancamento.id, primeiro.lancamento.registradoEm, 1]);
+  const primeiro = await ok(lancar(jogo, arbitro, lancamento(pAna, "gol", operacaoId)));
+  const reenvio = await ok(lancar(jogo, arbitro, lancamento(pAna, "gol", operacaoId.toUpperCase())));
+  assert.deepEqual([reenvio.alterado, reenvio.lancamento.id, reenvio.lancamento.registradoEm, reenvio.placar.placarClubeA], [false, primeiro.lancamento.id, primeiro.lancamento.registradoEm, 1]);
 
-  await recusa(lancar(jogo, arbitro, lancamento(pAna, "temp_cartaoAmarelo", operacaoId)), 409, /operacaoId já usado/);
-  await recusa(lancar(jogo, arbitro, lancamento(pBruno, "temp_gol", operacaoId)), 409, /operacaoId já usado/);
+  await recusa(lancar(jogo, arbitro, lancamento(pAna, "cartaoAmarelo", operacaoId)), 409, /operacaoId já usado/);
+  await recusa(lancar(jogo, arbitro, lancamento(pBruno, "gol", operacaoId)), 409, /operacaoId já usado/);
   const outroJogo = await agendar(campeonato, b, a);
   const arbitroOutro = await arbitrar(outroJogo);
   const pCarla = await credenciar(outroJogo, arbitroOutro, carla.id, 1);
   await iniciarJogo(outroJogo);
-  await recusa(lancar(outroJogo, arbitroOutro, lancamento(pCarla, "temp_gol", operacaoId)), 409, /operacaoId já usado/);
+  await recusa(lancar(outroJogo, arbitroOutro, lancamento(pCarla, "gol", operacaoId)), 409, /operacaoId já usado/);
   const registro = await prisma.lancamentoJogo.findUniqueOrThrow({ where: { operacaoId } });
-  assert.deepEqual([registro.jogoId, registro.participacaoId, registro.tipo], [jogo, pAna, "temp_gol"], "original não é sobrescrito");
+  assert.deepEqual([registro.jogoId, registro.participacaoId, registro.tipo], [jogo, pAna, "gol"], "original não é sobrescrito");
 
   // A mesma operação enviada várias vezes em paralelo grava uma vez.
   const paralela = randomUUID();
-  const respostas = await Promise.all(Array.from({ length: 5 }, () => lancar(jogo, arbitro, lancamento(pBruno, "temp_gol", paralela))));
+  const respostas = await Promise.all(Array.from({ length: 5 }, () => lancar(jogo, arbitro, lancamento(pBruno, "gol", paralela))));
   assert.deepEqual(respostas.map(r => r.status), [200, 200, 200, 200, 200]);
   assert.deepEqual((await Promise.all(respostas.map(r => r.json() as Promise<Resultado>))).map(r => r.alterado).sort(), [false, false, false, false, true]);
   assert.equal(await prisma.lancamentoJogo.count({ where: { operacaoId: paralela } }), 1);
@@ -254,7 +255,7 @@ test("gols paralelos de vários dispositivos são todos preservados e os totais 
   const { jogo, arbitro, pAna, pBruno } = await cenario();
   await iniciarJogo(jogo);
   const outroDispositivo = await arbitrar(jogo);
-  const pedidos = Array.from({ length: 24 }, (_, i) => lancar(jogo, i % 2 ? arbitro : outroDispositivo, lancamento(i % 3 ? pAna : pBruno, i % 4 === 3 ? "temp_cartaoAmarelo" : "temp_gol")));
+  const pedidos = Array.from({ length: 24 }, (_, i) => lancar(jogo, i % 2 ? arbitro : outroDispositivo, lancamento(i % 3 ? pAna : pBruno, i % 4 === 3 ? "cartaoAmarelo" : "gol")));
   const respostas = await Promise.all(pedidos);
   assert.deepEqual(new Set(respostas.map(r => r.status)), new Set([200]));
 
@@ -271,8 +272,8 @@ test("gols paralelos de vários dispositivos são todos preservados e os totais 
   });
   // Placar coincide com o desempenho somado por clube (RNF-006).
   const porClube = new Map<string, number>();
-  for (const d of final.desempenho) porClube.set(d.inscricaoId, (porClube.get(d.inscricaoId) ?? 0) + d.temp_gols);
-  assert.deepEqual([porClube.get(final.placar!.clubeA.inscricaoId), porClube.get(final.placar!.clubeB.inscricaoId)], [final.placar!.temp_placarClubeA, final.placar!.temp_placarClubeB]);
+  for (const d of final.desempenho) porClube.set(d.inscricaoId, (porClube.get(d.inscricaoId) ?? 0) + d.gols);
+  assert.deepEqual([porClube.get(final.placar!.clubeA.inscricaoId), porClube.get(final.placar!.clubeB.inscricaoId)], [final.placar!.placarClubeA, final.placar!.placarClubeB]);
 });
 
 test("falha na transação desfaz o lançamento sem deixar totais parciais", async () => {
@@ -281,14 +282,14 @@ test("falha na transação desfaz o lançamento sem deixar totais parciais", asy
   const token = decodeURIComponent(arbitro.split("=")[1]);
   const operacaoId = randomUUID();
   await assert.rejects(prisma.$transaction(async tx => {
-    const resultado = await registrarLancamento(tx, jogo, token, { operacaoId, tipo: "temp_gol", participacaoId: pAna });
-    assert.equal(resultado.placar?.temp_placarClubeA, 1, "dentro da transação o placar já inclui o gol");
+    const resultado = await registrarLancamento(tx, jogo, token, { operacaoId, tipo: "gol", participacaoId: pAna });
+    assert.equal(resultado.placar?.placarClubeA, 1, "dentro da transação o placar já inclui o gol");
     throw new Error("falha depois de gravar");
   }), /falha depois de gravar/);
   assert.equal(await prisma.lancamentoJogo.count({ where: { operacaoId } }), 0);
   assert.deepEqual(resumo(await registros(jogo, arbitro)), { placar: [0, 0], desempenho: { Ana: [0, 0, 0, 0], Bruno: [0, 0, 0, 0] } });
   // A mesma operação pode ser reenviada depois da falha.
-  assert.equal((await ok(lancar(jogo, arbitro, lancamento(pAna, "temp_gol", operacaoId)))).alterado, true);
+  assert.equal((await ok(lancar(jogo, arbitro, lancamento(pAna, "gol", operacaoId)))).alterado, true);
 });
 
 test("consulta mantém placar, desempenho e lançamentos no mesmo estado durante gol concorrente", async () => {
@@ -342,12 +343,12 @@ test("somente a arbitragem autorizada do jogo lança; encerramento concorrente i
   let pedido: Promise<Response> | undefined;
   await prisma.$transaction(async tx => {
     await tx.jogo.update({ where: { id: jogo }, data: { status: "finalizado", encerradoEm: new Date(), resultado: "normal" } });
-    pedido = lancar(jogo, arbitro, lancamento(pAna, "temp_gol", operacaoId));
+    pedido = lancar(jogo, arbitro, lancamento(pAna, "gol", operacaoId));
     await esperar(300);
   });
   await recusa(pedido!, 403, /finalizado/);
   assert.equal(await prisma.lancamentoJogo.count({ where: { jogoId: jogo } }), 0);
-  await assert.rejects(prisma.lancamentoJogo.create({ data: { operacaoId, jogoId: jogo, participacaoId: pAna, tipo: "temp_gol", registradoEm: new Date() } }), "banco recusa com o jogo finalizado");
+  await assert.rejects(prisma.lancamentoJogo.create({ data: { operacaoId, jogoId: jogo, participacaoId: pAna, tipo: "gol", registradoEm: new Date() } }), "banco recusa com o jogo finalizado");
 
   const contrato = await (await request("GET", "/openapi.json")).json();
   for (const metodo of ["get", "post"]) assert.ok(contrato.paths["/arbitragem/jogos/{jogoId}/lancamentos"]?.[metodo], metodo);

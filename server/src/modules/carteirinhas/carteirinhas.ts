@@ -11,9 +11,23 @@ export const substituicaoQrSchema = z.strictObject({ versaoQr: z.int().min(1) })
 /** O token lido vai no corpo, nunca na URL, para não aparecer em logs ou históricos de navegação. */
 export const leituraQrSchema = z.strictObject({ tokenQr: z.string().trim().min(1).max(256) });
 
+/**
+ * Dados do atleta exibidos na carteirinha (requisitos, seção 15): nome, clube atual (vínculo aberto, por isso a
+ * mesma carteirinha acompanha a transferência) e se há foto. Sem e-mail; a foto é lida pela rota protegida
+ * `GET /atletas/{atletaId}/foto`, nunca pela chave do armazenamento.
+ */
+const selecaoAtleta = {
+  fotoChave: true, usuario: { select: { nomeCompleto: true } },
+  vinculos: { where: { fim: null }, select: { clube: { select: { id: true, nome: true } } }, take: 1 },
+} satisfies Prisma.AtletaSelect;
+
+function exibirAtleta(atleta: Prisma.AtletaGetPayload<{ select: typeof selecaoAtleta }>) {
+  return { nomeCompleto: atleta.usuario.nomeCompleto, clubeAtual: atleta.vinculos[0]?.clube ?? null, possuiFoto: atleta.fotoChave !== null };
+}
+
 const selecaoDetalhe = {
   id: true, atletaId: true, codigo: true, tokenQr: true, versaoQr: true, status: true, emitidaEm: true, emitidaPorPresidenteId: true,
-  atleta: { select: { usuario: { select: { nomeCompleto: true } } } },
+  atleta: { select: selecaoAtleta },
   eventos: { select: { tipo: true, versaoQr: true, presidenteId: true, ocorridoEm: true }, orderBy: [{ ocorridoEm: "asc" }, { versaoQr: "asc" }] },
 } satisfies Prisma.CarteirinhaSelect;
 
@@ -23,7 +37,7 @@ const selecaoDetalhe = {
  */
 async function detalhar(db: Leitor, atletaId: string) {
   const { atleta, eventos, ...carteirinha } = await db.carteirinha.findUniqueOrThrow({ where: { atletaId }, select: selecaoDetalhe });
-  return { ...carteirinha, nomeCompleto: atleta.usuario.nomeCompleto, historico: eventos };
+  return { ...carteirinha, ...exibirAtleta(atleta), historico: eventos };
 }
 
 export async function consultarCarteirinha(db: Leitor, atletaId: string) {
@@ -31,14 +45,14 @@ export async function consultarCarteirinha(db: Leitor, atletaId: string) {
   return detalhar(db, atletaId);
 }
 
-/** Carteirinha do próprio atleta, com o QR vigente para apresentação no credenciamento (RF-005). */
+/** Carteirinha do próprio atleta, com o QR vigente para apresentação no credenciamento (RF-005, seção 15). */
 export async function consultarPropria(db: Leitor, atletaId: string) {
   const carteirinha = await db.carteirinha.findUnique({ where: { atletaId }, select: {
-    id: true, codigo: true, tokenQr: true, status: true, emitidaEm: true, atleta: { select: { usuario: { select: { nomeCompleto: true } } } },
+    id: true, codigo: true, tokenQr: true, status: true, emitidaEm: true, atleta: { select: selecaoAtleta },
   } });
   if (!carteirinha) throw new NotFoundException("Carteirinha ainda não emitida. Ela é emitida na aprovação do cadastro.");
   const { atleta, ...dados } = carteirinha;
-  return { ...dados, nomeCompleto: atleta.usuario.nomeCompleto };
+  return { ...dados, ...exibirAtleta(atleta) };
 }
 
 /**

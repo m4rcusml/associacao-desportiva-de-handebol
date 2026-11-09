@@ -95,7 +95,7 @@ type Alteracao = {
 };
 type Registro = { participacao: Participacao; alterado: boolean };
 type Estorno = { estorno: Alteracao; alterado: boolean };
-type Placar = { temp_placarClubeA: number; temp_placarClubeB: number };
+type Placar = { placarClubeA: number; placarClubeB: number };
 type Lancamento = { id: string; participacaoId: string; anuladoEm: string | null; substituidoPorId: string | null };
 
 async function ok<T>(response: Promise<Response>): Promise<T> {
@@ -116,7 +116,7 @@ const credenciar = async (jogo: string, cookie: string, atletaId: string, numero
 const entrar = (jogo: string, cookie: string, atletaId: string) => ok(request("POST", `${ARBITRAGEM}/${jogo}/credenciamentos/${atletaId}/entrada`, cookie));
 const iniciar = (jogo: string, cookie: string) => ok(request("POST", `${ARBITRAGEM}/${jogo}/inicio`, cookie));
 const encerrar = (jogo: string, cookie: string) => ok(request("POST", `${ARBITRAGEM}/${jogo}/encerramento`, cookie, { resultado: "normal", vencedorInscricaoId: null }));
-const lancar = async (jogo: string, cookie: string, participacaoId: string, tipo = "temp_gol", relatorioDisciplinar?: boolean) =>
+const lancar = async (jogo: string, cookie: string, participacaoId: string, tipo = "gol", relatorioDisciplinar?: boolean) =>
   (await ok<{ lancamento: Lancamento }>(request("POST", `${ARBITRAGEM}/${jogo}/lancamentos`, cookie,
     { operacaoId: randomUUID(), tipo, participacaoId, ...(relatorioDisciplinar === undefined ? {} : { relatorioDisciplinar }) }))).lancamento;
 const PRESIDENCIA = (jogo: string) => `/jogos/${jogo}/credenciamentos`;
@@ -125,18 +125,18 @@ const registrar = (jogo: string, atletaId: string, numeroCamisa: number, entrouE
 const anularEntrada = (jogo: string, atletaId: string, cookie = presidente.cookie) => request("POST", `${PRESIDENCIA(jogo)}/${atletaId}/entrada/anulacao`, cookie);
 const estornar = (jogo: string, atletaId: string, numeroCamisa: number, cookie = presidente.cookie) =>
   request("POST", `${PRESIDENCIA(jogo)}/${atletaId}/estorno`, cookie, { numeroCamisa });
-const transferir = (jogo: string, lancamentoId: string, participacaoId: string, tipo = "temp_gol", relatorioDisciplinar?: boolean) =>
+const transferir = (jogo: string, lancamentoId: string, participacaoId: string, tipo = "gol", relatorioDisciplinar?: boolean) =>
   ok<{ lancamento: Lancamento; placar: Placar; suspensoesAutomaticas: { criadas: string[]; anuladas: string[] } }>(
     request("POST", `/jogos/${jogo}/lancamentos/${lancamentoId}/correcao`, presidente.cookie,
       { operacaoId: randomUUID(), tipo, participacaoId, ...(relatorioDisciplinar === undefined ? {} : { relatorioDisciplinar }) }));
 const anularLancamento = (jogo: string, lancamentoId: string) =>
   ok<{ placar: Placar }>(request("POST", `/jogos/${jogo}/lancamentos/${lancamentoId}/anulacao`, presidente.cookie, { operacaoId: randomUUID() }));
 const placar = async (jogo: string) => {
-  const { temp_placarClubeA, temp_placarClubeB } = (await ok<{ placar: Placar }>(request("GET", `/jogos/${jogo}/lancamentos`, presidente.cookie))).placar;
-  return [temp_placarClubeA, temp_placarClubeB];
+  const { placarClubeA, placarClubeB } = (await ok<{ placar: Placar }>(request("GET", `/jogos/${jogo}/lancamentos`, presidente.cookie))).placar;
+  return [placarClubeA, placarClubeB];
 };
-type Situacao = { atleta?: Pessoa; jogo?: { id: string }; credenciado: boolean; entrouEmQuadra: boolean; entradaAnulada: boolean; registroAdministrativo: boolean; irregularidades: string[]; metricas: { temp_gols: number } | null };
-const historico = (atletaId: string) => ok<{ totais: { participacoes: { credenciadas: number; comEntradaEmQuadra: number }; temp_gols: number }; jogos: Situacao[] }>(
+type Situacao = { atleta?: Pessoa; jogo?: { id: string }; credenciado: boolean; entrouEmQuadra: boolean; entradaAnulada: boolean; registroAdministrativo: boolean; irregularidades: string[]; metricas: { gols: number } | null };
+const historico = (atletaId: string) => ok<{ totais: { participacoes: { credenciadas: number; comEntradaEmQuadra: number }; gols: number }; jogos: Situacao[] }>(
   request("GET", `/atletas/${atletaId}/historico`, presidente.cookie));
 
 /** Clube A (João, Pedro) e B (Bruno); João (7) credenciado, entra e marca; Bruno (9) também. Pedro joga, mas não foi credenciado. */
@@ -213,7 +213,7 @@ test("João credenciado no lugar de Pedro: entrada anulada, participação real 
   // Gol transferido para Pedro, do mesmo clube: o placar não muda.
   const transferido = await transferir(jogo, golJoao.id, registro.participacao.participacaoId);
   assert.equal(transferido.lancamento.participacaoId, registro.participacao.participacaoId);
-  assert.deepEqual([transferido.placar.temp_placarClubeA, transferido.placar.temp_placarClubeB], [1, 1]);
+  assert.deepEqual([transferido.placar.placarClubeA, transferido.placar.placarClubeB], [1, 1]);
 
   // Agora o estorno de João é feito; tudo fica no histórico, inclusive a entrada anulada e o autor.
   const estorno = await ok<Estorno>(estornar(jogo, joao.id, 7));
@@ -241,9 +241,9 @@ test("João credenciado no lugar de Pedro: entrada anulada, participação real 
 
   // Históricos: João sem o jogo; Pedro com participação administrativa, entrada e o gol.
   const hJoao = await historico(joao.id);
-  assert.deepEqual([hJoao.jogos.length, hJoao.totais.temp_gols], [0, 0]);
+  assert.deepEqual([hJoao.jogos.length, hJoao.totais.gols], [0, 0]);
   const hPedro = await historico(pedro.id);
-  assert.deepEqual(hPedro.jogos.map(j => [j.jogo?.id, j.credenciado, j.entrouEmQuadra, j.registroAdministrativo, j.irregularidades, j.metricas?.temp_gols]),
+  assert.deepEqual(hPedro.jogos.map(j => [j.jogo?.id, j.credenciado, j.entrouEmQuadra, j.registroAdministrativo, j.irregularidades, j.metricas?.gols]),
     [[jogo, true, true, true, [], 1]]);
   const desempenho = await ok<{ participacoes: Situacao[] }>(request("GET", `/jogos/${jogo}/desempenho`, presidente.cookie));
   assert.deepEqual(desempenho.participacoes.map(p => p.atleta?.nomeCompleto).sort(), ["Bruno", "Pedro"]);
@@ -253,15 +253,15 @@ test("entrada anulada deixa de contar no histórico e transferência para atleta
   const { jogo, joao, bruno, pBruno, golJoao } = await cenario();
   await ok(anularEntrada(jogo, joao.id));
   const h = await historico(joao.id);
-  assert.deepEqual(h.jogos.map(j => [j.entrouEmQuadra, j.entradaAnulada, j.metricas?.temp_gols]), [[false, true, 1]]);
+  assert.deepEqual(h.jogos.map(j => [j.entrouEmQuadra, j.entradaAnulada, j.metricas?.gols]), [[false, true, 1]]);
   assert.equal(h.totais.participacoes.comEntradaEmQuadra, 0);
 
   // Gol de João era do adversário Bruno: A perde, B ganha.
   const transferido = await transferir(jogo, golJoao.id, pBruno);
-  assert.deepEqual([transferido.placar.temp_placarClubeA, transferido.placar.temp_placarClubeB], [0, 2]);
-  assert.equal((await historico(bruno.id)).totais.temp_gols, 2);
+  assert.deepEqual([transferido.placar.placarClubeA, transferido.placar.placarClubeB], [0, 2]);
+  assert.equal((await historico(bruno.id)).totais.gols, 2);
   // Anular um gol que não aconteceu altera o placar.
-  assert.deepEqual(await anularLancamento(jogo, transferido.lancamento.id).then(r => [r.placar.temp_placarClubeA, r.placar.temp_placarClubeB]), [0, 1]);
+  assert.deepEqual(await anularLancamento(jogo, transferido.lancamento.id).then(r => [r.placar.placarClubeA, r.placar.placarClubeB]), [0, 1]);
 
   // Sem entrada válida nem lançamentos válidos, João tem o credenciamento desfeito.
   assert.equal((await ok<Estorno>(estornar(jogo, joao.id, 7))).alterado, true);
@@ -322,7 +322,7 @@ test("suspensão automática anulada não vira irregularidade; estorno anterior 
   const pJoao = (await credenciar(jogo1, arbitro1, joao.id, 7)).participacaoId;
   await iniciar(jogo1, arbitro1);
   await entrar(jogo1, arbitro1, joao.id);
-  const vermelho = await lancar(jogo1, arbitro1, pJoao, "temp_cartaoVermelho", true);
+  const vermelho = await lancar(jogo1, arbitro1, pJoao, "cartaoVermelho", true);
   await encerrar(jogo1, arbitro1);
   const automatica = await prisma.suspensao.findFirstOrThrow({ where: { jogoOrigemId: jogo1, atletaId: joao.id }, select: { id: true } });
 
@@ -400,7 +400,7 @@ test("relatório disciplinar transferido de João para Pedro move a suspensão a
   const pJoao = (await credenciar(jogo, arbitro, joao.id, 7)).participacaoId;
   await iniciar(jogo, arbitro);
   await entrar(jogo, arbitro, joao.id);
-  const vermelho = await lancar(jogo, arbitro, pJoao, "temp_cartaoVermelho", true);
+  const vermelho = await lancar(jogo, arbitro, pJoao, "cartaoVermelho", true);
   await encerrar(jogo, arbitro);
   const automaticas = () => prisma.suspensao.findMany({ where: { jogoOrigemId: jogo }, select: { atletaId: true, anuladaEm: true }, orderBy: { aplicadaEm: "asc" } });
   assert.deepEqual((await automaticas()).map(s => [s.atletaId, s.anuladaEm]), [[joao.id, null]]);
@@ -411,7 +411,7 @@ test("relatório disciplinar transferido de João para Pedro move a suspensão a
   const pPedro = simultaneos[0].participacao.participacaoId;
   assert.equal(await prisma.participacao.count({ where: { jogoId: jogo, atletaId: pedro.id } }), 1);
 
-  const transferido = await transferir(jogo, vermelho.id, pPedro, "temp_cartaoVermelho", true);
+  const transferido = await transferir(jogo, vermelho.id, pPedro, "cartaoVermelho", true);
   assert.equal(transferido.suspensoesAutomaticas.criadas.length, 1);
   assert.equal(transferido.suspensoesAutomaticas.anuladas.length, 1);
   const depois = await automaticas();

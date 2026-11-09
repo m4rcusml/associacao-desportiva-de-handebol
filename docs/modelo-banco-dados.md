@@ -223,8 +223,8 @@ extensão correspondente, com `usuarioId` como `PK` e `FK` para
 `Usuario`.`id`. A exclusividade entre as três extensões exige validação
 transacional/trigger na implementação; as relações de herança no desenho não são herança nativa de
 tabelas PostgreSQL. `ativo` controla a conta e não se confunde com carteirinha ou
-suspensão esportiva. As métricas foram confirmadas na MAR-82 (requisitos, seção 15); o banco/API
-atual conserva `temp_` até migração compatível em tarefa própria.
+suspensão esportiva. As métricas foram confirmadas na MAR-82 (requisitos, seção 15) e seus
+identificadores perderam o prefixo `temp_` na MAR-85.
 
 ## Chaves, campos opcionais e unicidade
 
@@ -389,11 +389,11 @@ presidente exige entrada ausente ou anulada e nenhum lançamento válido. `Alter
 entrada, anulação, registro administrativo e irregularidades e ganha `presidenteId` (autor; null para a arbitragem e
 registros anteriores). Os limites da arbitragem da MAR-71 não mudam. A entrada anulada deixa de contar no histórico.
 
-## Métricas aprovadas, identificadores atuais, correções e histórico
+## Métricas aprovadas, identificadores, correções e histórico
 
 `LancamentoJogo` é a fonte dos registros esportivos. A lista desta versão foi aprovada na MAR-82
-(requisitos, seção 15). O `tipo` atual ainda usa identificadores legados:
-`temp_gol`, `temp_cartaoAmarelo`, `temp_exclusaoDoisMinutos` e `temp_cartaoVermelho`. `valor` é
+(requisitos, seção 15). O `tipo` usa `gol`, `cartaoAmarelo`, `exclusaoDoisMinutos` e `cartaoVermelho`
+(prefixo legado `temp_` removido na MAR-85). `valor` é
 inteiro positivo, inicialmente 1 por ocorrência. O vermelho traz `relatorioDisciplinar` (MAR-79): `true` é a
 desqualificação com relatório, sinalizada pelo azul, que não é segunda infração nem métrica separada. Ocorrências de atleta exigem `participacaoId`. Um
 gol sempre identifica atleta; o clube é obtido pela participação e não informado separadamente. Não
@@ -401,9 +401,13 @@ há lançamento de gol sem atleta.
 
 `EstatisticasDoJogo` e `DesempenhoDoAtleta` são projeções (views), não tabelas editáveis em paralelo:
 somam os lançamentos não anulados. Placar é zero a zero ao iniciar. O histórico soma desempenho de
-cada participação e continua válido após mudança de clube. As métricas atuais ainda têm prefixo
-`temp_`: `temp_placarClubeA`, `temp_placarClubeB`, `temp_gols`, `temp_cartoesAmarelos`,
-`temp_exclusoesDoisMinutos` e `temp_cartoesVermelhos`.
+cada participação e continua válido após mudança de clube. As colunas são `placarClubeA`,
+`placarClubeB`, `gols`, `cartoesAmarelos`, `exclusoesDoisMinutos` e `cartoesVermelhos`.
+
+A migração `identificadores_metricas` (MAR-85) renomeia os valores do enum `TipoLancamento`
+(`ALTER TYPE ... RENAME VALUE`) e as colunas das duas views (`ALTER VIEW ... RENAME COLUMN`), sem
+recriar objetos nem reescrever lançamentos: CHECKs e views guardam o valor do enum e acompanham a
+renomeação. As descrições das migrações anteriores citam os nomes `temp_` vigentes na época.
 
 `Arbitragem` corrige durante o jogo; após o encerramento, somente o presidente corrige ou anula, sem
 incluir lançamentos novos (MAR-70). Uma correção anula o lançamento anterior e cria o substituto apontando
@@ -454,7 +458,7 @@ origem libera o saldo indevido restante, e revogadas não são reativadas.
 
 ## Pendências que não bloqueiam esta versão documental
 
-- Métricas confirmadas na MAR-82 (requisitos, seção 15); migração compatível dos identificadores `temp_` e adequação de carteirinha pendentes. Critérios automáticos aprovados em requisitos, seção 12, e implementados na MAR-79.
+- Métricas confirmadas na MAR-82 (requisitos, seção 15); identificadores migrados e carteirinha adequada na MAR-85. Critérios automáticos aprovados em requisitos, seção 12, e implementados na MAR-79.
 - Auditoria completa: autoria, valores anteriores/novos e justificativas de alterações.
 - Redução administrativa e recálculo automático posterior (requisitos, seção 14) foram implementados na
   MAR-84. Revogação, paralelismo e recálculo sem compensação foram definidos em requisitos, seção 11.
