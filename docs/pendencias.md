@@ -28,7 +28,7 @@ Condução sugerida: Marcus com o cliente.
 | PEN-009 | Revogação, redução parcial e recálculo de suspensão. | Parcial: presidente revoga com histórico; correção de penalidade recalcula automática sem compensar ausências ou alterar jogos passados. Redução parcial e justificativa obrigatória ainda pendentes. |
 | PEN-010 | Saldo ao terminar/cancelar campeonato. | Resolvido: encerrar saldo e preservar histórico, sem transportar. Requisitos, seção 11. |
 | PEN-011 | Nova suspensão depois do credenciamento. | Resolvido: preservar participação no jogo já credenciado; impedimento vale para próximos jogos. |
-| PEN-012 | Jogos interrompidos, abandonados, W.O. ou invalidados. | Resolvido: cumprimento uma vez no encerramento definitivo; preservar estatísticas/placar; vencedor separado. Adiados/cancelados não contam enquanto não realizados. Requisitos, seção 11. |
+| PEN-012 | Jogos interrompidos, abandonados, W.O. ou invalidados. | Resolvido: cumprimento uma vez no encerramento definitivo; preservar estatísticas/placar; vencedor separado. Adiados/cancelados não contam enquanto não realizados. Requisitos, seção 11; representação e permissões detalhadas na MAR-72. |
 
 ## 3. Operação de contas, clubes e competições
 

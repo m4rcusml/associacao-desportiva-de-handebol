@@ -38,7 +38,10 @@ sessões dos dois métodos revogadas) ou cancela (acessos revogados, sem cumprim
 ou cancelamento devolve o estado com `alterado: false`; o reenvio do encerramento não reabre o acesso.
 Detalhes aprovados por Marcus (MAR-69, 09/11/2026): somente jogo agendado é adiado ou cancelado (jogo em andamento
 segue para encerramento ou para os casos excepcionais da MAR-72); o adiamento aceita jogo sem nova data e recusa data
-local já passada; o banco admite agendado → finalizado apenas para o W.O. sem início (MAR-72), sem uso pela API atual.
+local já passada; o banco admite agendado → finalizado apenas para o W.O. sem início, usado pela API desde a MAR-72.
+Desde a MAR-72, o encerramento informa a forma (normal, interrompido definitivamente, abandono ou W.O.) e o vencedor
+(clube do jogo ou nenhum), a arbitragem interrompe e retoma o mesmo jogo, e o presidente corrige resultado/vencedor
+e invalida o jogo após o encerramento, com histórico (detalhes na seção 11).
 Desde a MAR-67, a arbitragem autorizada credencia por confirmação manual ou QR, com a camisa do jogo e as
 mesmas regras de elegibilidade, e registra uma vez a entrada em quadra com o jogo em andamento.
 Desde a MAR-68, a arbitragem autorizada registra gols e penalidades `temp_` do atleta credenciado com o jogo em
@@ -493,5 +496,15 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   nos casos excepcionais. W.O. sem início fica 0 a 0. Vencedor é registrado separadamente:
   arbitragem pode indicar clube vencedor ou ausência de vencedor antes de encerrar; após
   encerramento, somente presidente decide/corrige, inclusive invalidação posterior.
+  Detalhes aprovados por Marcus (MAR-72, 09/11/2026): todo encerramento pela arbitragem informa explicitamente o
+  vencedor (clube A, clube B ou nenhum), sem validação contra o placar. A interrupção temporária é uma pausa no mesmo
+  jogo e no mesmo acesso: o status continua em andamento, novos lançamentos e entradas em quadra aguardam a
+  retomada, e a própria arbitragem retoma ou encerra definitivamente; não há nova data nem nova senha. W.O. é
+  registrado pela arbitragem autorizada, no dia, com o jogo agendado (sem início); jogo nunca acessado segue para
+  adiamento ou cancelamento. Após o encerramento, o presidente corrige resultado e vencedor (W.O. somente para
+  jogo sem início) e invalida o jogo com motivo; cada alteração fica em histórico próprio, com responsável e data,
+  e a invalidação é definitiva e preserva placar, estatísticas e cumprimentos. Também aprovado por Marcus na MAR-72:
+  a arbitragem pode encerrar como normal mesmo durante uma interrupção, e o presidente pode corrigir resultado e
+  vencedor de jogo já invalidado.
 - Métricas definitivas e critérios de suspensão automática continuam pendentes; manter `temp_`
   e não ativar regras automáticas fictícias.

@@ -43,7 +43,7 @@ server/
       clubes/
       competicoes/
       participacoes/     # Escalação (MAR-64) e credenciamento/entrada em quadra (MAR-67)
-      jogos/             # Agendamento e designação (MAR-62); ciclo do jogo (MAR-69)
+      jogos/             # Agendamento e designação (MAR-62); ciclo do jogo (MAR-69); jogos excepcionais (MAR-72)
       arbitragem/        # Acesso temporário e senha do jogo (MAR-65)
       suspensoes/        # Suspensões manuais e cumprimento (MAR-66)
       resultados/        # Lançamentos de gols e penalidades (MAR-68); correção e anulação (MAR-70)
@@ -310,6 +310,15 @@ sequência; o segundo devolve `alterado: false`. O encerramento grava status, ch
 `encerrarAcessoArbitragem` na mesma transação; o reenvio pela sessão revogada com `jogo_encerrado` recebe só a
 confirmação (jogo e placar). O adiamento chama `renovarSenha` (se a senha já foi emitida) e revoga as sessões
 restantes com `jogo_adiado`. Um trigger repete no banco as transições permitidas do jogo.
+Jogos excepcionais (MAR-72): o encerramento grava também `resultado` e vencedor (o W.O. parte do jogo agendado).
+`jogos/resultado.ts` interrompe e retoma pela sessão temporária e, pelo presidente, corrige o resultado e invalida,
+todos com o mesmo bloqueio campeonato → jogo do ciclo. Lançamento novo e entrada em quadra, depois da revalidação
+(jogo `FOR SHARE`), recusam o jogo com interrupção aberta; assim a interrupção aguarda essas gravações ou é vista por
+elas, e triggers repetem a regra. A correção e a invalidação inserem o histórico antes de alterar o jogo, e o trigger
+do jogo exige esse registro na mesma transação.
+A consulta do resultado, após revalidar o presidente, bloqueia o jogo em `FOR NO KEY UPDATE` até terminar as leituras
+do jogo, histórico e placar. Esse bloqueio também conflita com o `FOR SHARE` das correções de lançamentos, evitando
+misturar estados de transações diferentes na resposta sem alterar o isolamento da autorização.
 
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,

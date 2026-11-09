@@ -92,7 +92,7 @@ const avancarJogo = (jogo: { id: string }, dados: { status: "em_andamento" | "fi
 function criarJogo(campeonatoId: string, inscricaoA: string, inscricaoB: string, dados: { status?: "agendado" | "em_andamento" | "finalizado" | "cancelado"; iniciadoEm?: Date; encerradoEm?: Date } = {}) {
   return prisma.jogo.create({ data: { campeonatoId, inscricaoClubeAId: inscricaoA, inscricaoClubeBId: inscricaoB, fusoHorario: "America/Recife", criadoPorPresidenteId: presidente.id, ...dados } });
 }
-const finalizado = () => ({ status: "finalizado" as const, iniciadoEm: new Date(Date.now() - 3_600_000), encerradoEm: new Date() });
+const finalizado = () => ({ status: "finalizado" as const, iniciadoEm: new Date(Date.now() - 3_600_000), encerradoEm: new Date(), resultado: "normal" as const });
 const emAndamento = () => ({ status: "em_andamento" as const, iniciadoEm: new Date() });
 
 before(async () => {
@@ -217,7 +217,7 @@ test("ciclo: iniciar exige dois clubes, encerrar exige jogos concluídos; repeti
   assert.equal((await transicao(campeonato.id, "encerrar")).status, 409);
   await prisma.jogo.update({ where: { id: jogos[0].id }, data: finalizado() });
   assert.equal((await transicao(campeonato.id, "encerrar")).status, 409);
-  await prisma.jogo.update({ where: { id: jogos[1].id }, data: { status: "finalizado", encerradoEm: new Date() } });
+  await prisma.jogo.update({ where: { id: jogos[1].id }, data: { status: "finalizado", encerradoEm: new Date(), resultado: "normal" } });
 
   const encerrado = await (await transicao(campeonato.id, "encerrar")).json();
   assert.equal(encerrado.alterado, true);
@@ -253,7 +253,7 @@ test("cancelar exige nenhum jogo em andamento e cancela os agendados na mesma tr
   const agendados = [await agendarJogo(campeonato.id, ia, ib), await agendarJogo(campeonato.id, ib, ia)];
   assert.equal((await transicao(campeonato.id, "cancelar")).status, 409);
   assert.equal(await prisma.jogo.count({ where: { campeonatoId: campeonato.id, status: "agendado" } }), 2);
-  await prisma.jogo.update({ where: { id: emJogo.id }, data: { status: "finalizado", encerradoEm: new Date() } });
+  await prisma.jogo.update({ where: { id: emJogo.id }, data: { status: "finalizado", encerradoEm: new Date(), resultado: "normal" } });
   const resultado = await (await transicao(campeonato.id, "cancelar")).json();
   assert.equal(resultado.campeonato.status, "cancelado");
   assert.deepEqual(resultado.campeonato.jogos, { agendado: 0, em_andamento: 0, finalizado: 1, cancelado: 2 });

@@ -75,8 +75,8 @@ em_andamento → encerrado e planejado/em_andamento → cancelado (nenhum jogo a
 encerrado e cancelado não mudam. Inscrições são imutáveis e só entram ou saem com o campeonato
 planejado; a FK de `Jogo` impede retirar inscrição com jogos. Jogo não muda de campeonato, e campeonato
 encerrado/cancelado não recebe jogo agendado ou em andamento. Os triggers de inscrição e jogo bloqueiam
-a linha do campeonato (`FOR SHARE`), serializando-os com as transições. `resultadoExcepcional`,
-vencedor e demais colunas de jogo ficam para as tarefas correspondentes.
+a linha do campeonato (`FOR SHARE`), serializando-os com as transições. Resultado, vencedor e
+invalidação do jogo vieram na MAR-72 (migração `jogos_excepcionais`, abaixo).
 A migração `jogos_arbitragem` (MAR-62) valida `Jogo.fusoHorario` contra `pg_timezone_names` (nome
 IANA, sem offsets soltos) e torna inscrições e autoria do jogo imutáveis. `inicioPrevistoEm` guarda o
 instante; a hora local é calculada no fuso do jogo. Cria `Arbitragem` com `usuarioId` **ou**
@@ -169,6 +169,16 @@ agendado; agendado passa a em andamento, cancelado ou finalizado (este último r
 em andamento passa somente a finalizado. Finalizado e cancelado não mudam status, horários, data ou fuso;
 `iniciadoEm` não muda depois de gravado; data prevista e fuso só mudam com o jogo agendado (adiamento). O adiamento
 não tem status próprio: atualiza `inicioPrevistoEm` (nulo = sem data) e revoga as sessões com `jogo_adiado`.
+A migração `jogos_excepcionais` (MAR-72) acrescenta a `Jogo` `resultado` (`ResultadoJogo`: normal, interrompido,
+abandono ou wo), `inscricaoClubeVencedorId` e `invalidadoEm`, e cria `InterrupcaoJogo` e `AlteracaoResultadoJogo`.
+CHECK: resultado preenchido exatamente com o jogo finalizado; `wo` somente sem `iniciadoEm` e os demais somente com
+ele; vencedor vazio ou uma das duas inscrições do jogo (vazio no jogo finalizado = nenhum vencedor); invalidação só
+no jogo finalizado. Os jogos já finalizados recebem `normal` e o vencedor pelo placar (empate = nenhum). Com o jogo
+finalizado, resultado/vencedor só mudam com a correção registrada em `AlteracaoResultadoJogo` na mesma transação, e
+`invalidadoEm` é gravado uma vez, com o registro de invalidação (motivo obrigatório); o histórico é somente de
+inclusão. `InterrupcaoJogo` (`interrompidoEm`, `retomadoEm`) admite uma interrupção aberta por jogo, aberta e retomada
+com o jogo em andamento; a retomada é a única alteração. Com interrupção aberta, triggers recusam lançamento novo
+(não o substituto da correção) e entrada em quadra. `EstatisticasDoJogo` passa a incluir o W.O. sem início (0 a 0).
 
 ## Convenções e implementação da herança
 
@@ -206,7 +216,9 @@ administrativas não geram linhas adicionais.
 | `EventoCarteirinha`    | `PK` `id`; `FK` `carteirinhaId`; somente inclusão                                                                          | Nenhum                                                                                                                           |
 | `Campeonato`           | `PK` `id`                                                                                                                  | `inicio`, `fim` enquanto não agendado                                                                                            |
 | `InscricaoClube`       | `PK` `id`; `UNIQUE` `campeonatoId` + `clubeId`                                                                             | Nenhum                                                                                                                           |
-| `Jogo`                 | `PK` `id`; clubes A e B distintos e inscritos no mesmo campeonato                                                          | `inicioPrevistoEm`, `iniciadoEm`, `encerradoEm`, `local`, `resultadoExcepcional`, `inscricaoClubeVencedorId`                                                                         |
+| `Jogo`                 | `PK` `id`; clubes A e B distintos e inscritos no mesmo campeonato                                                          | `inicioPrevistoEm`, `iniciadoEm`, `encerradoEm`, `local`; `resultado` e `inscricaoClubeVencedorId` (vazio = nenhum) somente finalizado; `invalidadoEm` |
+| `InterrupcaoJogo`      | `PK` `id`; `FK` `jogoId`; uma aberta por jogo                                                                              | `retomadoEm`                                                                                                                     |
+| `AlteracaoResultadoJogo` | `PK` `id`; `FK` `jogoId`, `presidenteId`; somente inclusão                                                               | vencedores anterior/novo; `motivo` obrigatório na invalidação                                                                    |
 | `Participacao`         | `PK` `id`; `UNIQUE` `jogoId` + `vinculoClubeId`; `UNIQUE` `jogoId` + `inscricaoClubeId` + `numeroCamisa` quando preenchido | `escolhidaPorTecnicoId`, `escolhidaEm`, `carteirinhaId`, `credenciadoEm`, `numeroCamisa`, `entrouEmQuadraEm`                     |
 | `AcessoArbitragem`     | `PK`/`FK` `jogoId`; uma senha compartilhada por jogo                                                                       | `revogadoEm`                                                                                                                     |
 | `Arbitragem`           | `PK` `id`; `UNIQUE` `jogoId` + `usuarioId` quando preenchido                                                               | `usuarioId`, `designadoPorPresidenteId`, `designadoEm`, `acessouEm`                                                              |
@@ -269,9 +281,10 @@ não mudam status automaticamente. `Jogo` passa a precisar de `fusoHorario` IANA
 independente do instante UTC de `inicioPrevistoEm`. Registrar resultado excepcional e vencedor
 separadamente do placar (`inscricaoClubeVencedorId` opcional, limitado às inscrições do jogo);
 a ausência de vencedor deve ser explícita no resultado de encerramento.
-A representação física de interrupção/retomada, abandono, W.O. e invalidação será detalhada na
-implementação; não confundir interrupção temporária com finalização nem criar outra partida
-para retomada. As estatísticas preservadas continuam nas projeções existentes.
+Representação (MAR-72): abandono, interrupção definitiva e W.O. são valores de `resultado` do jogo finalizado;
+a interrupção temporária é um registro em `InterrupcaoJogo` com o jogo ainda em andamento, retomado no mesmo jogo,
+sem outra partida; a invalidação é `invalidadoEm` no jogo finalizado, com o motivo no histórico. Correções do
+presidente ficam em `AlteracaoResultadoJogo`. As estatísticas preservadas continuam nas projeções existentes.
 
 ## Escolha, credenciamento e participação
 
@@ -368,7 +381,8 @@ definitivamente do clube no campeonato e elegível após aplicação conta uma v
 escolha/credenciamento.
 Nova suspensão preserva jogo já credenciado; o impedimento e cumprimento se referem aos próximos
 jogos. Jogos excepcionais e retomadas seguem requisitos, seção 11. O próprio jogo que originou
-a punição não conta. `CumprimentoSuspensao` registra os jogos usados
+a punição não conta. Todo encerramento definitivo (normal, interrompido, abandono ou W.O.) cumpre uma vez;
+interrupção temporária, correção de resultado e invalidação não registram nem desfazem cumprimentos (MAR-72). `CumprimentoSuspensao` registra os jogos usados
 na contagem; saldo é `quantidadeJogos` menos a quantidade de cumprimentos, nunca negativo. Não
 armazenar saldo divergente em outro campo. Jogos adiados só contam quando realizados; cancelados não
 contam. Lançar cumprimento e verificar credenciamento exige consistência transacional. Alteração do

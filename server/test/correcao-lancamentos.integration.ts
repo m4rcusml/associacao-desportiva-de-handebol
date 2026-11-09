@@ -119,7 +119,7 @@ const PRESIDENCIA = "/jogos";
 const credenciar = async (jogo: string, cookie: string, atletaId: string, numeroCamisa: number) =>
   (await ok<{ participacao: { participacaoId: string } }>(request("POST", `/arbitragem/jogos/${jogo}/credenciamentos`, cookie, { atletaId, numeroCamisa }))).participacao.participacaoId;
 const iniciar = (jogo: string, cookie: string) => ok(request("POST", `/arbitragem/jogos/${jogo}/inicio`, cookie));
-const encerrar = (jogo: string, cookie: string) => ok(request("POST", `/arbitragem/jogos/${jogo}/encerramento`, cookie));
+const encerrar = (jogo: string, cookie: string) => ok(request("POST", `/arbitragem/jogos/${jogo}/encerramento`, cookie, { resultado: "normal", vencedorInscricaoId: null }));
 const lancamento = (participacaoId: string, tipo = "temp_gol", operacaoId: string = randomUUID()) => ({ operacaoId, tipo, participacaoId });
 const lancar = async (jogo: string, cookie: string, participacaoId: string, tipo = "temp_gol") =>
   (await ok(request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, cookie, lancamento(participacaoId, tipo)))).lancamento;

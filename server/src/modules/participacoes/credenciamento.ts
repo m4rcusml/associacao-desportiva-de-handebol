@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from "@nestjs/common";
 import { z } from "zod";
 import { Prisma, type StatusJogo } from "../../generated/prisma/client.js";
 import { revalidarArbitragem } from "../arbitragem/acesso.js";
+import { exigirJogoSemInterrupcao } from "../jogos/jogos.js";
 import { atletasComSuspensaoVigente } from "../suspensoes/suspensoes.js";
 
 type Tx = Prisma.TransactionClient;
@@ -245,6 +246,7 @@ export async function registrarEntrada(tx: Tx, jogoId: string, token: string | u
   if (!existente) throw new ConflictException("Somente atleta credenciado neste jogo pode entrar em quadra.");
   if (existente.entrouEmQuadraEm) return { participacao: apresentar(existente), alterado: false };
   if (status !== "em_andamento") throw new ConflictException("A entrada em quadra é registrada somente com o jogo em andamento.");
+  await exigirJogoSemInterrupcao(tx, jogoId, "registrar entradas em quadra");
   const conta = await tx.usuario.findUniqueOrThrow({ where: { id: atletaId }, select: { ativo: true } });
   if (!conta.ativo) throw new ConflictException("Atleta com conta desativada não pode entrar em quadra.");
   // Estorno concorrente (MAR-71) bloqueia a linha antes: a gravação condicional não acontece e a resposta é 409.

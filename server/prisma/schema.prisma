@@ -120,6 +120,21 @@ enum TipoAlteracaoEscalacao {
   remocao
 }
 
+/// Forma do encerramento definitivo (MAR-72, PEN-012): `normal`; `interrompido` (interrupção definitiva, sem
+/// retomada); `abandono`; `wo` (W.O. sem início, 0 a 0). Preenchido somente com o jogo finalizado.
+enum ResultadoJogo {
+  normal
+  interrompido
+  abandono
+  wo
+}
+
+/// Alteração do resultado após o encerramento, somente pelo presidente (MAR-72): correção de resultado/vencedor ou invalidação.
+enum TipoAlteracaoResultado {
+  correcao
+  invalidacao
+}
+
 /// Alteração de credenciamento já feito (MAR-71): correção da camisa ou estorno.
 enum TipoAlteracaoCredenciamento {
   correcao_camisa
@@ -173,6 +188,7 @@ model Presidente {
   arbitragensDesignadas Arbitragem[]
   suspensoesAplicadas   Suspensao[]    @relation("aplicadaPor")
   suspensoesRevogadas   Suspensao[]    @relation("revogadaPor")
+  alteracoesResultado   AlteracaoResultadoJogo[]
 }
 
 model Atleta {
@@ -317,6 +333,10 @@ model InscricaoClube {
 /// migração `jogos_arbitragem`; o dia do jogo é calculado nesse fuso, nunca no do navegador.
 /// Agendar não inicia o jogo. Ciclo (MAR-69): a arbitragem grava `iniciadoEm` (em andamento) e `encerradoEm`
 /// (finalizado); o presidente adia (nova data, mesmo status) ou cancela. Transições validadas pelo trigger da migração `ciclo_jogo`.
+/// Jogos excepcionais (MAR-72): `resultado` e o vencedor (`inscricaoClubeVencedorId`, clube A ou B; vazio com o jogo
+/// finalizado = nenhum vencedor, decidido explicitamente) são gravados no encerramento, separados do placar. A
+/// interrupção temporária não muda o status (`InterrupcaoJogo`). Após o encerramento, só o presidente corrige o
+/// resultado ou invalida (`invalidadoEm`), com histórico em `AlteracaoResultadoJogo` (trigger da migração `jogos_excepcionais`).
 model Jogo {
   id                    String         @id @default(uuid()) @db.Uuid
   campeonatoId          String         @db.Uuid
@@ -331,8 +351,14 @@ model Jogo {
   iniciadoEm            DateTime?      @db.Timestamptz
   encerradoEm           DateTime?      @db.Timestamptz
   status                StatusJogo     @default(agendado)
+  resultado             ResultadoJogo?
+  /// Inscrição vencedora (A ou B, CHECK); sem FK própria, pois as inscrições do jogo já têm FK composta.
+  inscricaoClubeVencedorId String?     @db.Uuid
+  invalidadoEm          DateTime?      @db.Timestamptz
   criadoPorPresidenteId String         @db.Uuid
   criadoPor             Presidente     @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
+  interrupcoes          InterrupcaoJogo[]
+  alteracoesResultado   AlteracaoResultadoJogo[]
   arbitragens           Arbitragem[]
   acessoArbitragem      AcessoArbitragem?
   participacoes         Participacao[]
@@ -344,6 +370,39 @@ model Jogo {
   @@index([campeonatoId, status])
   @@index([inscricaoClubeAId, campeonatoId])
   @@index([inscricaoClubeBId, campeonatoId])
+}
+
+/// Interrupção temporária do jogo em andamento pela arbitragem (MAR-72): o jogo continua em andamento, com os
+/// mesmos registros e acessos; novos lançamentos e entradas em quadra aguardam a retomada. No máximo uma aberta
+/// por jogo. Aberta com o jogo finalizado = encerrado durante a interrupção, sem retomada.
+model InterrupcaoJogo {
+  id             String    @id @default(uuid()) @db.Uuid
+  jogoId         String    @db.Uuid
+  jogo           Jogo      @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  interrompidoEm DateTime  @db.Timestamptz
+  retomadoEm     DateTime? @db.Timestamptz
+
+  @@index([jogoId, interrompidoEm])
+}
+
+/// Histórico somente de inclusão das alterações do resultado após o encerramento, pelo presidente (MAR-72, RF-036):
+/// correção copia resultado e vencedor anteriores e novos; invalidação guarda o motivo (resultado e vencedor não mudam).
+model AlteracaoResultadoJogo {
+  id                          String                 @id @default(uuid()) @db.Uuid
+  jogoId                      String                 @db.Uuid
+  jogo                        Jogo                   @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  tipo                        TipoAlteracaoResultado
+  resultadoAnterior           ResultadoJogo
+  inscricaoVencedorAnteriorId String?                @db.Uuid
+  resultadoNovo               ResultadoJogo
+  inscricaoVencedorNovoId     String?                @db.Uuid
+  motivo                      String?
+  presidenteId                String                 @db.Uuid
+  presidente                  Presidente             @relation(fields: [presidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  registradaEm                DateTime               @db.Timestamptz
+
+  @@index([jogoId, registradaEm])
+  @@index([presidenteId])
 }
 
 /// Arbitragem do jogo (RF-024, RN-024): atribuição na partida, não perfil. Designada pelo presidente

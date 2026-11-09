@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from "@nest
 import { z } from "zod";
 import { Prisma, TipoLancamento } from "../../generated/prisma/client.js";
 import { revalidarArbitragem } from "../arbitragem/acesso.js";
+import { exigirJogoSemInterrupcao } from "../jogos/jogos.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -92,6 +93,7 @@ export async function registrarLancamento(tx: Tx, jogoId: string, token: string 
   if (anterior) return anterior;
   if (await lerPorAnulacao(tx, dados.operacaoId)) throw operacaoUsada();
   if (status !== "em_andamento") throw new ConflictException("Gols e penalidades são registrados somente com o jogo em andamento.");
+  await exigirJogoSemInterrupcao(tx, jogoId, "registrar gols ou penalidades");
   await exigirCredenciada(tx, jogoId, dados.participacaoId);
 
   const inseridos = await tx.$queryRaw<{ id: string }[]>`

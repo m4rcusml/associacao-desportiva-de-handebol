@@ -248,13 +248,23 @@ recebe 409 com `lancamento` (registro atualizado) e `substituto`. Após o encerr
 `/api/jogos/{jogoId}/lancamentos/{lancamentoId}/...`, sem incluir lançamentos novos, sem reabrir a arbitragem e sem
 refazer o cumprimento de suspensões.
 
-#### Ciclo do jogo (MAR-69)
+#### Ciclo do jogo (MAR-69, MAR-72)
 
 Com o cookie temporário, a arbitragem inicia o jogo agendado em `POST /api/arbitragem/jogos/{jogoId}/inicio`
-(no dia do jogo, no fuso do local) e o encerra em `POST .../encerramento` (somente em andamento; um árbitro basta).
+(no dia do jogo, no fuso do local) e o encerra em `POST .../encerramento` (um árbitro basta), informando
+`resultado` (`normal`, `interrompido` definitivamente, `abandono` ou `wo`) e `vencedorInscricaoId` (inscrição do
+clube A ou B, ou `null` para nenhum vencedor), separados do placar. Jogo em andamento encerra como normal,
+interrompido ou abandono; W.O. encerra o jogo agendado, sem início, no dia do jogo, com placar 0 a 0.
 O encerramento finaliza o jogo, registra o cumprimento das suspensões e revoga a senha e todas as sessões
-temporárias na mesma transação, devolvendo só o jogo e o placar final. Repetir o início, ou reenviar o
-encerramento pela sessão revogada por ele, devolve o estado com `alterado: false`, sem reabrir acesso. O presidente
+temporárias na mesma transação, devolvendo só o jogo (com resultado e vencedor) e o placar final. Repetir o início, ou reenviar o
+encerramento pela sessão revogada por ele, devolve o estado com `alterado: false`, sem reabrir acesso.
+Em `POST .../interrupcao` e `POST .../retomada`, a arbitragem pausa e retoma o mesmo jogo: o status continua em
+andamento, com os mesmos registros e acessos, e a pausa não cumpre suspensões; novos lançamentos e entradas em
+quadra aguardam a retomada (correções, anulações e credenciamentos continuam). Repetir não tem efeito. Após o
+encerramento, somente o presidente consulta `GET /api/jogos/{jogoId}/resultado`, corrige resultado/vencedor em
+`POST /api/jogos/{jogoId}/correcao-resultado` (`atual` visto e `novo`; divergência é conflito) e invalida o jogo,
+definitivamente e com `motivo`, em `POST /api/jogos/{jogoId}/invalidacao`, com histórico e sem alterar placar,
+estatísticas ou cumprimentos. O presidente
 adia o jogo agendado em `POST /api/jogos/{jogoId}/adiamento` (`inicioPrevisto` local ou `null` para ficar sem data;
 `fusoHorario` e `local` opcionais): gera nova senha, se já emitida, e revoga as sessões dos dois métodos. Cancela o
 jogo agendado em `POST /api/jogos/{jogoId}/cancelamento`, revogando os acessos; jogo cancelado não conta para
@@ -603,6 +613,17 @@ contra estorno e a mesma correção em paralelo; lançamento e entrada contra es
 correção, com espera real no bloqueio; encerramento aguardando a correção e, depois, correção somente pelo presidente.
 Uma migração nova; nenhuma dependência nova. Não validado: notificação Socket.IO (MAR-73) e correções complexas do
 presidente (PEN-019 residual).
+
+Validação local da MAR-72 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado e
+**149 testes de integração aprovados**, incluindo cinco novos: interrupção e retomada do mesmo jogo com repetição sem
+efeito, lançamento e entrada recusados durante a pausa (também no banco), credenciamento permitido e encerramento
+definitivo durante a interrupção cumprindo a suspensão uma vez; interrupção concorrente com lançamento, que aguarda e
+é recusado; W.O. sem início com 0 a 0, vencedor, reenvio e cumprimento único, W.O. recusado em jogo iniciado e
+restrições do banco; abandono sem vencedor preservando placar e desempenho; correção do resultado e invalidação
+somente pelo presidente após o encerramento, com conflito pelo `atual` divergente, repetição sem efeito, histórico,
+invalidação definitiva, placar e cumprimentos preservados e W.O. mudando só o vencedor. Testes existentes passaram a
+informar resultado e vencedor no encerramento. Uma migração nova; nenhuma dependência nova. Não validado: notificação
+Socket.IO (MAR-73) e retomada em outro dia com sessão expirada (coberta pela regra de acesso de jogo iniciado).
 
 ## Caminho feliz
 

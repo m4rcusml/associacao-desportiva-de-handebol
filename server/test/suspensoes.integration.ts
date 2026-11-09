@@ -110,7 +110,7 @@ const iniciarJogo = (id: string) => prisma.jogo.update({ where: { id }, data: { 
 async function finalizar(id: string) {
   return prisma.$transaction(async tx => {
     const jogo = await tx.jogo.findUniqueOrThrow({ where: { id }, select: { iniciadoEm: true } });
-    await tx.jogo.update({ where: { id }, data: { status: "finalizado", iniciadoEm: jogo.iniciadoEm ?? new Date(), encerradoEm: new Date() } });
+    await tx.jogo.update({ where: { id }, data: { status: "finalizado", iniciadoEm: jogo.iniciadoEm ?? new Date(), encerradoEm: new Date(), resultado: "normal" } });
     return registrarCumprimentos(tx, id);
   });
 }
@@ -205,7 +205,7 @@ test("aplicações simultâneas coexistem e são cumpridas em paralelo, sem sald
   // Repetição simultânea do encerramento registra uma vez só.
   const jogo2 = await agendar(campeonato, b, a);
   await iniciarJogo(jogo2);
-  await prisma.jogo.update({ where: { id: jogo2 }, data: { status: "finalizado", encerradoEm: new Date() } });
+  await prisma.jogo.update({ where: { id: jogo2 }, data: { status: "finalizado", encerradoEm: new Date(), resultado: "normal" } });
   const paralelas = await Promise.all([cumprir(jogo2), cumprir(jogo2), cumprir(jogo2)]);
   assert.deepEqual(paralelas.flat(), [longa.id]);
   assert.equal((await consultar(campeonato, longa.id)).situacao, "cumprida");
@@ -222,7 +222,7 @@ test("nova suspensão preserva jogo já credenciado; jogo em andamento sem crede
   const { a, b, ana, bia, campeonato } = await cenario();
   const anterior = await agendar(campeonato, a, b);
   await iniciarJogo(anterior);
-  await prisma.jogo.update({ where: { id: anterior }, data: { status: "finalizado", encerradoEm: new Date() } });
+  await prisma.jogo.update({ where: { id: anterior }, data: { status: "finalizado", encerradoEm: new Date(), resultado: "normal" } });
 
   const credenciado = await agendar(campeonato, a, b);
   await credenciar(credenciado, ana.id, a, 7);
@@ -298,7 +298,7 @@ test("revogação aguarda o último cumprimento e recusa suspensão já cumprida
   const cumprimentoRegistrado = new Promise<number>(resolve => { informarPid = resolve; });
   const encerramento = prisma.$transaction(async tx => {
     const [{ pid }] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
-    await tx.jogo.update({ where: { id: jogo }, data: { status: "finalizado", iniciadoEm: new Date(), encerradoEm: new Date() } });
+    await tx.jogo.update({ where: { id: jogo }, data: { status: "finalizado", iniciadoEm: new Date(), encerradoEm: new Date(), resultado: "normal" } });
     assert.deepEqual(await registrarCumprimentos(tx, jogo), [suspensao.id]);
     informarPid(pid);
     await liberacao;
