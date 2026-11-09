@@ -316,6 +316,9 @@ todos com o mesmo bloqueio campeonato → jogo do ciclo. Lançamento novo e entr
 (jogo `FOR SHARE`), recusam o jogo com interrupção aberta; assim a interrupção aguarda essas gravações ou é vista por
 elas, e triggers repetem a regra. A correção e a invalidação inserem o histórico antes de alterar o jogo, e o trigger
 do jogo exige esse registro na mesma transação.
+A consulta do resultado, após revalidar o presidente, bloqueia o jogo em `FOR NO KEY UPDATE` até terminar as leituras
+do jogo, histórico e placar. Esse bloqueio também conflita com o `FOR SHARE` das correções de lançamentos, evitando
+misturar estados de transações diferentes na resposta sem alterar o isolamento da autorização.
 
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,

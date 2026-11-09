@@ -62,6 +62,8 @@ const pessoa = { select: { usuario: { select: { id: true, nomeCompleto: true } }
  * finalizado), placar, invalidação, interrupções e o histórico de alterações posteriores ao encerramento.
  */
 export async function consultarResultado(tx: Tx, jogoId: string) {
+  // Mantém jogo, histórico e placar consistentes, inclusive contra correções de lançamentos (FOR SHARE).
+  await tx.$queryRaw`SELECT 1 FROM "Jogo" WHERE id = ${jogoId}::uuid FOR NO KEY UPDATE`;
   const jogo = await tx.jogo.findUnique({ where: { id: jogoId }, select: {
     id: true, status: true, iniciadoEm: true, encerradoEm: true, resultado: true, inscricaoClubeVencedorId: true, invalidadoEm: true,
   } });

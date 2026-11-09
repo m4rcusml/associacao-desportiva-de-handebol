@@ -7,7 +7,7 @@ import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
-import { interromperJogo } from "../dist/modules/jogos/resultado.js";
+import { consultarResultado, corrigirResultado, interromperJogo } from "../dist/modules/jogos/resultado.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
@@ -232,6 +232,51 @@ test("interrupção concorrente com um lançamento: o lançamento aguarda e é r
   });
   await recusa(pedido!, 409, /interrompido/);
   assert.equal(await prisma.lancamentoJogo.count({ where: { jogoId: jogo } }), 0);
+});
+
+test("consulta do resultado não mistura jogo e histórico de uma correção concorrente", async () => {
+  const { jogo, arbitro, inscricaoA } = await cenario();
+  await iniciar(jogo, arbitro);
+  await ok(encerrar(jogo, arbitro, encerramento("normal", inscricaoA)));
+  let escrita: Promise<unknown> | undefined;
+  const anterior = await prisma.$transaction(async tx => {
+    const [{ pid: leitor }] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+    // Pausa após ler o jogo: o escritor confirma (antes da correção) ou aguarda o bloqueio da consulta.
+    const leitura = new Proxy(tx, { get(target, property, receiver) {
+      if (property !== "jogo") return Reflect.get(target, property, receiver);
+      return new Proxy(target.jogo, { get(model, key) {
+        if (key !== "findUnique") return Reflect.get(model, key);
+        return async (args: Parameters<typeof model.findUnique>[0]) => {
+          const dados = await model.findUnique(args);
+          let escritor = 0;
+          let terminou = false;
+          escrita = prisma.$transaction(async concorrente => {
+            [{ pid: escritor }] = await concorrente.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+            return corrigirResultado(concorrente, presidente.id, jogo, {
+              atual: { resultado: "normal", vencedorInscricaoId: inscricaoA },
+              novo: { resultado: "abandono", vencedorInscricaoId: null },
+            });
+          });
+          void escrita.then(() => { terminou = true; }, () => { terminou = true; });
+          const limite = Date.now() + 3000;
+          while (!terminou) {
+            const [{ bloqueado }] = await prisma.$queryRaw<{ bloqueado: boolean }[]>`
+              SELECT ${leitor}::int = ANY(pg_blocking_pids(${escritor}::int)) AS bloqueado`;
+            if (bloqueado) break;
+            assert.ok(Date.now() < limite, "escritor deve confirmar ou aguardar a consulta");
+            await esperar(10);
+          }
+          return dados;
+        };
+      } });
+    } });
+    return consultarResultado(leitura, jogo);
+  });
+  await escrita;
+  assert.deepEqual([anterior.jogo.resultado, anterior.jogo.vencedor?.inscricaoId, anterior.alteracoes.length],
+    ["normal", inscricaoA, 0], "consulta anterior não pode conter o histórico de um resultado que ainda não apresenta");
+  const posterior = await ok<Resultado>(resultadoDo(jogo));
+  assert.deepEqual([posterior.jogo.resultado, posterior.jogo.vencedor, posterior.alteracoes.length], ["abandono", null, 1]);
 });
 
 test("W.O. sem início fica 0 a 0, cumpre suspensão uma vez e exige jogo não iniciado", async () => {
