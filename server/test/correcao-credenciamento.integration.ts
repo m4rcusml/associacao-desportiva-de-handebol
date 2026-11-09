@@ -299,14 +299,14 @@ test("arbitragem desfaz credenciamento sem entrada nem lançamentos, preservando
   }
 });
 
-test("estorno recusado após entrada ou lançamento, inclusive anulado; o caso fica com o presidente (PEN-019)", async () => {
+test("estorno recusado após entrada ou lançamento, inclusive anulado; o caso fica com o presidente após o encerramento", async () => {
   const { jogo, arbitro, ana, bruno, carla, pBruno, pCarla } = await cenario();
   await iniciar(jogo, arbitro);
   await entrar(jogo, arbitro, ana.id);
-  await recusa(estornar(jogo, arbitro, ana.id, 7), 409, /já entrou em quadra.*PEN-019/);
+  await recusa(estornar(jogo, arbitro, ana.id, 7), 409, /já entrou em quadra.*presidente, após o encerramento/);
 
   await lancar(jogo, arbitro, pBruno);
-  await recusa(estornar(jogo, arbitro, bruno.id, 9), 409, /gols ou penalidades.*PEN-019/);
+  await recusa(estornar(jogo, arbitro, bruno.id, 9), 409, /gols ou penalidades.*presidente, após o encerramento/);
   const anulado = await lancar(jogo, arbitro, pCarla);
   assert.equal((await request("POST", `${ARBITRAGEM}/${jogo}/lancamentos/${anulado.id}/anulacao`, arbitro, { operacaoId: randomUUID() })).status, 200);
   await recusa(estornar(jogo, arbitro, carla.id, 8), 409, /gols ou penalidades/);
@@ -434,7 +434,7 @@ test("lançamento e entrada concorrem com o estorno: quem bloqueia a participaç
   assert.deepEqual([c1.segunda.valor?.alterado, c1.segunda.valor?.participacao.numeroCamisa], [true, 70]);
 });
 
-test("encerramento concorre com a correção; depois somente o presidente corrige a camisa, sem estorno", async () => {
+test("encerramento concorre com a correção; depois somente o presidente corrige a camisa e estorna", async () => {
   const { a, b, campeonato, jogo, arbitro, ana, bruno, carla, pAna } = await cenario();
   await iniciar(jogo, arbitro);
   await entrar(jogo, arbitro, ana.id);
@@ -468,9 +468,12 @@ test("encerramento concorre com a correção; depois somente o presidente corrig
   await recusa(corrigir(jogo, presidente.cookie, ana.id, 17, 18, "/jogos"), 409, /camisa 18 já está em uso/);
   assert.equal(await prisma.sessaoArbitragem.count({ where: { arbitragem: { jogoId: jogo }, revogadaEm: null } }), 0);
 
-  // Somente presidente; não há estorno pelo presidente enquanto a PEN-019 estiver pendente.
+  // Somente presidente. Estorno pelo presidente (MAR-83): Ana tem entrada e gol válidos; Bruno, sem ocorrências, é estornado.
   for (const [cookie, status] of [["", 401], [ana.cookie, 403]] as const) await recusa(corrigir(jogo, cookie, ana.id, 17, 27, "/jogos"), status);
-  await recusa(request("POST", `/jogos/${jogo}/credenciamentos/${bruno.id}/estorno`, presidente.cookie, { numeroCamisa: 9 }), 404);
+  await recusa(request("POST", `/jogos/${jogo}/credenciamentos/${ana.id}/estorno`, presidente.cookie, { numeroCamisa: 17 }), 409, /entrada em quadra válida/);
+  const estornoBruno = await ok<Estorno>(request("POST", `/jogos/${jogo}/credenciamentos/${bruno.id}/estorno`, presidente.cookie, { numeroCamisa: 9 }));
+  assert.deepEqual([estornoBruno.alterado, estornoBruno.estorno.tipo, (estornoBruno.estorno as Alteracao & { presidenteId: string }).presidenteId], [true, "estorno", presidente.id]);
+  assert.equal((await historico(jogo)).at(-1)?.presidenteId, presidente.id);
   await recusa(corrigir(randomUUID(), presidente.cookie, ana.id, 17, 27, "/jogos"), 404);
   const agendado = await agendar(campeonato, b, a);
   await recusa(corrigir(agendado, presidente.cookie, ana.id, 17, 27, "/jogos"), 409, /somente após o encerramento/);

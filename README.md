@@ -251,9 +251,28 @@ quadra e sem gols/penalidades registrados (inclusive anulados); a escolha do té
 credenciado de novo. A camisa informada diferente da atual é 409 com a `participacao` atual; repetir a operação já
 feita devolve `alterado: false`. Cada correção e estorno grava em `AlteracaoCredenciamento` a cópia do credenciamento
 alterado. Depois do encerramento, somente o presidente corrige a camisa, em
-`POST /api/jogos/{jogoId}/credenciamentos/{atletaId}/camisa`, sem reabrir a arbitragem. Estorno ou outra correção
-de atleta que entrou ou tem lançamentos pelo presidente segue os critérios aprovados na MAR-80
-(requisitos, seção 13), com implementação e validação ainda pendentes.
+`POST /api/jogos/{jogoId}/credenciamentos/{atletaId}/camisa`, sem reabrir a arbitragem. Atleta que entrou ou tem
+lançamentos tem o credenciamento corrigido pelo presidente (MAR-83, abaixo).
+
+#### Correção administrativa de credenciamentos com ocorrências (MAR-83)
+
+Somente o presidente, somente com o jogo finalizado (requisitos, seção 13), em `/api/jogos/{jogoId}/credenciamentos`:
+
+- `POST .../administrativos` (`{ atletaId, numeroCamisa, entrouEmQuadra }`) registra a participação real de atleta
+  aprovado, com carteirinha e vínculo com um dos clubes no início do jogo. Suspensão (o jogo contou como cumprimento),
+  conta desativada e carteirinha invalidada não impedem e ficam em `registroAdministrativo.irregularidades`; a
+  participação não fica regular, e resultado e cumprimentos não mudam. A arbitragem continua sem credenciar inaptos.
+- `POST .../{atletaId}/entrada/anulacao` (sem corpo) anula a entrada registrada por engano, preservando o horário
+  original com autor e data; a entrada anulada deixa de contar no histórico.
+- Gols e penalidades são corrigidos um a um em `POST /api/jogos/{jogoId}/lancamentos/{id}/correcao` (transferência
+  para o atleta correto, inclusive do adversário, que altera os dois placares) ou `.../anulacao`.
+- `POST .../{atletaId}/estorno` (`{ numeroCamisa }`) desfaz o credenciamento de quem não participou quando não restam
+  entrada válida nem lançamentos válidos. O histórico recebe a cópia completa e o presidente autor; a participação é
+  preservada como desfeita, porque os lançamentos anulados ou transferidos continuam apontando para ela.
+- `GET` lista participações credenciadas, desfeitas e o histórico de alterações.
+
+Repetir uma operação já feita devolve `alterado: false`. A camisa continua única no clube e jogo: registre o atleta
+real com outra camisa e corrija-a depois do estorno de quem a usava.
 
 #### Fotos privadas dos atletas (MAR-75)
 
@@ -755,6 +774,19 @@ transferência, jogo interrompido e invalidado somado e sinalizado, escalação 
 acesso do próprio atleta, do presidente e do técnico atual, recusa ao técnico do clube anterior, a outro atleta e a
 conta não aprovada, sem e-mail nas respostas; e contrato OpenAPI. Nenhuma migração ou dependência nova. Não validado:
 ambiente hospedado (MAR-76) e visibilidade de suspensões para atleta/técnico, que não fez parte da MAR-74.
+
+Validação local da MAR-83 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado e
+**189 testes de integração** (188 na suíte completa; o teste da MAR-71 com expectativa desatualizada para o estorno
+do presidente foi corrigido e o arquivo reexecutado, 7/7), incluindo cinco novos: João credenciado no lugar de
+Pedro, com recusa do estorno enquanto restam entrada e gol válidos, registro administrativo de Pedro com reenvio,
+anulação da entrada preservando o original, gol transferido no mesmo clube sem mudar o placar, estorno com histórico
+completo e autor, participação desfeita preservada e históricos/desempenho corrigidos; entrada anulada fora do
+histórico, gol transferido ao adversário alterando os dois placares e anulação reduzindo o placar; atleta suspenso,
+com carteirinha invalidada ou conta desativada registrado com irregularidades, sem mudar resultado nem cumprimento,
+e arbitragem ainda recusando o suspenso; vínculo no início do jogo (inclusive transferido depois), recusas sem
+vínculo, camisa em uso, W.O. sem início, jogo em andamento, corpo inválido e não presidente; relatório disciplinar
+transferido movendo a suspensão automática, registros e estornos simultâneos serializados. Uma migração nova;
+nenhuma dependência nova. Não validado: ambiente hospedado (MAR-76).
 
 ## Caminho feliz
 

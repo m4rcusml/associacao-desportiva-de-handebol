@@ -364,11 +364,17 @@ Cancelar ou finalizar mantém o acesso bloqueado. Contas permanentes e outros jo
 Aplicar as mudanças junto da invalidação das sessões, com controle de concorrência e notificações
 apenas após persistência (`EventoJogo`, MAR-73). Repetições de início/fim e conflitos de correção seguem requisitos, seção 11.
 
-A correção administrativa de credenciamento aprovada na MAR-80 está em requisitos, seção 13,
-e ainda não foi implementada. A futura representação deve preservar os originais de entradas,
-lançamentos e credenciamentos corrigidos, identificar participação irregular sem regularizá-la
-e permitir estorno administrativo sem apagar referências históricas. Não confundir com os
-limites do estorno atualmente implementado na MAR-71.
+A correção administrativa de credenciamento aprovada na MAR-80 (requisitos, seção 13) é implementada pela
+migração `correcao_administrativa` (MAR-83), somente com o jogo finalizado. `Participacao` ganha:
+`entradaAnuladaEm` + `entradaAnuladaPorPresidenteId` (juntos, uma vez, sobre entrada registrada, que permanece);
+`registradaPorPresidenteId` + `irregularidades` (`IrregularidadeParticipacao[]`: `conta_desativada`,
+`carteirinha_invalidada`, `suspensao`) no registro administrativo da participação real, que dispensa as condições do
+credenciamento normal mas exige atleta aprovado, a própria carteirinha, vínculo vigente no início do jogo e data da
+transação; e `credenciamentoDesfeitoEm`, que mantém sem etapas a participação estornada pelo presidente, porque
+lançamentos anulados ou transferidos continuam apontando para ela (só sai na cascata do jogo). O estorno pelo
+presidente exige entrada ausente ou anulada e nenhum lançamento válido. `AlteracaoCredenciamento` passa a copiar
+entrada, anulação, registro administrativo e irregularidades e ganha `presidenteId` (autor; null para a arbitragem e
+registros anteriores). Os limites da arbitragem da MAR-71 não mudam. A entrada anulada deixa de contar no histórico.
 
 ## Métricas aprovadas, identificadores atuais, correções e histórico
 

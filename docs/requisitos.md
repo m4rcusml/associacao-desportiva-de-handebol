@@ -464,15 +464,15 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   respeitando unicidade por clube/jogo. Depois, somente presidente; preservar alterações.
 - Arbitragem pode desfazer credenciamento antes do encerramento somente sem entrada em quadra
   e sem gols/penalidades registrados. Casos com entrada/lançamentos são corrigidos pelo presidente,
-  com histórico. O procedimento dessas correções complexas foi aprovado na MAR-80 (seção 13);
-  sua implementação permanece pendente.
+  com histórico. O procedimento dessas correções complexas foi aprovado na MAR-80 (seção 13) e
+  implementado na MAR-83.
   Detalhes aprovados por Marcus (MAR-71, 09/11/2026): a correção informa a camisa atual vista por quem corrige, e o estorno, a camisa do
   credenciamento a desfazer; divergência é conflito com o registro atual, e repetir a operação já feita não tem
   efeito. Lançamento anulado também impede o estorno, porque continua apontando a participação. O estorno mantém
   a escolha do técnico e permite novo credenciamento pelas regras normais. Cada correção e estorno fica em
   histórico próprio com a cópia do credenciamento, sem autoria (como na MAR-70). O presidente corrige somente
   a camisa, após o encerramento, inclusive de atleta que entrou ou tem lançamentos; estorno pelo presidente
-  segue definido na seção 13 (MAR-80); implementação ainda pendente.
+  segue a seção 13 (MAR-80), implementada na MAR-83, com autoria do presidente no histórico.
 - Presidente pode substituir o código QR da mesma carteirinha, invalidando o anterior e
   preservando credenciamentos existentes. Leitura automática não ganha conferência manual obrigatória.
   Detalhes aprovados por Marcus (MAR-58): o histórico de invalidações, reativações e substituições
@@ -566,9 +566,15 @@ restante, sem compensar jogos passados.
 
 ## 13. Correção administrativa de credenciamento — MAR-80 — 09/11/2026
 
-Decisão aprovada por Marcus em 09/11/2026, resolvendo a PEN-019. Descreve comportamento
-para futura implementação na [MAR-83](https://linear.app/marcusml/issue/MAR-83);
-não amplia as permissões atuais da arbitragem.
+Decisão aprovada por Marcus em 09/11/2026, resolvendo a PEN-019. Implementada na
+[MAR-83](https://linear.app/marcusml/issue/MAR-83); não amplia as permissões da arbitragem.
+
+Detalhes aprovados por Marcus na MAR-83 (09/11/2026): o presidente faz essas correções somente com o
+jogo finalizado; durante a partida, a arbitragem corrige pelas regras normais. Registrar a participação
+irregular de atleta suspenso não retira o cumprimento já registrado naquele jogo. Na implementação, o
+registro administrativo exige atleta aprovado, com carteirinha e vínculo com um dos clubes no início do
+jogo; suspensão (jogo contado como cumprimento), conta desativada e carteirinha invalidada viram
+irregularidades gravadas.
 
 - Presidente pode anular uma entrada em quadra registrada por engano, preservando o original
   e o histórico da correção.

@@ -49,7 +49,7 @@ Condução sugerida: Marcus com o cliente para as regras; equipe técnica para o
 
 | ID      | Caso em aberto                                                                                         | Decisão necessária                                                                                                                                                                                                                      |
 | ------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PEN-019 | Correção/estorno de credenciamento e camisa. | Camisa corrigível pela arbitragem até encerramento; estorno somente sem entrada/lançamentos (implementados na MAR-71, com correção de camisa pelo presidente após o encerramento). Resolvida por Marcus em 09/11/2026 (MAR-80): correção administrativa, participação irregular, transferência entre clubes e estorno após correções definidos em requisitos, seção 13. Implementação ainda pendente; preservar limites atuais da MAR-71 até a entrega. |
+| PEN-019 | Correção/estorno de credenciamento e camisa. | Camisa corrigível pela arbitragem até encerramento; estorno somente sem entrada/lançamentos (implementados na MAR-71, com correção de camisa pelo presidente após o encerramento). Resolvida por Marcus em 09/11/2026 (MAR-80): correção administrativa, participação irregular, transferência entre clubes e estorno após correções definidos em requisitos, seção 13, e implementados na MAR-83 (somente após o encerramento; cumprimento preservado). |
 | PEN-020 | Perda/cópia do QR e substituição. | Resolvido: presidente substitui QR na mesma carteirinha; anterior deixa de funcionar, credenciamentos preservados. Sem conferência manual obrigatória adicional. |
 | PEN-021 | Dia de acesso, meia-noite e distribuição da senha. | Resolvido: fuso do local no backend; conversão visual no frontend. Após meia-noite acesso continua se jogo começou; se não, exigir reagendamento. Presidente e contas designadas consultam senha posteriormente, protegida por criptografia. |
 | PEN-022 | Troca da senha compartilhada e retirada de acesso.                                                    | Resolvido em 07/11/2026: primeira senha automática; troca manual por presidente ou conta autenticada e designada. Entrada por nome/senha não permite troca. Trocar revoga todas as sessões por senha, preserva designadas; sem retirada individual. |
@@ -78,7 +78,7 @@ aprovados.
 ## 7. Ordem sugerida de resolução
 
 1. PEN-003/PEN-005/PEN-008 resolvidas para esta versão na MAR-82 (requisitos, seção 15); preparar adequação de carteirinha e migração das métricas. Critérios automáticos da PEN-004 aprovados e implementados na MAR-79.
-2. PEN-009 e PEN-019 resolvidas nas MAR-81 e MAR-80; preparar implementação dos critérios aprovados em requisitos, seções 14 e 13.
+2. PEN-009 e PEN-019 resolvidas nas MAR-81 e MAR-80; a seção 13 foi implementada na MAR-83 e a seção 14 aguarda a MAR-84.
 3. Confirmar eventual exceção de transferência para clube eliminado/desistente (PEN-017); até lá vale o bloqueio aprovado.
 4. Detalhar condições operacionais, retenção e auditoria completa (PEN-025/PEN-026/PEN-007), sem reabrir itens já adiados.
 5. Decidir escopo dos pedidos históricos (PEN-027 a PEN-029).
@@ -97,7 +97,7 @@ Não são pendências:
   09/11/2026; critérios em [requisitos, seção 14](requisitos.md#14-redução-parcial-e-justificativa-de-suspensão--mar-81--09112026), ainda sem implementação.
 
 - PEN-019: correção administrativa aprovada por Marcus na MAR-80 em 09/11/2026;
-  critérios em [requisitos, seção 13](requisitos.md#13-correção-administrativa-de-credenciamento--mar-80--09112026), ainda sem implementação.
+  critérios em [requisitos, seção 13](requisitos.md#13-correção-administrativa-de-credenciamento--mar-80--09112026), implementados na MAR-83.
 
 - PEN-004: critérios de suspensão automática aprovados por Marcus em 09/11/2026 (MAR-78),
   em [requisitos, seção 12](requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026).

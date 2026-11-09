@@ -3,7 +3,7 @@ const security = [{ sessionCookie: [] }];
 const param = (name: string) => [{ name, in: "path", required: true, schema: { type: "string", format: "uuid" } }];
 const negado = { "400": resposta("UUID inválido"), "401": resposta("Sessão ou cadastro indisponível") };
 const jogo = "jogo {id, status, campeonato {id, nome, edicao, categoria}, local, fusoHorario, inicioPrevistoEm, iniciadoEm, encerradoEm, resultado, vencedorInscricaoId (separado do placar; null sem vencedor ou antes do encerramento), invalidadoEm (null se válido), interrompido}";
-const situacao = "participacaoId, numeroCamisa, escalado, credenciado, entrouEmQuadra e metricas {temp_gols, temp_cartoesAmarelos, temp_exclusoesDoisMinutos, temp_cartoesVermelhos} somente dos lançamentos válidos (null sem credenciamento)";
+const situacao = "participacaoId, numeroCamisa, escalado, credenciado, entrouEmQuadra (entrada válida, não anulada), entradaAnulada, registroAdministrativo, irregularidades (conta_desativada, carteirinha_invalidada, suspensao; MAR-83) e metricas {temp_gols, temp_cartoesAmarelos, temp_exclusoesDoisMinutos, temp_cartoesVermelhos} somente dos lançamentos válidos (null sem credenciamento)";
 
 /** Contrato das consultas de resultados e histórico esportivo (MAR-74), incluído em `GET /api/openapi.json`. */
 export const openapiHistorico = {

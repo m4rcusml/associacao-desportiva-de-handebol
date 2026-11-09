@@ -323,6 +323,10 @@ lançamento, ou lançamento recusado por participação já desfeita). A entrada
 `WHERE credenciadoEm IS NOT NULL`, então aguarda o estorno e é recusada. Encerramento (`FOR NO KEY UPDATE` do jogo)
 aguarda a correção em curso. Camisa disputada por dois atletas cai no índice único e vira 409. O trigger exige o
 registro do histórico da mesma transação para aceitar a camisa nova ou a retirada do credenciamento.
+Correções administrativas (MAR-83): registro da participação real, anulação da entrada e estorno pelo presidente
+seguem a ordem das correções de lançamentos do presidente — campeonato (`FOR SHARE`) → jogo (`FOR NO KEY UPDATE`) →
+bloqueio consultivo atleta/campeonato e conta (registro) → participação (`FOR UPDATE`) → histórico → alteração. O
+bloqueio do jogo serializa todas as correções do presidente no mesmo jogo, inclusive a transferência de lançamentos.
 Lançamentos (MAR-68): `resultados/lancamentos.ts` registra gols e penalidades pela sessão temporária, na ordem
 jogo → arbitragem → sessão (`revalidarArbitragem`) → participação (`FOR SHARE`, para o estorno da MAR-71 aguardar)
 → inserção. O identificador de operação é `LancamentoJogo.operacaoId` (UNIQUE): `INSERT ... ON CONFLICT DO NOTHING`

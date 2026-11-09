@@ -40,17 +40,17 @@ model AuthAccount {
 }
 
 model AuthSession {
-  id        String   @id
-  token     String   @unique
-  userId    String
-  user      AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime @db.Timestamptz
-  ipAddress String?
-  userAgent String?
+  id             String   @id
+  token          String   @unique
+  userId         String
+  user           AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt      DateTime @db.Timestamptz
+  ipAddress      String?
+  userAgent      String?
   /// Versão de ativação do `Usuario` lida no login; o trigger da migração `sessao_conta_ativa` recusa versão desatualizada.
   versaoAtivacao Int?
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  createdAt      DateTime @default(now()) @db.Timestamptz
+  updatedAt      DateTime @updatedAt @db.Timestamptz
 
   @@index([userId])
 }
@@ -163,6 +163,14 @@ enum TipoAlteracaoCredenciamento {
   estorno
 }
 
+/// Condição que impediria o credenciamento normal, gravada no registro administrativo da participação real (MAR-83).
+/// A suspensão é a não anulada que contou este jogo como cumprimento; conta e carteirinha, a situação no momento do registro.
+enum IrregularidadeParticipacao {
+  conta_desativada
+  carteirinha_invalidada
+  suspensao
+}
+
 /// Tipos provisórios de lançamento (RF-037, RN-035, PEN-003): prefixo temp_ até confirmação do cliente.
 enum TipoLancamento {
   temp_gol
@@ -189,50 +197,55 @@ enum TipoEventoCarteirinha {
 }
 
 model Usuario {
-  id           String      @id @default(uuid()) @db.Uuid
-  authId       String      @unique
-  nomeCompleto String
-  perfil       Perfil
-  ativo        Boolean     @default(true)
+  id             String       @id @default(uuid()) @db.Uuid
+  authId         String       @unique
+  nomeCompleto   String
+  perfil         Perfil
+  ativo          Boolean      @default(true)
   /// Incrementada a cada desativação/reativação; invalida logins iniciados antes da mudança.
-  versaoAtivacao Int       @default(0)
-  criadoEm     DateTime    @default(now()) @db.Timestamptz
-  atleta       Atleta?
-  tecnico      Tecnico?
-  presidente   Presidente?
-  arbitragens  Arbitragem[]
+  versaoAtivacao Int          @default(0)
+  criadoEm       DateTime     @default(now()) @db.Timestamptz
+  atleta         Atleta?
+  tecnico        Tecnico?
+  presidente     Presidente?
+  arbitragens    Arbitragem[]
 }
 
 model Presidente {
-  usuarioId             String         @id @db.Uuid
-  usuario               Usuario        @relation(fields: [usuarioId], references: [id])
-  criadoPorPresidenteId String?        @db.Uuid
-  criadoPor             Presidente?    @relation("sucessao", fields: [criadoPorPresidenteId], references: [usuarioId])
-  sucessores            Presidente[]   @relation("sucessao")
-  clubes                Clube[]
-  atletasVerificados    Atleta[]
-  tecnicosVerificados   Tecnico[]
-  vinculosDefinidos     VinculoClube[]
-  carteirinhasEmitidas  Carteirinha[]
-  eventosCarteirinha    EventoCarteirinha[]
-  campeonatosCriados    Campeonato[]
-  inscricoesIncluidas   InscricaoClube[]
-  jogosCriados          Jogo[]
-  arbitragensDesignadas Arbitragem[]
-  suspensoesAplicadas   Suspensao[]    @relation("aplicadaPor")
-  suspensoesRevogadas   Suspensao[]    @relation("revogadaPor")
-  alteracoesResultado   AlteracaoResultadoJogo[]
+  usuarioId                        String                    @id @db.Uuid
+  usuario                          Usuario                   @relation(fields: [usuarioId], references: [id])
+  criadoPorPresidenteId            String?                   @db.Uuid
+  criadoPor                        Presidente?               @relation("sucessao", fields: [criadoPorPresidenteId], references: [usuarioId])
+  sucessores                       Presidente[]              @relation("sucessao")
+  clubes                           Clube[]
+  atletasVerificados               Atleta[]
+  tecnicosVerificados              Tecnico[]
+  vinculosDefinidos                VinculoClube[]
+  carteirinhasEmitidas             Carteirinha[]
+  eventosCarteirinha               EventoCarteirinha[]
+  campeonatosCriados               Campeonato[]
+  inscricoesIncluidas              InscricaoClube[]
+  jogosCriados                     Jogo[]
+  arbitragensDesignadas            Arbitragem[]
+  suspensoesAplicadas              Suspensao[]               @relation("aplicadaPor")
+  suspensoesRevogadas              Suspensao[]               @relation("revogadaPor")
+  alteracoesResultado              AlteracaoResultadoJogo[]
+  entradasAnuladas                 Participacao[]            @relation("entradaAnulada")
+  participacoesRegistradas         Participacao[]            @relation("participacaoRegistrada")
+  alteracoesEntradaAnulada         AlteracaoCredenciamento[] @relation("alteracaoEntradaAnulada")
+  alteracoesParticipacaoRegistrada AlteracaoCredenciamento[] @relation("alteracaoParticipacaoRegistrada")
+  alteracoesCredenciamento         AlteracaoCredenciamento[] @relation("alteracaoPresidente")
 }
 
 model Atleta {
-  usuarioId                 String            @id @db.Uuid
-  usuario                   Usuario           @relation(fields: [usuarioId], references: [id])
+  usuarioId                 String                    @id @db.Uuid
+  usuario                   Usuario                   @relation(fields: [usuarioId], references: [id])
   fotoChave                 String?
-  statusVerificacao         StatusVerificacao @default(pendente)
-  verificacaoSolicitadaEm   DateTime?         @db.Timestamptz
-  verificadoPorPresidenteId String?           @db.Uuid
-  verificadoPor             Presidente?       @relation(fields: [verificadoPorPresidenteId], references: [usuarioId])
-  verificadoEm              DateTime?         @db.Timestamptz
+  statusVerificacao         StatusVerificacao         @default(pendente)
+  verificacaoSolicitadaEm   DateTime?                 @db.Timestamptz
+  verificadoPorPresidenteId String?                   @db.Uuid
+  verificadoPor             Presidente?               @relation(fields: [verificadoPorPresidenteId], references: [usuarioId])
+  verificadoEm              DateTime?                 @db.Timestamptz
   vinculos                  VinculoClube[]
   carteirinha               Carteirinha?
   participacoes             Participacao[]
@@ -241,42 +254,42 @@ model Atleta {
 }
 
 model Tecnico {
-  usuarioId                 String            @id @db.Uuid
-  usuario                   Usuario           @relation(fields: [usuarioId], references: [id])
-  clubeId                   String?           @unique @db.Uuid
-  clube                     Clube?            @relation(fields: [clubeId], references: [id])
-  statusVerificacao         StatusVerificacao @default(pendente)
-  verificacaoSolicitadaEm   DateTime?         @db.Timestamptz
-  verificadoPorPresidenteId String?           @db.Uuid
-  verificadoPor             Presidente?       @relation(fields: [verificadoPorPresidenteId], references: [usuarioId])
-  verificadoEm              DateTime?         @db.Timestamptz
+  usuarioId                 String               @id @db.Uuid
+  usuario                   Usuario              @relation(fields: [usuarioId], references: [id])
+  clubeId                   String?              @unique @db.Uuid
+  clube                     Clube?               @relation(fields: [clubeId], references: [id])
+  statusVerificacao         StatusVerificacao    @default(pendente)
+  verificacaoSolicitadaEm   DateTime?            @db.Timestamptz
+  verificadoPorPresidenteId String?              @db.Uuid
+  verificadoPor             Presidente?          @relation(fields: [verificadoPorPresidenteId], references: [usuarioId])
+  verificadoEm              DateTime?            @db.Timestamptz
   escolhas                  Participacao[]
   alteracoesEscalacao       AlteracaoEscalacao[]
 }
 
 model Clube {
-  id                    String         @id @default(uuid()) @db.Uuid
+  id                    String           @id @default(uuid()) @db.Uuid
   nome                  String
   cidade                String?
-  criadoPorPresidenteId String         @db.Uuid
-  criadoPor             Presidente     @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
+  criadoPorPresidenteId String           @db.Uuid
+  criadoPor             Presidente       @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
   tecnico               Tecnico?
   vinculos              VinculoClube[]
   inscricoes            InscricaoClube[]
 }
 
 model VinculoClube {
-  id                      String      @id @default(uuid()) @db.Uuid
-  atletaId                String      @db.Uuid
-  atleta                  Atleta      @relation(fields: [atletaId], references: [usuarioId])
-  clubeId                 String      @db.Uuid
-  clube                   Clube       @relation(fields: [clubeId], references: [id])
-  inicio                  DateTime    @default(now()) @db.Timestamptz
-  fim                     DateTime?   @db.Timestamptz
-  definidoPorPresidenteId String?     @db.Uuid
-  definidoPor             Presidente? @relation(fields: [definidoPorPresidenteId], references: [usuarioId])
-  participacoes           Participacao[]
-  alteracoesEscalacao     AlteracaoEscalacao[]
+  id                       String                    @id @default(uuid()) @db.Uuid
+  atletaId                 String                    @db.Uuid
+  atleta                   Atleta                    @relation(fields: [atletaId], references: [usuarioId])
+  clubeId                  String                    @db.Uuid
+  clube                    Clube                     @relation(fields: [clubeId], references: [id])
+  inicio                   DateTime                  @default(now()) @db.Timestamptz
+  fim                      DateTime?                 @db.Timestamptz
+  definidoPorPresidenteId  String?                   @db.Uuid
+  definidoPor              Presidente?               @relation(fields: [definidoPorPresidenteId], references: [usuarioId])
+  participacoes            Participacao[]
+  alteracoesEscalacao      AlteracaoEscalacao[]
   alteracoesCredenciamento AlteracaoCredenciamento[]
 
   @@index([clubeId])
@@ -286,21 +299,21 @@ model VinculoClube {
 /// Campos mínimos provisórios (PEN-008). Trigger diferido da migração `carteirinha` exige
 /// atleta aprovado ⇔ carteirinha existente. Técnico não possui carteirinha (RN-012).
 model Carteirinha {
-  id                     String            @id @default(uuid()) @db.Uuid
-  atletaId               String            @unique @db.Uuid
-  atleta                 Atleta            @relation(fields: [atletaId], references: [usuarioId])
+  id                       String                    @id @default(uuid()) @db.Uuid
+  atletaId                 String                    @unique @db.Uuid
+  atleta                   Atleta                    @relation(fields: [atletaId], references: [usuarioId])
   /// Código opaco legível para conferência manual; não concede permissões.
-  codigo                 String            @unique
+  codigo                   String                    @unique
   /// Token opaco aleatório lido do QR; identifica a carteirinha, nunca autoriza operações (RNF-004).
-  tokenQr                String            @unique
+  tokenQr                  String                    @unique
   /// Versão do QR atual: começa em 1 e só avança de um em um a cada substituição (MAR-58).
-  versaoQr               Int               @default(1)
-  status                 StatusCarteirinha @default(ativa)
-  emitidaEm              DateTime          @db.Timestamptz
-  emitidaPorPresidenteId String            @db.Uuid
-  emitidaPor             Presidente        @relation(fields: [emitidaPorPresidenteId], references: [usuarioId])
-  eventos                EventoCarteirinha[]
-  participacoes          Participacao[]
+  versaoQr                 Int                       @default(1)
+  status                   StatusCarteirinha         @default(ativa)
+  emitidaEm                DateTime                  @db.Timestamptz
+  emitidaPorPresidenteId   String                    @db.Uuid
+  emitidaPor               Presidente                @relation(fields: [emitidaPorPresidenteId], references: [usuarioId])
+  eventos                  EventoCarteirinha[]
+  participacoes            Participacao[]
   alteracoesCredenciamento AlteracaoCredenciamento[]
 }
 
@@ -342,17 +355,17 @@ model Campeonato {
 /// campeonato/clube; incluída ou retirada somente com o campeonato planejado e retirada somente
 /// sem jogos (FK de `Jogo`). Imutável após a inclusão.
 model InscricaoClube {
-  id                      String     @id @default(uuid()) @db.Uuid
-  campeonatoId            String     @db.Uuid
-  campeonato              Campeonato @relation(fields: [campeonatoId], references: [id], onDelete: Cascade)
-  clubeId                 String     @db.Uuid
-  clube                   Clube      @relation(fields: [clubeId], references: [id])
-  incluidaPorPresidenteId String     @db.Uuid
-  incluidaPor             Presidente @relation(fields: [incluidaPorPresidenteId], references: [usuarioId])
-  incluidaEm              DateTime   @default(now()) @db.Timestamptz
-  jogosComoA              Jogo[]     @relation("inscricaoA")
-  jogosComoB              Jogo[]     @relation("inscricaoB")
-  participacoes           Participacao[]
+  id                       String                    @id @default(uuid()) @db.Uuid
+  campeonatoId             String                    @db.Uuid
+  campeonato               Campeonato                @relation(fields: [campeonatoId], references: [id], onDelete: Cascade)
+  clubeId                  String                    @db.Uuid
+  clube                    Clube                     @relation(fields: [clubeId], references: [id])
+  incluidaPorPresidenteId  String                    @db.Uuid
+  incluidaPor              Presidente                @relation(fields: [incluidaPorPresidenteId], references: [usuarioId])
+  incluidaEm               DateTime                  @default(now()) @db.Timestamptz
+  jogosComoA               Jogo[]                    @relation("inscricaoA")
+  jogosComoB               Jogo[]                    @relation("inscricaoB")
+  participacoes            Participacao[]
   alteracoesCredenciamento AlteracaoCredenciamento[]
 
   @@unique([campeonatoId, clubeId])
@@ -371,36 +384,36 @@ model InscricaoClube {
 /// interrupção temporária não muda o status (`InterrupcaoJogo`). Após o encerramento, só o presidente corrige o
 /// resultado ou invalida (`invalidadoEm`), com histórico em `AlteracaoResultadoJogo` (trigger da migração `jogos_excepcionais`).
 model Jogo {
-  id                    String         @id @default(uuid()) @db.Uuid
-  campeonatoId          String         @db.Uuid
-  campeonato            Campeonato     @relation(fields: [campeonatoId], references: [id])
-  inscricaoClubeAId     String         @db.Uuid
-  inscricaoClubeA       InscricaoClube @relation("inscricaoA", fields: [inscricaoClubeAId, campeonatoId], references: [id, campeonatoId], onDelete: Restrict, onUpdate: Restrict)
-  inscricaoClubeBId     String         @db.Uuid
-  inscricaoClubeB       InscricaoClube @relation("inscricaoB", fields: [inscricaoClubeBId, campeonatoId], references: [id, campeonatoId], onDelete: Restrict, onUpdate: Restrict)
-  fusoHorario           String
-  local                 String?
-  inicioPrevistoEm      DateTime?      @db.Timestamptz
-  iniciadoEm            DateTime?      @db.Timestamptz
-  encerradoEm           DateTime?      @db.Timestamptz
-  status                StatusJogo     @default(agendado)
-  resultado             ResultadoJogo?
+  id                       String                    @id @default(uuid()) @db.Uuid
+  campeonatoId             String                    @db.Uuid
+  campeonato               Campeonato                @relation(fields: [campeonatoId], references: [id])
+  inscricaoClubeAId        String                    @db.Uuid
+  inscricaoClubeA          InscricaoClube            @relation("inscricaoA", fields: [inscricaoClubeAId, campeonatoId], references: [id, campeonatoId], onDelete: Restrict, onUpdate: Restrict)
+  inscricaoClubeBId        String                    @db.Uuid
+  inscricaoClubeB          InscricaoClube            @relation("inscricaoB", fields: [inscricaoClubeBId, campeonatoId], references: [id, campeonatoId], onDelete: Restrict, onUpdate: Restrict)
+  fusoHorario              String
+  local                    String?
+  inicioPrevistoEm         DateTime?                 @db.Timestamptz
+  iniciadoEm               DateTime?                 @db.Timestamptz
+  encerradoEm              DateTime?                 @db.Timestamptz
+  status                   StatusJogo                @default(agendado)
+  resultado                ResultadoJogo?
   /// Inscrição vencedora (A ou B, CHECK); sem FK própria, pois as inscrições do jogo já têm FK composta.
-  inscricaoClubeVencedorId String?     @db.Uuid
-  invalidadoEm          DateTime?      @db.Timestamptz
-  criadoPorPresidenteId String         @db.Uuid
-  criadoPor             Presidente     @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
-  interrupcoes          InterrupcaoJogo[]
-  alteracoesResultado   AlteracaoResultadoJogo[]
-  arbitragens           Arbitragem[]
-  acessoArbitragem      AcessoArbitragem?
-  participacoes         Participacao[]
-  alteracoesEscalacao   AlteracaoEscalacao[]
-  cumprimentosSuspensao CumprimentoSuspensao[]
-  suspensoesOriginadas  Suspensao[]
-  lancamentos           LancamentoJogo[]
+  inscricaoClubeVencedorId String?                   @db.Uuid
+  invalidadoEm             DateTime?                 @db.Timestamptz
+  criadoPorPresidenteId    String                    @db.Uuid
+  criadoPor                Presidente                @relation(fields: [criadoPorPresidenteId], references: [usuarioId])
+  interrupcoes             InterrupcaoJogo[]
+  alteracoesResultado      AlteracaoResultadoJogo[]
+  arbitragens              Arbitragem[]
+  acessoArbitragem         AcessoArbitragem?
+  participacoes            Participacao[]
+  alteracoesEscalacao      AlteracaoEscalacao[]
+  cumprimentosSuspensao    CumprimentoSuspensao[]
+  suspensoesOriginadas     Suspensao[]
+  lancamentos              LancamentoJogo[]
   alteracoesCredenciamento AlteracaoCredenciamento[]
-  eventos               EventoJogo[]
+  eventos                  EventoJogo[]
 
   @@index([campeonatoId, status])
   @@index([inscricaoClubeAId, campeonatoId])
@@ -445,19 +458,19 @@ model AlteracaoResultadoJogo {
 /// Designação não é sessão: acesso, senha e `SessaoArbitragem` vêm na MAR-65, que revalida o impedimento
 /// de clube (RN-025). Triggers da migração `jogos_arbitragem` limitam mudanças ao jogo agendado/em andamento.
 model Arbitragem {
-  id                       String      @id @default(uuid()) @db.Uuid
-  jogoId                   String      @db.Uuid
-  jogo                     Jogo        @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
-  usuarioId                String?     @db.Uuid
-  usuario                  Usuario?    @relation(fields: [usuarioId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id                       String                  @id @default(uuid()) @db.Uuid
+  jogoId                   String                  @db.Uuid
+  jogo                     Jogo                    @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  usuarioId                String?                 @db.Uuid
+  usuario                  Usuario?                @relation(fields: [usuarioId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   nomeCompleto             String?
-  designadoPorPresidenteId String?     @db.Uuid
-  designadoPor             Presidente? @relation(fields: [designadoPorPresidenteId], references: [usuarioId], onDelete: Restrict)
-  designadoEm              DateTime?   @db.Timestamptz
+  designadoPorPresidenteId String?                 @db.Uuid
+  designadoPor             Presidente?             @relation(fields: [designadoPorPresidenteId], references: [usuarioId], onDelete: Restrict)
+  designadoEm              DateTime?               @db.Timestamptz
   /// Tela escolhida (RF-028/RN-029): muda só a apresentação, nunca as permissões.
   visualizacao             VisualizacaoArbitragem?
   /// Primeira entrada aceita para esta arbitragem (MAR-65).
-  acessouEm                DateTime?   @db.Timestamptz
+  acessouEm                DateTime?               @db.Timestamptz
   sessoes                  SessaoArbitragem[]
 
   @@unique([jogoId, usuarioId])
@@ -471,31 +484,43 @@ model Arbitragem {
 /// credenciamento pela arbitragem (carteirinha, data e camisa juntos, definitivos até a MAR-71) e a entrada em quadra
 /// (uma vez, com o jogo em andamento). Triggers das migrações `escalacao` e `credenciamento` repetem as regras.
 model Participacao {
-  id                    String         @id @default(uuid()) @db.Uuid
-  jogoId                String         @db.Uuid
-  jogo                  Jogo           @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  id                            String                       @id @default(uuid()) @db.Uuid
+  jogoId                        String                       @db.Uuid
+  jogo                          Jogo                         @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   /// Clube do atleta no jogo: inscrição de um dos dois clubes, do mesmo clube do vínculo.
-  inscricaoClubeId      String         @db.Uuid
-  inscricaoClube        InscricaoClube @relation(fields: [inscricaoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  vinculoClubeId        String         @db.Uuid
-  vinculoClube          VinculoClube   @relation(fields: [vinculoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  inscricaoClubeId              String                       @db.Uuid
+  inscricaoClube                InscricaoClube               @relation(fields: [inscricaoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  vinculoClubeId                String                       @db.Uuid
+  vinculoClube                  VinculoClube                 @relation(fields: [vinculoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   /// Cópia do atleta do vínculo (conferida pelo trigger) para a unicidade de credenciamento por jogo.
-  atletaId              String         @db.Uuid
-  atleta                Atleta         @relation(fields: [atletaId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  escolhidaPorTecnicoId String?        @db.Uuid
-  escolhidaPorTecnico   Tecnico?       @relation(fields: [escolhidaPorTecnicoId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  escolhidaEm           DateTime?      @db.Timestamptz
-  carteirinhaId         String?        @db.Uuid
-  carteirinha           Carteirinha?   @relation(fields: [carteirinhaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  credenciadoEm         DateTime?      @db.Timestamptz
-  numeroCamisa          Int?
-  entrouEmQuadraEm      DateTime?      @db.Timestamptz
-  lancamentos           LancamentoJogo[]
+  atletaId                      String                       @db.Uuid
+  atleta                        Atleta                       @relation(fields: [atletaId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  escolhidaPorTecnicoId         String?                      @db.Uuid
+  escolhidaPorTecnico           Tecnico?                     @relation(fields: [escolhidaPorTecnicoId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  escolhidaEm                   DateTime?                    @db.Timestamptz
+  carteirinhaId                 String?                      @db.Uuid
+  carteirinha                   Carteirinha?                 @relation(fields: [carteirinhaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  credenciadoEm                 DateTime?                    @db.Timestamptz
+  numeroCamisa                  Int?
+  entrouEmQuadraEm              DateTime?                    @db.Timestamptz
+  /// Anulação da entrada registrada por engano, somente pelo presidente após o encerramento (MAR-83); o horário original permanece.
+  entradaAnuladaEm              DateTime?                    @db.Timestamptz
+  entradaAnuladaPorPresidenteId String?                      @db.Uuid
+  entradaAnuladaPor             Presidente?                  @relation("entradaAnulada", fields: [entradaAnuladaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  /// Registro administrativo da participação real após o encerramento (MAR-83), com as irregularidades encontradas.
+  registradaPorPresidenteId     String?                      @db.Uuid
+  registradaPor                 Presidente?                  @relation("participacaoRegistrada", fields: [registradaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  irregularidades               IrregularidadeParticipacao[] @default([])
+  /// Estorno administrativo (MAR-83): a participação sem etapas é preservada pelos lançamentos anulados ou transferidos.
+  credenciamentoDesfeitoEm      DateTime?                    @db.Timestamptz
+  lancamentos                   LancamentoJogo[]
 
   @@unique([jogoId, vinculoClubeId])
   @@unique([jogoId, inscricaoClubeId, numeroCamisa])
   @@index([vinculoClubeId])
   @@index([atletaId])
+  @@index([entradaAnuladaPorPresidenteId])
+  @@index([registradaPorPresidenteId])
 }
 
 /// Histórico somente de inclusão das alterações da escalação (MAR-64): quem incluiu ou retirou cada
@@ -521,28 +546,40 @@ model AlteracaoEscalacao {
 /// correção, `numeroCamisaNova` é a camisa gravada; no estorno, fica vazia. Sem autoria, como as anulações de
 /// lançamentos (RN-030, PEN-007). O trigger de `Participacao` só aceita a alteração com este registro na mesma transação.
 model AlteracaoCredenciamento {
-  id                   String                      @id @default(uuid()) @db.Uuid
-  jogoId               String                      @db.Uuid
-  jogo                 Jogo                        @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
-  inscricaoClubeId     String                      @db.Uuid
-  inscricaoClube       InscricaoClube              @relation(fields: [inscricaoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  vinculoClubeId       String                      @db.Uuid
-  vinculoClube         VinculoClube                @relation(fields: [vinculoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  atletaId             String                      @db.Uuid
-  atleta               Atleta                      @relation(fields: [atletaId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  carteirinhaId        String                      @db.Uuid
-  carteirinha          Carteirinha                 @relation(fields: [carteirinhaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  credenciadoEm        DateTime                    @db.Timestamptz
-  tipo                 TipoAlteracaoCredenciamento
-  numeroCamisaAnterior Int
-  numeroCamisaNova     Int?
-  registradaEm         DateTime                    @db.Timestamptz
+  id                            String                       @id @default(uuid()) @db.Uuid
+  jogoId                        String                       @db.Uuid
+  jogo                          Jogo                         @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  inscricaoClubeId              String                       @db.Uuid
+  inscricaoClube                InscricaoClube               @relation(fields: [inscricaoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  vinculoClubeId                String                       @db.Uuid
+  vinculoClube                  VinculoClube                 @relation(fields: [vinculoClubeId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  atletaId                      String                       @db.Uuid
+  atleta                        Atleta                       @relation(fields: [atletaId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  carteirinhaId                 String                       @db.Uuid
+  carteirinha                   Carteirinha                  @relation(fields: [carteirinhaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  credenciadoEm                 DateTime                     @db.Timestamptz
+  tipo                          TipoAlteracaoCredenciamento
+  numeroCamisaAnterior          Int
+  numeroCamisaNova              Int?
+  registradaEm                  DateTime                     @db.Timestamptz
+  /// Cópias do credenciamento vigente (MAR-83): entrada, anulação e registro administrativo.
+  entrouEmQuadraEm              DateTime?                    @db.Timestamptz
+  entradaAnuladaEm              DateTime?                    @db.Timestamptz
+  entradaAnuladaPorPresidenteId String?                      @db.Uuid
+  entradaAnuladaPor             Presidente?                  @relation("alteracaoEntradaAnulada", fields: [entradaAnuladaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  registradaPorPresidenteId     String?                      @db.Uuid
+  registradaPor                 Presidente?                  @relation("alteracaoParticipacaoRegistrada", fields: [registradaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  irregularidades               IrregularidadeParticipacao[] @default([])
+  /// Presidente que fez a alteração (MAR-83); null quando foi a arbitragem ou em registros anteriores.
+  presidenteId                  String?                      @db.Uuid
+  presidente                    Presidente?                  @relation("alteracaoPresidente", fields: [presidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([jogoId, registradaEm])
   @@index([atletaId])
   @@index([vinculoClubeId])
   @@index([inscricaoClubeId])
   @@index([carteirinhaId])
+  @@index([presidenteId])
 }
 
 /// Senha compartilhada do jogo (RN-028, MAR-65): hash para verificar a entrada e cópia cifrada (AES-256-GCM,
@@ -629,20 +666,20 @@ model CumprimentoSuspensao {
 /// nunca é apagado (MAR-70): a anulação é lógica (`anuladoEm`) e a correção anula o original e cria o substituto
 /// (`substituiLancamentoId`) na mesma transação; as projeções ignoram os anulados.
 model LancamentoJogo {
-  id             String         @id @default(uuid()) @db.Uuid
-  operacaoId     String         @unique @db.Uuid
-  jogoId         String         @db.Uuid
-  jogo           Jogo           @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  id                    String          @id @default(uuid()) @db.Uuid
+  operacaoId            String          @unique @db.Uuid
+  jogoId                String          @db.Uuid
+  jogo                  Jogo            @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   /// Obrigatória para todos os tipos atuais (CHECK); ausente só em futura ocorrência geral do jogo.
-  participacaoId String?        @db.Uuid
-  participacao   Participacao?  @relation(fields: [participacaoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
-  tipo           TipoLancamento
+  participacaoId        String?         @db.Uuid
+  participacao          Participacao?   @relation(fields: [participacaoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  tipo                  TipoLancamento
   /// Inteiro positivo, 1 por ocorrência (RF-037).
-  valor          Int            @default(1)
+  valor                 Int             @default(1)
   /// Somente no vermelho, obrigatório (CHECK): desqualificação com relatório disciplinar, sinalizada pelo azul (MAR-79,
   /// seção 12). Não é segunda infração; muda apenas por correção.
-  relatorioDisciplinar Boolean?
-  registradoEm   DateTime       @db.Timestamptz
+  relatorioDisciplinar  Boolean?
+  registradoEm          DateTime        @db.Timestamptz
   /// Lançamento anulado por esta correção (MAR-70); cada um é substituído no máximo uma vez.
   substituiLancamentoId String?         @unique @db.Uuid
   substitui             LancamentoJogo? @relation("CorrecaoLancamento", fields: [substituiLancamentoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
