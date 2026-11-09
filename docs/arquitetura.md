@@ -378,7 +378,33 @@ Não há Redis nem serviço de e-mail nesta entrega.
 Fotos opcionais JPEG/PNG/WebP de até 5 MB; validar conteúdo e tamanho no backend.
 Armazenamento privado, com consulta autorizada pelo backend ou URL assinada de curta duração.
 Permissões em [requisitos, seção 11](requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026);
-QR não dá acesso público. Integração com Storage e políticas ainda não implementadas.
+QR não dá acesso público.
+
+Implementação da MAR-75 (09/11/2026), validada localmente:
+
+- O backend é o único cliente do Storage: bucket privado, chave secreta somente no servidor e API REST
+  do Supabase por `fetch`, sem SDK adicional. Não há URL pública nem assinada; toda leitura passa pela
+  API, que revalida a permissão. Sem as variáveis do Supabase, um diretório local (`FOTOS_DIRETORIO`)
+  serve ao desenvolvimento e aos testes, nunca em produção; sem nenhuma configuração, as rotas de fotos respondem 503.
+- Envio como corpo binário com `Content-Type` da imagem; 5 MB contados como 5 × 1024 × 1024 bytes. O formato é
+  conferido pelo decoder Sharp 0.35.5 e deve coincidir com o `Content-Type`. Depois de identificar JPEG/PNG/WebP,
+  o backend decodifica todos os pixels (incluindo quadros de WebP animado) com `failOn: "warning"`, antes de enviar
+  ao Storage. Só ler metadados não valida os pixels; `stats()` percorre os pixels sem criar um buffer JavaScript
+  com toda a imagem descomprimida, mantendo os limites nativos do decoder. Avisos também recusam o arquivo, inclusive
+  JPEG com segmento de pixels incompleto. Como o libvips compartilha cache e fila de avisos, o cache fica desativado e
+  somente a validação é serializada no processo: uma imagem não consome o aviso de outra nem reutiliza pixels corrompidos.
+  O arquivo armazenado é o buffer original, sem reprocessamento: metadados embutidos (por exemplo, EXIF
+  com localização) são preservados. Assinatura falsa, conteúdo truncado ou pixels corrompidos respondem 415 e
+  preservam a foto anterior.
+- Cada envio grava um objeto novo (`atletas/<atletaId>/<uuid>.<ext>`, sem sobrescrita) antes da transação que
+  troca `Atleta.fotoChave` com a linha bloqueada. Falha no envio ou na transação preserva a foto atual, e o
+  objeto novo é removido se o banco confirmadamente não o referencia. O anterior é removido após o commit; se
+  essa remoção falhar, resta um órfão, nunca uma referência inválida. A limpeza de órfãos está no README.
+- A prova hospedada (bucket privado, políticas, chave secreta e limites gratuitos) fica na MAR-76.
+
+Referências da validação de imagens: [Sharp 0.35.5](https://sharp.pixelplumbing.com/changelog/v0.35.5/),
+[metadados](https://sharp.pixelplumbing.com/api-input/), [saída dos pixels](https://sharp.pixelplumbing.com/api-output/) e
+[tratamento de conteúdo inválido](https://sharp.pixelplumbing.com/api-constructor/).
 
 ## Desenvolvimento e banco
 
@@ -422,6 +448,7 @@ QR não dá acesso público. Integração com Storage e políticas ainda não im
 | @nestjs/throttler | 6.7.1 | Pacote oficial Nest; peers aceitam Nest 12; limite de `/api/cadastros`. |
 | Socket.IO / socket.io-client | 4.8.4 | Servidor montado no HTTP do Nest, sem `@nestjs/websockets`; o cliente só nos testes do backend (MAR-73). |
 | pg / @types/pg | 8.23.1 | Já trazido pelo adaptador Prisma; dependência direta para a conexão `LISTEN` das notificações. |
+| Sharp | 0.35.5 | Decoder de JPEG/PNG/WebP para validar fotos antes do Storage; Node >= 20.9.0, binários nativos via dependências opcionais do npm. |
 
 TypeScript 7 e ESLint 10 não foram selecionados por incompatibilidade com as ferramentas
 consultadas. O registro npm sinaliza ESLint 9 como descontinuado; ele foi mantido apenas por
