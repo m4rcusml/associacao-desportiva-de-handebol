@@ -225,7 +225,7 @@ administrativas não geram linhas adicionais.
 | `LancamentoJogo`       | `PK` `id`; `UNIQUE` `operacaoId`; `FK` `substituiLancamentoId` para o lançamento corrigido; `UNIQUE` `substituiLancamentoId` e `anulacaoOperacaoId` quando preenchidos | `participacaoId` somente em ocorrência geral do jogo; `substituiLancamentoId`; `anuladoEm` e `anulacaoOperacaoId` (juntos) |
 | `EstatisticasDoJogo`   | `PK`/`FK` `jogoId`; projeção calculada                                                                                     | Registro ausente antes de iniciar o jogo                                                                                         |
 | `DesempenhoDoAtleta`   | `PK`/`FK` `participacaoId`; projeção calculada                                                                             | Registro ausente antes do credenciamento                                                                                         |
-| `RegraSuspensao`       | `PK` `id`                                                                                                                  | Nenhum; permanece inativa sem confirmação dos critérios                                                                          |
+| `RegraSuspensao`       | `PK` `id`                                                                                                                  | Nenhum; implementação pendente na MAR-79, com critérios aprovados em requisitos, seção 12                                                                          |
 | `Suspensao`            | `PK` `id`; `origem` manual ou automatica                                                                                   | `jogoOrigemId` na `origem` manual; `regraSuspensaoId` na `origem` manual; `aplicadaPorPresidenteId` na automática; `revogadaEm`/`revogadaPorPresidenteId`; `saldoEncerradoEm` |
 | `CumprimentoSuspensao` | `PK` composta `suspensaoId` + `jogoId`                                                                                     | Nenhum                                                                                                                           |
 
@@ -364,16 +364,20 @@ incluir lançamentos novos (MAR-70). Uma correção anula o lançamento anterior
 `substituiLancamentoId`, na mesma transação, mudando tipo e/ou atleta credenciado; `valor` continua 1. Uma
 exclusão lógica apenas anula. Não apagar o registro anterior. Isso é rastreabilidade mínima da
 correção, não auditoria completa de autores e alterações. Corrigir penalidades exigirá reconciliar
-suspensões automáticas e cumprimentos afetados, sem duplicação, quando os critérios forem aprovados (MAR-79);
-hoje o cumprimento depende só do encerramento e não é refeito pela correção.
+suspensões automáticas e cumprimentos afetados, sem duplicação, conforme critérios aprovados em
+requisitos, seção 12 (implementação na MAR-79); hoje o cumprimento depende só do encerramento e não é refeito pela correção.
 
 ## Suspensões
 
 Suspensão manual exige presidente, `motivo`, campeonato e `quantidadeJogos` positiva. A
 automática exige `jogoOrigemId` e `regraSuspensaoId`; só se aplica após encerramento do jogo de
 `origem`. `RegraSuspensao` prevê `tipoPenalidade`, `quantidadePenalidades` e `quantidadeJogos`;
-todos os critérios e o alcance da contagem ainda dependem do cliente. Não preencher regras fictícias
-nem ativá-las. Garantir idempotência da geração automática por atleta + `jogoOrigemId` +
+os critérios foram aprovados por Marcus na MAR-78 (requisitos, seção 12). A implementação na
+MAR-79 deve gerar um jogo por desqualificação com relatório disciplinar/azul, sem acumulação
+entre partidas ou progressão automática. O registro deve distinguir desqualificação com e sem
+relatório e associar o relatório inequivocamente à ocorrência; o atual `temp_cartaoVermelho`
+não basta para decidir. A representação persistida/API será implementada na MAR-79; esta aprovação
+não cria tabelas, campos ou regras ativas. Garantir idempotência da geração automática por atleta + `jogoOrigemId` +
 `regraSuspensaoId`.
 
 Suspensão só impede jogos daquele campeonato, até cumprir a quantidade. Cada jogo encerrado
@@ -396,7 +400,7 @@ de revogação e de jogos cumpridos. Redução parcial e justificativa obrigató
 
 ## Pendências que não bloqueiam esta versão documental
 
-- Validar métricas `temp_` e critérios de punição automática com cliente.
+- Validar métricas `temp_` com cliente. Critérios automáticos aprovados em requisitos, seção 12; implementação e validação na MAR-79.
 - Auditoria completa: autoria, valores anteriores/novos e justificativas de alterações.
 - Redução parcial de suspensão, justificativa obrigatória e procedimento de correção de
   credenciamento com entrada/lançamentos. Revogação, paralelismo e recálculo sem compensação
