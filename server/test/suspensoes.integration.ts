@@ -288,6 +288,49 @@ test("revogação preserva aplicação e cumprimentos e é definitiva", async ()
   assert.equal((await revogar(await campeonatoCom([a, b], false), cumprida.id)).status, 404);
 });
 
+test("revogação aguarda o último cumprimento e recusa suspensão já cumprida", async () => {
+  const { a, b, ana, campeonato } = await cenario();
+  const suspensao = await suspender(campeonato, ana.id);
+  const jogo = await agendar(campeonato, a, b);
+  let liberar!: () => void;
+  let informarPid!: (pid: number) => void;
+  const liberacao = new Promise<void>(resolve => { liberar = resolve; });
+  const cumprimentoRegistrado = new Promise<number>(resolve => { informarPid = resolve; });
+  const encerramento = prisma.$transaction(async tx => {
+    const [{ pid }] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+    await tx.jogo.update({ where: { id: jogo }, data: { status: "finalizado", iniciadoEm: new Date(), encerradoEm: new Date() } });
+    assert.deepEqual(await registrarCumprimentos(tx, jogo), [suspensao.id]);
+    informarPid(pid);
+    await liberacao;
+  }, { timeout: 10_000 });
+
+  const pid = await Promise.race([cumprimentoRegistrado, encerramento.then(() => { throw new Error("Encerramento sem barreira"); })]);
+  const resposta = revogar(campeonato, suspensao.id);
+  try {
+    // Só confirma o cumprimento depois que a revogação estiver esperando pelo bloqueio real no banco.
+    const limite = Date.now() + 3_000;
+    while (true) {
+      const [{ esperando }] = await prisma.$queryRaw<{ esperando: boolean }[]>`
+        SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE ${pid} = ANY(pg_blocking_pids(pid))) AS esperando`;
+      if (esperando) break;
+      assert.ok(Date.now() < limite, "Revogação deve aguardar o cumprimento em andamento");
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+  } finally {
+    liberar();
+    await encerramento;
+  }
+  assert.equal((await resposta).status, 409);
+  const final = await consultar(campeonato, suspensao.id);
+  assert.deepEqual([final.situacao, final.jogosCumpridos, final.revogadaEm], ["cumprida", 1, null]);
+});
+
+test("quantidade positiva acima de 100 jogos é aceita pela API e pelo banco", async () => {
+  const { ana, campeonato } = await cenario();
+  const suspensao = await suspender(campeonato, ana.id, 101);
+  assert.deepEqual([suspensao.quantidadeJogos, suspensao.jogosRestantes], [101, 101]);
+});
+
 test("encerrar ou cancelar o campeonato encerra o saldo, distinto de cumprimento e revogação, sem transportar", async () => {
   for (const transicao of ["encerrar", "cancelar"] as const) {
     const { a, b, ana, bia, campeonato } = await cenario();

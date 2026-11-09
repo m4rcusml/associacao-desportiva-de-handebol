@@ -186,7 +186,7 @@ cancelar o campeonato revoga os acessos dos jogos cancelados.
 #### Suspensões manuais (MAR-66)
 
 O presidente suspende atleta aprovado (conta ativa ou desativada) em campeonato planejado ou em andamento:
-`POST /api/campeonatos/{campeonatoId}/suspensoes` (`atletaId`, `quantidadeJogos` de 1 a 100 e `motivo`),
+`POST /api/campeonatos/{campeonatoId}/suspensoes` (`atletaId`, `quantidadeJogos` inteira positiva e `motivo`),
 registrando quem aplicou e quando. Suspensões simultâneas do mesmo atleta coexistem e são cumpridas em
 paralelo. `GET` na mesma rota (filtro opcional `atletaId`) mostra a situação (`vigente`, `cumprida`,
 `revogada` ou `saldo_encerrado`), jogos cumpridos e restantes; o saldo é derivado dos cumprimentos.
@@ -483,6 +483,12 @@ recusada para cumprida; encerrar e cancelar o campeonato encerrando só o saldo 
 transportar; escalação sinalizando a suspensão sem impedir a escolha; dados da aplicação, exclusão e
 cumprimentos imutáveis no banco. Uma migração nova; nenhuma dependência nova. Não validado: chamada real
 no encerramento do jogo (MAR-69) e bloqueio no credenciamento (MAR-67), que usarão as funções exportadas.
+
+Após revisão da MAR-66: lint, tipos/build e **109 testes de integração aprovados**. Dois testes novos
+reproduziram as falhas antes da correção e passaram depois: revogação aguardando o último cumprimento
+retorna 409 e mantém a suspensão cumprida; aplicação de 101 jogos é aceita pela API e pelo banco.
+Revogação consulta o saldo depois de obter o bloqueio. A migração adicional remove o teto de 100 jogos
+sem modificar a migração já aplicada; permanece o intervalo técnico do `INTEGER` do PostgreSQL.
 
 ## Caminho feliz
 

@@ -32,7 +32,7 @@ export class SuspensoesController {
   @Post()
   aplicar(@AtorAtual() ator: Ator, @Param("campeonatoId", uuidPipe) campeonatoId: string, @Body() body: unknown) {
     const parsed = novaSuspensaoSchema.safeParse(body);
-    if (!parsed.success) throw new BadRequestException("Dados inválidos. Informe atletaId (UUID), quantidadeJogos (inteiro de 1 a 100) e motivo (1 a 500 caracteres); campos adicionais não são permitidos.");
+    if (!parsed.success) throw new BadRequestException("Dados inválidos. Informe atletaId (UUID), quantidadeJogos (inteiro positivo) e motivo (1 a 500 caracteres); campos adicionais não são permitidos.");
     return this.emTransacao(ator, (tx, presidenteId) => aplicarSuspensao(tx, campeonatoId.toLowerCase(), presidenteId, parsed.data));
   }
 

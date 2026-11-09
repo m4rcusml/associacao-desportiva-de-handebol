@@ -253,7 +253,8 @@ permitida em `app.ts`; e-mail e senha só mudarão com contrato aprovado.
 Suspensões (MAR-66): `modules/suspensoes` expõe ao presidente aplicação, consulta e revogação. O saldo não
 é armazenado: é `quantidadeJogos` menos os registros de `CumprimentoSuspensao`. Aplicar bloqueia o
 campeonato (`FOR SHARE`: encerramento concorrente aguarda) e a conta do atleta (`FOR UPDATE`), e só então
-lê `aplicadaEm`; revogar bloqueia a suspensão (`FOR UPDATE`). `registrarCumprimentos(tx, jogoId)` é o ponto
+lê `aplicadaEm`; revogar bloqueia a suspensão (`FOR UPDATE`) e consulta o saldo em uma instrução posterior,
+para enxergar cumprimentos confirmados durante a espera pelo bloqueio. `registrarCumprimentos(tx, jogoId)` é o ponto
 de integração do encerramento do jogo (MAR-69/MAR-72): na mesma transação, bloqueia o jogo (`FOR SHARE`),
 as contas de todos os atletas com vínculo nos dois clubes (`FOR SHARE`, por id) e as suspensões vigentes do
 campeonato (`FOR UPDATE`, por id), e insere com `ON CONFLICT DO NOTHING`, o que o torna idempotente mesmo em

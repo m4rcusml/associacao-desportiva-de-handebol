@@ -124,8 +124,8 @@ válida com o jogo agendado ou em andamento (`FOR SHARE` de `Jogo`); identifica�
 imutáveis; revogação é definitiva. Em `AcessoArbitragem`, o jogo é imutável, hash/cópia/data mudam juntos e o
 acesso revogado não volta. Retirar a designação exclui suas sessões em cascata, na mesma transação; registros
 de entrada por senha não são retirados um a um.
-A migração `suspensoes` (MAR-66) cria `Suspensao` manual (`atletaId`, `campeonatoId`, `quantidadeJogos` de 1 a
-100, `motivo`, `aplicadaPorPresidenteId`, `aplicadaEm`, `revogadaEm`/`revogadaPorPresidenteId` juntos e
+A migração `suspensoes` (MAR-66) cria `Suspensao` manual (`atletaId`, `campeonatoId`, `quantidadeJogos`
+inteira positiva, `motivo`, `aplicadaPorPresidenteId`, `aplicadaEm`, `revogadaEm`/`revogadaPorPresidenteId` juntos e
 `saldoEncerradoEm`, com revogação e término do saldo mutuamente exclusivos) e `CumprimentoSuspensao`
 (`PK` `suspensaoId` + `jogoId`, `registradoEm`). `origem`, `jogoOrigemId`, `regraSuspensaoId` e
 `RegraSuspensao` ficam para a MAR-79. Triggers: a suspensão nasce vigente, com atleta aprovado e campeonato
@@ -135,6 +135,8 @@ cumprimento bloqueia a suspensão (`FOR UPDATE`) e exige suspensão vigente com 
 campeonato encerrado depois da aplicação, vínculo do atleta com um dos clubes do jogo no encerramento e
 ausência de credenciamento do atleta nesse jogo anterior à aplicação; é somente de inclusão (exclusão só na
 cascata do jogo ou da suspensão).
+A migração `suspensao_quantidade_positiva` remove o teto inicial de 100 jogos, sem alterar a migração já
+aplicada. A API aceita inteiros positivos no intervalo do tipo `INTEGER` do PostgreSQL.
 
 ## Convenções e implementação da herança
 

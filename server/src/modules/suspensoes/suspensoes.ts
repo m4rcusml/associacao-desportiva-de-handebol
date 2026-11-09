@@ -7,7 +7,7 @@ const uuid = z.uuid().transform(id => id.toLowerCase());
 /** Suspensão manual (RF-038): quantidade positiva de jogos e motivo. Sem redução parcial (PEN-009). */
 export const novaSuspensaoSchema = z.strictObject({
   atletaId: uuid,
-  quantidadeJogos: z.int().min(1).max(100),
+  quantidadeJogos: z.int32().positive(),
   motivo: z.string().trim().min(1).max(500),
 });
 
@@ -104,11 +104,13 @@ export async function aplicarSuspensao(tx: Tx, campeonatoId: string, presidenteI
  * encerrado não é revogada.
  */
 export async function revogarSuspensao(tx: Tx, campeonatoId: string, suspensaoId: string, presidenteId: string) {
+  await tx.$queryRaw`
+    SELECT id FROM "Suspensao" WHERE id = ${suspensaoId}::uuid AND "campeonatoId" = ${campeonatoId}::uuid FOR UPDATE`;
+  // Uma instrução nova enxerga o último cumprimento confirmado enquanto o bloqueio era aguardado.
   const [linha] = await tx.$queryRaw<{ revogada: boolean; encerrada: boolean; cumprida: boolean }[]>`
     SELECT s."revogadaEm" IS NOT NULL AS revogada, s."saldoEncerradoEm" IS NOT NULL AS encerrada,
       (SELECT count(*) FROM "CumprimentoSuspensao" c WHERE c."suspensaoId" = s.id) >= s."quantidadeJogos" AS cumprida
-    FROM "Suspensao" s WHERE s.id = ${suspensaoId}::uuid AND s."campeonatoId" = ${campeonatoId}::uuid
-    FOR UPDATE OF s`;
+    FROM "Suspensao" s WHERE s.id = ${suspensaoId}::uuid AND s."campeonatoId" = ${campeonatoId}::uuid`;
   if (!linha) throw new NotFoundException("Suspensão não encontrada neste campeonato");
   if (linha.revogada) return { suspensao: await detalharSuspensao(tx, campeonatoId, suspensaoId), alterado: false };
   if (linha.encerrada) throw new ConflictException("O saldo desta suspensão já foi encerrado com o campeonato.");
