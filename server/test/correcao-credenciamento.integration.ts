@@ -370,12 +370,14 @@ test("camisa disputada e correção contra estorno simultâneos: a primeira oper
   assert.equal(Object.values(atuais).filter(n => n === 20).length, 1);
 
   const camisaAna = atuais.Ana;
+  assert.ok(camisaAna !== null, "Ana continua credenciada após a disputa de camisa");
   const respostas = await Promise.all([corrigir(jogo, arbitro, ana.id, camisaAna, 21), estornar(jogo, outroDispositivo, ana.id, camisaAna)]);
   assert.deepEqual(respostas.map(r => r.status).sort(), [200, 409]);
   const historicoAna = (await historico(jogo)).filter(r => r.atletaId === ana.id && r.numeroCamisaAnterior === camisaAna);
   assert.equal(historicoAna.length, 1, "somente a operação vencedora registrou");
   // Mesma correção em paralelo: uma grava, as demais são reenvio.
   const camisaCarla = (await camisas(jogo)).Carla;
+  assert.ok(camisaCarla !== null, "Carla continua credenciada após a disputa de camisa");
   const repetidas = await Promise.all(Array.from({ length: 4 }, (_, i) => corrigir(jogo, i % 2 ? arbitro : outroDispositivo, carla.id, camisaCarla, 40)));
   const corpos = await Promise.all(repetidas.map(async r => { assert.equal(r.status, 200); return r.json() as Promise<Correcao>; }));
   assert.deepEqual(corpos.map(c => c.alterado).sort(), [false, false, false, true]);
