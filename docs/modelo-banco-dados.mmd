@@ -212,7 +212,9 @@ classDiagram
         string motivo
         int quantidadeJogos
         datetime aplicadaEm
-        datetime canceladaEm
+        datetime revogadaEm
+        uuid revogadaPorPresidenteId
+        datetime saldoEncerradoEm
     }
     class CumprimentoSuspensao {
         uuid suspensaoId

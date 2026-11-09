@@ -44,6 +44,7 @@ server/
       competicoes/
       participacoes/     # Escalação (MAR-64); credenciamento na MAR-67
       arbitragem/        # Acesso temporário e senha do jogo (MAR-65)
+      suspensoes/        # Suspensões manuais e cumprimento (MAR-66)
       resultados/
       disciplina/
     infrastructure/      # Banco, e-mail e armazenamento
@@ -199,10 +200,9 @@ Campeonatos (MAR-61): `modules/campeonatos` expõe criação, consulta, inscriç
 presidente, revalidado na transação. Cada operação bloqueia a linha `Campeonato` (`FOR UPDATE`);
 os triggers de inscrição e jogo bloqueiam a mesma linha com `FOR SHARE`, de modo que transições,
 inscrições e jogos concorrentes se serializam e o trigger do campeonato confere as pré-condições
-com as alterações confirmadas. Repetir uma transição devolve `alterado: false`. O ponto de
-integração do término com saldos de suspensão (MAR-66/MAR-79), revogação da arbitragem dos jogos
-cancelados (MAR-65) e notificações (MAR-73) está marcado em `transicionarCampeonato`; esse fluxo
-ainda não está integrado.
+com as alterações confirmadas. Repetir uma transição devolve `alterado: false`. Na mesma transação,
+cancelar revoga a arbitragem dos jogos cancelados (MAR-65) e encerrar/cancelar encerra o saldo das
+suspensões vigentes depois de gravar o status (MAR-66); notificações (MAR-73) continuam pendentes.
 Jogos (MAR-62): `modules/jogos` agenda jogos e designa a arbitragem, somente ao presidente. A hora
 local é convertida em instante por `Intl` no fuso IANA do jogo (`fuso.ts`), conferido também em
 `pg_timezone_names`; o fuso do navegador não participa. Agendar bloqueia a linha `Campeonato`
@@ -250,6 +250,17 @@ bloqueia a linha `Usuario` com `FOR UPDATE`, recusa conta já desativada (401) e
 `Usuario.nomeCompleto` e `AuthUser.name` juntos; falha em qualquer gravação desfaz as duas. As rotas
 nativas do Better Auth (`update-user`, `change-email`, `change-password`) seguem fora da lista
 permitida em `app.ts`; e-mail e senha só mudarão com contrato aprovado.
+Suspensões (MAR-66): `modules/suspensoes` expõe ao presidente aplicação, consulta e revogação. O saldo não
+é armazenado: é `quantidadeJogos` menos os registros de `CumprimentoSuspensao`. Aplicar bloqueia o
+campeonato (`FOR SHARE`: encerramento concorrente aguarda) e a conta do atleta (`FOR UPDATE`), e só então
+lê `aplicadaEm`; revogar bloqueia a suspensão (`FOR UPDATE`). `registrarCumprimentos(tx, jogoId)` é o ponto
+de integração do encerramento do jogo (MAR-69/MAR-72): na mesma transação, bloqueia o jogo (`FOR SHARE`),
+as contas de todos os atletas com vínculo nos dois clubes (`FOR SHARE`, por id) e as suspensões vigentes do
+campeonato (`FOR UPDATE`, por id), e insere com `ON CONFLICT DO NOTHING`, o que o torna idempotente mesmo em
+paralelo. `atletasComSuspensaoVigente` é a consulta de impedimento: o credenciamento (MAR-67) deve chamá-la
+depois de bloquear a conta do atleta (`FOR SHARE`), para ver aplicações concorrentes. Ordem geral:
+campeonato → jogo → conta → suspensão, sem ciclo com escalação e transferências. Triggers repetem no banco
+as regras de aplicação, término do saldo e cumprimento.
 
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,

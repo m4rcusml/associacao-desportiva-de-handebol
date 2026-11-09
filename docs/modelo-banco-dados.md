@@ -124,6 +124,17 @@ válida com o jogo agendado ou em andamento (`FOR SHARE` de `Jogo`); identifica�
 imutáveis; revogação é definitiva. Em `AcessoArbitragem`, o jogo é imutável, hash/cópia/data mudam juntos e o
 acesso revogado não volta. Retirar a designação exclui suas sessões em cascata, na mesma transação; registros
 de entrada por senha não são retirados um a um.
+A migração `suspensoes` (MAR-66) cria `Suspensao` manual (`atletaId`, `campeonatoId`, `quantidadeJogos` de 1 a
+100, `motivo`, `aplicadaPorPresidenteId`, `aplicadaEm`, `revogadaEm`/`revogadaPorPresidenteId` juntos e
+`saldoEncerradoEm`, com revogação e término do saldo mutuamente exclusivos) e `CumprimentoSuspensao`
+(`PK` `suspensaoId` + `jogoId`, `registradoEm`). `origem`, `jogoOrigemId`, `regraSuspensaoId` e
+`RegraSuspensao` ficam para a MAR-79. Triggers: a suspensão nasce vigente, com atleta aprovado e campeonato
+planejado/em andamento (`FOR SHARE` de `Campeonato`); os dados da aplicação são imutáveis; revogação e término
+são definitivos, e o término exige campeonato encerrado/cancelado; exclusão só na cascata do campeonato. O
+cumprimento bloqueia a suspensão (`FOR UPDATE`) e exige suspensão vigente com saldo, jogo finalizado do mesmo
+campeonato encerrado depois da aplicação, vínculo do atleta com um dos clubes do jogo no encerramento e
+ausência de credenciamento do atleta nesse jogo anterior à aplicação; é somente de inclusão (exclusão só na
+cascata do jogo ou da suspensão).
 
 ## Convenções e implementação da herança
 
@@ -169,7 +180,7 @@ administrativas não geram linhas adicionais.
 | `EstatisticasDoJogo`   | `PK`/`FK` `jogoId`; projeção calculada                                                                                     | Registro ausente antes de iniciar o jogo                                                                                         |
 | `DesempenhoDoAtleta`   | `PK`/`FK` `participacaoId`; projeção calculada                                                                             | Registro ausente antes do credenciamento                                                                                         |
 | `RegraSuspensao`       | `PK` `id`                                                                                                                  | Nenhum; permanece inativa sem confirmação dos critérios                                                                          |
-| `Suspensao`            | `PK` `id`; `origem` manual ou automatica                                                                                   | `jogoOrigemId` na `origem` manual; `regraSuspensaoId` na `origem` manual; `aplicadaPorPresidenteId` na automática; `canceladaEm` |
+| `Suspensao`            | `PK` `id`; `origem` manual ou automatica                                                                                   | `jogoOrigemId` na `origem` manual; `regraSuspensaoId` na `origem` manual; `aplicadaPorPresidenteId` na automática; `revogadaEm`/`revogadaPorPresidenteId`; `saldoEncerradoEm` |
 | `CumprimentoSuspensao` | `PK` composta `suspensaoId` + `jogoId`                                                                                     | Nenhum                                                                                                                           |
 
 Todos os demais campos são obrigatórios. Não se exige `nome` único para pessoas ou
@@ -329,9 +340,9 @@ contam. Lançar cumprimento e verificar credenciamento exige consistência trans
 Transferência durante campeonato em andamento está bloqueada, portanto não transportamos suspensão
 entre clubes. Suspensões simultâneas são cumpridas em paralelo: cada jogo elegível cumpre cada suspensão
 vigente uma vez, respeitando a chave composta. Presidente pode revogar, preservando original e
-cumprimentos; `canceladaEm` representa revogação, com responsável e histórico a modelar.
-Encerramento/cancelamento do campeonato exige registro de término do saldo, distinto de
-revogação e de jogos cumpridos. Redução parcial e justificativa obrigatória continuam pendentes.
+cumprimentos; `revogadaEm` e `revogadaPorPresidenteId` registram a revogação (MAR-66).
+Encerramento/cancelamento do campeonato registra o término do saldo em `saldoEncerradoEm`, distinto
+de revogação e de jogos cumpridos. Redução parcial e justificativa obrigatória continuam pendentes.
 
 ## Pendências que não bloqueiam esta versão documental
 
