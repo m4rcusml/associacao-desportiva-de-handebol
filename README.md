@@ -43,6 +43,7 @@ Não versione o valor gerado. As outras variáveis estão nos `.env.example`:
 | `PORT` | Porta da API, padrão 3001. |
 | `FOTOS_DIRETORIO` | Diretório local das fotos dos atletas, somente fora de produção; ignorado quando o Supabase está configurado. |
 | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_FOTOS_BUCKET` | Opcionais localmente, definidas juntas: Storage do Supabase com bucket privado. A chave secreta fica só no backend. |
+| `NOTIFICACOES_VARREDURA_MS` | Opcional. Intervalo da varredura das notificações Socket.IO (padrão 30000): reprocessa eventos não publicados e retira conexões revogadas sem aviso do banco (expiração, virada do dia, vínculo). |
 | `NEXT_PUBLIC_API_URL` | Opcional em `client/.env.local`, conforme `client/.env.example`; padrão `http://localhost:3001/api`. Incorporado no build do Next. |
 
 Use `localhost` nas duas URLs do navegador; não misture com `127.0.0.1`.
@@ -287,6 +288,18 @@ adia o jogo agendado em `POST /api/jogos/{jogoId}/adiamento` (`inicioPrevisto` l
 `fusoHorario` e `local` opcionais): gera nova senha, se já emitida, e revoga as sessões dos dois métodos. Cancela o
 jogo agendado em `POST /api/jogos/{jogoId}/cancelamento`, revogando os acessos; jogo cancelado não conta para
 suspensões, e repetir devolve `alterado: false`. Escalação, credenciamentos, contas e outros jogos são preservados.
+
+#### Notificações em tempo real (MAR-73)
+
+Os dispositivos da arbitragem conectam o Socket.IO em `/api/socket.io` (mesmo servidor da API), com
+`auth: { jogoId }`, o cookie temporário daquele jogo e a origem `CLIENT_ORIGIN`; conta permanente, outro jogo ou
+outra origem são recusados. O servidor envia `jogo:evento` (`id`, `jogoId`, `tipo`, `referenciaId`,
+`ocorridoEm`) depois do commit de cada mudança do jogo: escalação, credenciamento, entrada em quadra, início,
+pausa, retomada, encerramento, adiamento, cancelamento, lançamentos e visualização. O aviso não traz dados: o
+dispositivo consulta a API REST ao recebê-lo e ao (re)conectar, e ignora `id` repetido. A conexão que deixa de estar
+autorizada recebe `acesso:encerrado` com o motivo da própria sessão (`troca_senha`, `jogo_encerrado`, `jogo_adiado`,
+`jogo_cancelado`, `saida`) ou `acesso_indisponivel`, e é desconectada. Contrato completo na extensão `x-socketio` de
+`GET /api/openapi.json`; mecanismo de publicação na [arquitetura](docs/arquitetura.md#acesso-público-e-comunicação).
 
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
@@ -651,8 +664,21 @@ técnico pendente e técnico anterior após transferência; arbitragem com sess�
 recusada sem cookie, com cookie de outro jogo, após a saída e para atleta fora do jogo; QR sem foto; Storage indisponível,
 falha na persistência após o envio (arquivo novo removido) e falha ao remover o anterior (órfão sem referência
 inválida); envios simultâneos; adaptador Supabase contra servidor HTTP fictício (endpoint autenticado, sem upsert e sem
-URL pública) e contrato OpenAPI. Nenhuma migração e nenhuma dependência nova. Não validado: Supabase Storage real,
+URL pública) e contrato OpenAPI. Nenhuma migração. A revisão adicionou Sharp 0.35.5 para validar os pixels antes
+do Storage, com fixtures JPEG/PNG/WebP reais e regressões de assinaturas falsas e pixels corrompidos. O buffer
+armazenado continua original, incluindo EXIF; o PNG usado no limite de 5 MB tem CRC válido. Não validado: Supabase Storage real,
 bucket privado hospedado e suas políticas (MAR-76).
+Validação local da MAR-73 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado,
+`npm audit --omit=dev` sem alertas e **157 testes de integração aprovados**, incluindo sete novos com dois clientes
+Socket.IO automatizados (sem frontend): handshake recusado sem cookie, com cookie de conta ou de outro jogo, `jogoId`
+inválido e outra origem; aviso mínimo com o mesmo `id` nos dois dispositivos após o commit, rollback e operação
+recusada sem evento, repetição sem evento novo e eventos marcados como publicados; troca de senha retirando só as
+sessões por senha; doze lançamentos concorrentes com a troca, sem evento após o aviso e sem perda para quem continua;
+retirada da designação, logout e desativação da conta de origem; adiamento, cancelamento e encerramento com o motivo
+da sessão; reconexão com estado recuperado por REST, reprocessamento de evento pendente sem NOTIFY (mesmo `id`) e
+revogação sem NOTIFY (transferência para clube do jogo) retirada pela varredura. Uma migração nova; dependências
+novas `socket.io` e `pg` (e `socket.io-client`/`@types/pg` de desenvolvimento). Não validado: Socket.IO pelo
+encaminhamento Vercel/Render e cookies `__Host-` hospedados (MAR-76) e mais de uma instância (fora do escopo).
 
 ## Caminho feliz
 
@@ -678,7 +704,9 @@ bucket privado hospedado e suas políticas (MAR-76).
 6. **Encerramento e acompanhamento:** a arbitragem encerra o jogo e seu acesso temporário
    expira. O resultado e o desempenho ficam no histórico dos atletas; correções posteriores
    cabem ao presidente. Suspensões manuais são aplicadas por ele, por quantidade de jogos
-   naquele campeonato; punições automáticas dependem de critérios a confirmar com o cliente.
+   naquele campeonato. Os critérios automáticos foram aprovados na MAR-78
+   ([requisitos, seção 12](docs/requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026));
+   implementação e validação seguem na MAR-79.
 
 As decisões posteriores sobre exceções, fotos, fuso local, consulta da senha e ciclo de contas/
 competições estão em [requisitos, seção 11](docs/requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026).

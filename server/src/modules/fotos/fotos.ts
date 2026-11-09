@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ForbiddenException, NotFoundException, PayloadTooLargeException, UnsupportedMediaTypeException, BadRequestException } from "@nestjs/common";
 import type { Request } from "express";
+import sharp from "sharp";
 import type { Prisma } from "../../generated/prisma/client.js";
 import type { Ator } from "../autorizacao/ator.js";
 import { revalidarArbitragem } from "../arbitragem/acesso.js";
@@ -11,24 +12,31 @@ type Tx = Prisma.TransactionClient;
 /** Limite por arquivo (seção 11): 5 MB, contados como 5 × 1024 × 1024 bytes. */
 export const LIMITE_FOTO_BYTES = 5 * 1024 * 1024;
 const tiposAceitos = Object.keys(extensoes) as TipoImagem[];
-
-const comeca = (conteudo: Buffer, assinatura: number[], deslocamento = 0) => assinatura.every((byte, i) => conteudo[deslocamento + i] === byte);
-const ascii = (texto: string) => [...texto].map(c => c.charCodeAt(0));
+// libvips compartilha cache e fila de avisos: valide uma imagem por vez, sem reaproveitar pixels corrompidos.
+sharp.cache(false);
+let validacaoAnterior: Promise<TipoImagem | null> = Promise.resolve(null);
 
 /**
- * Identifica o formato pelo conteúdo, sem confiar no Content-Type nem na extensão: assinatura e estrutura
- * mínima de cada formato (início e fim do JPEG, IHDR/IEND do PNG, contêiner RIFF/WEBP com tamanho coerente).
- * Não decodifica a imagem inteira.
+ * Identifica o formato e decodifica todos os pixels antes do envio, sem confiar na extensão ou no Content-Type.
+ * Somente valida: os bytes originais, incluindo EXIF, continuam sendo armazenados sem reprocessamento.
  */
-export function detectarImagem(conteudo: Buffer): TipoImagem | null {
-  if (conteudo.length >= 6 && comeca(conteudo, [0xff, 0xd8, 0xff]) && conteudo.lastIndexOf(Buffer.from([0xff, 0xd9])) > 2) return "image/jpeg";
-  if (conteudo.length >= 45 && comeca(conteudo, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
-    && conteudo.readUInt32BE(8) === 13 && comeca(conteudo, ascii("IHDR"), 12)
-    && comeca(conteudo, [0, 0, 0, 0, ...ascii("IEND")], conteudo.length - 12)) return "image/png";
-  if (conteudo.length >= 20 && comeca(conteudo, ascii("RIFF")) && comeca(conteudo, ascii("WEBP"), 8)
-    && conteudo.readUInt32LE(4) === conteudo.length - 8
-    && ["VP8 ", "VP8L", "VP8X"].some(chunk => comeca(conteudo, ascii(chunk), 12))) return "image/webp";
-  return null;
+export function detectarImagem(conteudo: Buffer): Promise<TipoImagem | null> {
+  const validacao = validacaoAnterior.then(async () => {
+    try {
+      const imagem = sharp(conteudo, { failOn: "warning", animated: true });
+      let aviso = false;
+      imagem.on("warning", () => { aviso = true; });
+      const { format } = await imagem.metadata();
+      const tipo = `image/${format}`;
+      if (!tiposAceitos.includes(tipo as TipoImagem)) return null;
+      await imagem.stats();
+      return aviso ? null : tipo as TipoImagem;
+    } catch {
+      return null;
+    }
+  });
+  validacaoAnterior = validacao;
+  return validacao;
 }
 
 /**
@@ -53,7 +61,7 @@ export async function lerImagem(request: Request): Promise<{ conteudo: Buffer; t
   if (excedeu) throw new PayloadTooLargeException("A foto deve ter no máximo 5 MB.");
   const conteudo = Buffer.concat(partes);
   if (conteudo.length === 0) throw new BadRequestException("Envie o arquivo da foto no corpo da requisição.");
-  const tipo = detectarImagem(conteudo);
+  const tipo = await detectarImagem(conteudo);
   if (!tipo) throw new UnsupportedMediaTypeException("O conteúdo não é uma imagem JPEG, PNG ou WebP válida.");
   if (tipo !== declarado) throw new UnsupportedMediaTypeException(`O conteúdo é ${tipo}, diferente do Content-Type informado.`);
   return { conteudo, tipo };

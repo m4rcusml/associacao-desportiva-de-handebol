@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Prisma, TipoLancamento } from "../../generated/prisma/client.js";
 import { revalidarArbitragem } from "../arbitragem/acesso.js";
 import { exigirJogoSemInterrupcao } from "../jogos/jogos.js";
+import { registrarEvento } from "../notificacoes/eventos.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -108,6 +109,7 @@ export async function registrarLancamento(tx: Tx, jogoId: string, token: string 
     throw new ConflictException("O lançamento mudou durante a operação. Consulte os registros e tente novamente.");
   }
   const lancamento = await lerPorOperacao(tx, dados.operacaoId);
+  await registrarEvento(tx, jogoId, "lancamento_registrado", lancamento!.id);
   return { lancamento: apresentar(lancamento!), alterado: true, placar: await placar(tx, jogoId) };
 }
 
@@ -210,6 +212,7 @@ async function corrigir(tx: Tx, corretor: Corretor, status: string, jogoId: stri
     INSERT INTO "LancamentoJogo" (id, "operacaoId", "jogoId", "participacaoId", tipo, valor, "registradoEm", "substituiLancamentoId")
     VALUES (gen_random_uuid(), ${dados.operacaoId}::uuid, ${jogoId}::uuid, ${dados.participacaoId}::uuid, ${dados.tipo}::"TipoLancamento", 1, now(), ${lancamentoId}::uuid)`;
   const substituto = await lerPorOperacao(tx, dados.operacaoId);
+  await registrarEvento(tx, jogoId, "lancamento_corrigido", substituto!.id);
   return { lancamento: apresentar(substituto!), anulado: apresentar(await lerPorId(tx, lancamentoId)), alterado: true, placar: await placar(tx, jogoId) };
 }
 
@@ -241,6 +244,7 @@ async function anular(tx: Tx, corretor: Corretor, status: string, jogoId: string
   await tx.$executeRaw`
     UPDATE "LancamentoJogo" SET "anuladoEm" = now(), "anulacaoOperacaoId" = ${operacaoId}::uuid
     WHERE id = ${lancamentoId}::uuid AND "anuladoEm" IS NULL`;
+  await registrarEvento(tx, jogoId, "lancamento_anulado", lancamentoId);
   return { lancamento: apresentar(await lerPorId(tx, lancamentoId)), alterado: true, placar: await placar(tx, jogoId) };
 }
 

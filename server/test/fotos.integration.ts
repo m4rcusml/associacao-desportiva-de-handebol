@@ -4,6 +4,8 @@ import { after, before, test } from "node:test";
 import { randomInt, randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage } from "node:http";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { crc32 } from "node:zlib";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { hashPassword } from "better-auth/crypto";
@@ -13,7 +15,7 @@ import { PrismaService } from "../dist/infrastructure/prisma.service.js";
 import {
   ArmazenamentoFotos, ArmazenamentoLocal, ArmazenamentoNaoConfigurado, ArmazenamentoSupabase, criarArmazenamentoFotos, ErroArmazenamento,
 } from "../dist/modules/fotos/armazenamento.js";
-import { LIMITE_FOTO_BYTES } from "../dist/modules/fotos/fotos.js";
+import { detectarImagem, LIMITE_FOTO_BYTES } from "../dist/modules/fotos/fotos.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const diretorio = await mkdtemp(join(tmpdir(), "handebol-fotos-"));
@@ -32,22 +34,18 @@ const campeonatos: string[] = [];
 const ip = () => `10.${randomInt(256)}.${randomInt(256)}.${randomInt(1, 255)}`;
 const novoEmail = () => { const email = `${randomUUID()}@example.invalid`; emails.push(email); return email; };
 
-// Imagens mínimas: PNG 1×1 real, e JPEG/WebP com a estrutura conferida pelo backend.
-const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
-const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, ...Buffer.from("JFIF\0"), 0x01, 0x01, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]);
-function webp() {
-  const dados = Buffer.from([0x2f, 0, 0, 0, 0x10, 0x07, 0x10, 0x11, 0x11, 0x88, 0x88, 0xfe, 0x07, 0]);
-  const chunk = Buffer.concat([Buffer.from("VP8L"), Buffer.alloc(4), dados]);
-  chunk.writeUInt32LE(dados.length, 4);
-  const riff = Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WEBP"), chunk]);
-  riff.writeUInt32LE(riff.length - 8, 4);
-  return riff;
-}
+// Fixtures 2×2 decodificáveis; o JPEG contém EXIF fictício para comprovar a preservação dos bytes originais.
+const png = readFileSync(new URL("./fixtures/foto.png", import.meta.url));
+const jpeg = readFileSync(new URL("./fixtures/foto.jpg", import.meta.url));
+const webp = readFileSync(new URL("./fixtures/foto.webp", import.meta.url));
+const inicioScan = jpeg.indexOf(Buffer.from([0xff, 0xda]));
+const jpegSemPixels = Buffer.concat([jpeg.subarray(0, inicioScan + 2 + jpeg.readUInt16BE(inicioScan + 2)), Buffer.from([0xff, 0xd9])]);
 /** PNG válido com chunk auxiliar de enchimento até `tamanho` bytes. */
 function pngComTamanho(tamanho: number) {
   const dados = tamanho - png.length - 12;
-  const chunk = Buffer.concat([Buffer.alloc(4), Buffer.from("tEXt"), Buffer.alloc(dados), Buffer.alloc(4)]);
+  const chunk = Buffer.concat([Buffer.alloc(4), Buffer.from("npAD"), Buffer.alloc(dados), Buffer.alloc(4)]);
   chunk.writeUInt32BE(dados, 0);
+  chunk.writeUInt32BE(crc32(chunk.subarray(4, -4)), chunk.length - 4);
   return Buffer.concat([png.subarray(0, png.length - 12), chunk, png.subarray(png.length - 12)]);
 }
 
@@ -188,7 +186,8 @@ test("atleta envia e substitui a própria foto sem nova aprovação; arquivo ant
   assert.notEqual(chave2, chave1);
   assert.deepEqual(await arquivos(ana.id), [nomeDaChave(chave2)]);
   assert.deepEqual((await foto(lerFoto(ana.id, ana.cookie))).conteudo, jpeg);
-  await status(enviarFoto(ana.id, ana.cookie, webp(), "image/webp"), 200);
+  assert.ok(jpeg.includes(Buffer.from("Exif\0\0")), "fixture JPEG contém EXIF preservado na leitura");
+  await status(enviarFoto(ana.id, ana.cookie, webp, "image/webp"), 200);
   assert.equal((await foto(lerFoto(ana.id, ana.cookie))).tipo, "image/webp");
 
   // A troca não toca aprovação nem carteirinha.
@@ -232,6 +231,25 @@ test("conteúdo real, tipo declarado e limite de 5 MB são conferidos; recusas p
   await status(enviarFoto(bia.id, bia.cookie, Buffer.from("não sou uma imagem, apenas texto"), "image/png"), 415, /não é uma imagem/);
   await status(enviarFoto(bia.id, bia.cookie, Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'/>"), "image/webp"), 415);
   await status(enviarFoto(bia.id, bia.cookie, png.subarray(0, 30), "image/png"), 415); // PNG truncado
+  const jpegFalso = Buffer.from([0xff, 0xd8, 0xff, 0, 0xff, 0xd9]);
+  const pngFalso = Buffer.alloc(45);
+  png.copy(pngFalso, 0, 0, 16);
+  pngFalso.write("IEND", 37);
+  const webpFalso = Buffer.alloc(20);
+  webpFalso.write("RIFF");
+  webpFalso.writeUInt32LE(12, 4);
+  webpFalso.write("WEBPVP8 ", 8);
+  const pngCorrompido = Buffer.from(png);
+  const idat = pngCorrompido.indexOf(Buffer.from("IDAT"));
+  const tamanhoIdat = pngCorrompido.readUInt32BE(idat - 4);
+  pngCorrompido[idat + 4] ^= 0xff; // mantém cabeçalho e CRC válidos, mas danifica os pixels comprimidos
+  pngCorrompido.writeUInt32BE(crc32(pngCorrompido.subarray(idat, idat + 4 + tamanhoIdat)), idat + 4 + tamanhoIdat);
+  for (const [conteudo, tipo] of [[jpegFalso, "image/jpeg"], [pngFalso, "image/png"], [webpFalso, "image/webp"], [jpegSemPixels, "image/jpeg"], [pngCorrompido, "image/png"]] as const) {
+    await status(enviarFoto(bia.id, bia.cookie, conteudo, tipo), 415, /não é uma imagem/);
+    assert.equal(await chaveAtual(bia.id), chave, "imagem inválida não substitui a foto boa");
+    assert.deepEqual(await arquivos(bia.id), [nomeDaChave(chave)]);
+    assert.deepEqual((await foto(lerFoto(bia.id, bia.cookie))).conteudo, png);
+  }
   await status(enviarFoto(bia.id, bia.cookie, png, "image/jpeg"), 415, /diferente do Content-Type/);
   await status(enviarFoto(bia.id, bia.cookie, Buffer.alloc(0)), 400, /Envie o arquivo/);
   await status(enviarFoto(bia.id, bia.cookie, pngComTamanho(LIMITE_FOTO_BYTES + 1)), 413, /5 MB/);
@@ -241,6 +259,14 @@ test("conteúdo real, tipo declarado e limite de 5 MB são conferidos; recusas p
   const noLimite = pngComTamanho(LIMITE_FOTO_BYTES);
   assert.equal(JSON.parse(await status(enviarFoto(bia.id, bia.cookie, noLimite), 200)).foto.tamanho, 5 * 1024 * 1024);
   assert.equal((await foto(lerFoto(bia.id, presidente.cookie))).conteudo.length, LIMITE_FOTO_BYTES);
+});
+
+test("imagens repetidas e concorrentes não compartilham avisos nem aceitam pixels corrompidos do cache", async () => {
+  const candidatos = [jpegSemPixels, jpeg, png, jpegSemPixels, webp];
+  for (let rodada = 0; rodada < 30; rodada++) {
+    const conteudos = rodada % 2 ? candidatos.map(conteudo => Buffer.from(conteudo)) : candidatos;
+    assert.deepEqual(await Promise.all(conteudos.map(detectarImagem)), [null, "image/jpeg", "image/png", null, "image/webp"]);
+  }
 });
 
 test("leitura por conta: próprio atleta, presidente e técnico atual; negada a colegas, outros técnicos e ao técnico anterior após transferência", async () => {
@@ -343,7 +369,7 @@ test("falhas: Storage indisponível preserva a foto; falha na persistência remo
 test("envios simultâneos se sucedem: o banco referencia o último e somente ele permanece no armazenamento", async () => {
   const clube = await criarClube("Clube da concorrência");
   const eva = await cadastrar("atleta", { clubeId: clube, nome: "Eva" });
-  const respostas = await Promise.all([png, jpeg, webp(), png].map((conteudo, i) => enviarFoto(eva.id, i % 2 ? presidente.cookie : eva.cookie, conteudo, ["image/png", "image/jpeg", "image/webp", "image/png"][i])));
+  const respostas = await Promise.all([png, jpeg, webp, png].map((conteudo, i) => enviarFoto(eva.id, i % 2 ? presidente.cookie : eva.cookie, conteudo, ["image/png", "image/jpeg", "image/webp", "image/png"][i])));
   assert.deepEqual(respostas.map(r => r.status), [200, 200, 200, 200]);
   const substituicoes = (await Promise.all(respostas.map(r => r.json()))).filter(r => r.substituida).length;
   assert.equal(substituicoes, 3);

@@ -115,6 +115,28 @@ enum MotivoRevogacaoArbitragem {
   jogo_cancelado
 }
 
+/// Mudança confirmada de um jogo notificada por Socket.IO (MAR-73). O aviso não carrega dados: o dispositivo
+/// consulta o estado oficial pela API REST.
+enum TipoEventoJogo {
+  escalacao_alterada
+  credenciamento_registrado
+  credenciamento_corrigido
+  credenciamento_desfeito
+  entrada_registrada
+  jogo_iniciado
+  jogo_interrompido
+  jogo_retomado
+  jogo_encerrado
+  jogo_adiado
+  jogo_cancelado
+  resultado_corrigido
+  jogo_invalidado
+  lancamento_registrado
+  lancamento_corrigido
+  lancamento_anulado
+  visualizacao_alterada
+}
+
 enum TipoAlteracaoEscalacao {
   inclusao
   remocao
@@ -366,6 +388,7 @@ model Jogo {
   cumprimentosSuspensao CumprimentoSuspensao[]
   lancamentos           LancamentoJogo[]
   alteracoesCredenciamento AlteracaoCredenciamento[]
+  eventos               EventoJogo[]
 
   @@index([campeonatoId, status])
   @@index([inscricaoClubeAId, campeonatoId])
@@ -606,4 +629,20 @@ model LancamentoJogo {
 
   @@index([jogoId, registradoEm])
   @@index([participacaoId])
+}
+
+/// Caixa de saída das notificações (MAR-73): gravada na mesma transação da mudança, publicada só depois do commit
+/// (rollback não deixa evento) e marcada em `publicadoEm` após o envio. Pendentes são reprocessadas ao reiniciar
+/// ou na varredura periódica; o envio é ao menos uma vez e o `id` crescente identifica repetições.
+model EventoJogo {
+  id           BigInt         @id @default(autoincrement())
+  jogoId       String         @db.Uuid
+  jogo         Jogo           @relation(fields: [jogoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  tipo         TipoEventoJogo
+  /// Registro afetado (lançamento, atleta, arbitragem), quando houver; nunca dados pessoais ou esportivos.
+  referenciaId String?        @db.Uuid
+  criadoEm     DateTime       @default(now()) @db.Timestamptz
+  publicadoEm  DateTime?      @db.Timestamptz
+
+  @@index([jogoId])
 }

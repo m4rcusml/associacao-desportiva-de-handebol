@@ -21,6 +21,7 @@ import { CredenciamentoController, CredenciamentoPresidenteController } from "./
 import { ArbitragemController } from "./modules/arbitragem/arbitragem.controller.js";
 import { CofreSenhaArbitragem } from "./modules/arbitragem/senha.js";
 import { SuspensoesController } from "./modules/suspensoes/suspensoes.controller.js";
+import { NotificacoesService } from "./modules/notificacoes/notificacoes.service.js";
 import { LancamentosController, LancamentosPresidenteController } from "./modules/resultados/lancamentos.controller.js";
 import { FotosArbitragemController, FotosController } from "./modules/fotos/fotos.controller.js";
 import { ArmazenamentoFotos, criarArmazenamentoFotos } from "./modules/fotos/armazenamento.js";
@@ -36,7 +37,7 @@ import { ArmazenamentoFotos, criarArmazenamentoFotos } from "./modules/fotos/arm
   })],
   controllers: [HealthController, AuthController, PresidentesController, ContasController, ContaPropriaController, ClubesController, VerificacoesController, CarteirinhasController, CampeonatosController, JogosController, AtletasController, EscalacaoController, ArbitragemController, CredenciamentoController, CredenciamentoPresidenteController, SuspensoesController, LancamentosController, LancamentosPresidenteController, CicloJogoController, FotosController, FotosArbitragemController],
   providers: [
-    PrismaService, AuthService, SessionGuard, AutorizacaoService, CofreSenhaArbitragem,
+    PrismaService, AuthService, SessionGuard, AutorizacaoService, CofreSenhaArbitragem, NotificacoesService,
     { provide: ArmazenamentoFotos, useFactory: () => criarArmazenamentoFotos() },
   ],
 })

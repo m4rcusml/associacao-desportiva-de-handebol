@@ -4,6 +4,7 @@ import { Prisma, type StatusJogo } from "../../generated/prisma/client.js";
 import type { Ator } from "../autorizacao/ator.js";
 import { horaLocal } from "../jogos/fuso.js";
 import { atletasComSuspensaoVigente } from "../suspensoes/suspensoes.js";
+import { registrarEvento } from "../notificacoes/eventos.js";
 
 /** Inclusão de um atleta na escalação do clube do técnico (RF-016). */
 export const escolhaSchema = z.strictObject({ atletaId: z.uuid().transform(id => id.toLowerCase()) });
@@ -165,6 +166,7 @@ export async function escolherAtleta(tx: Tx, tecnico: Ator, jogoId: string, atle
     return { ...await consultarEscalacao(tx, jogoId, clubeId), alterado: false };
   }
   await tx.alteracaoEscalacao.create({ data: { jogoId, vinculoClubeId: vinculo.id, tipo: "inclusao", tecnicoId: tecnico.usuarioId, ocorridoEm: agora } });
+  await registrarEvento(tx, jogoId, "escalacao_alterada", atletaId);
   return { ...await consultarEscalacao(tx, jogoId, clubeId), alterado: true };
 }
 
@@ -194,6 +196,7 @@ export async function retirarAtleta(tx: Tx, tecnico: Ator, jogoId: string, atlet
     alterado = true;
     await tx.alteracaoEscalacao.create({ data: { jogoId, vinculoClubeId, tipo: "remocao", tecnicoId: tecnico.usuarioId, ocorridoEm: agora } });
   }
+  if (alterado) await registrarEvento(tx, jogoId, "escalacao_alterada", atletaId);
   return { ...await consultarEscalacao(tx, jogoId, clubeId), alterado };
 }
 

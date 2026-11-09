@@ -4,6 +4,7 @@ import { Prisma, type StatusJogo } from "../../generated/prisma/client.js";
 import { revalidarArbitragem } from "../arbitragem/acesso.js";
 import { exigirJogoSemInterrupcao } from "../jogos/jogos.js";
 import { atletasComSuspensaoVigente } from "../suspensoes/suspensoes.js";
+import { registrarEvento } from "../notificacoes/eventos.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -230,6 +231,7 @@ export async function credenciar(tx: Tx, jogoId: string, token: string | undefin
     throw new ConflictException("O credenciamento mudou durante a operação. Consulte a lista e tente novamente.");
   }
   const participacao = await credenciamentoDoAtleta(tx, jogoId, atletaId);
+  await registrarEvento(tx, jogoId, "credenciamento_registrado", atletaId);
   return { participacao: apresentar(participacao!), alterado: true };
 }
 
@@ -253,6 +255,7 @@ export async function registrarEntrada(tx: Tx, jogoId: string, token: string | u
   const { count } = await tx.participacao.updateMany({ where: { id: existente.id, credenciadoEm: { not: null }, entrouEmQuadraEm: null }, data: { entrouEmQuadraEm: new Date() } });
   const atual = await credenciamentoDoAtleta(tx, jogoId, atletaId);
   if (!atual) throw new ConflictException("Somente atleta credenciado neste jogo pode entrar em quadra.");
+  if (count > 0) await registrarEvento(tx, jogoId, "entrada_registrada", atletaId);
   return { participacao: apresentar(atual), alterado: count > 0 };
 }
 
@@ -326,6 +329,7 @@ async function corrigirCamisa(tx: Tx, corretor: Corretor, status: StatusJogo, jo
   const alteracao = await registrarAlteracao(tx, atual.id, "correcao_camisa", dados.numeroCamisa);
   await tx.participacao.update({ where: { id: atual.id }, data: { numeroCamisa: dados.numeroCamisa } });
   const corrigida = await credenciamentoDoAtleta(tx, jogoId, atletaId);
+  await registrarEvento(tx, jogoId, "credenciamento_corrigido", atletaId);
   return { participacao: apresentar(corrigida!), alteracao: apresentarAlteracao(alteracao), alterado: true };
 }
 
@@ -373,6 +377,7 @@ export async function estornarCredenciamento(tx: Tx, jogoId: string, token: stri
   } else {
     await tx.participacao.delete({ where: { id: atual.id } });
   }
+  await registrarEvento(tx, jogoId, "credenciamento_desfeito", atletaId);
   return { estorno: apresentarAlteracao(estorno), alterado: true };
 }
 

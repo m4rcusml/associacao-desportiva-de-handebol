@@ -156,7 +156,7 @@ ainda precisa confirmá-la com o cliente.
 | ID     | Requisito                                                                                                                           | Situação                              |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | RF-038 | Permitir ao presidente suspender manualmente um atleta em um campeonato, informando a quantidade de jogos.                          | Confirmado                            |
-| RF-039 | Prever aplicação automática de suspensão a partir de penalidades, conforme critérios ainda a confirmar com o cliente.               | Confirmado; critérios pendentes       |
+| RF-039 | Aplicar suspensão automática por desqualificação com relatório disciplinar, conforme seção 12.                                      | Confirmado; implementação na MAR-79       |
 | RF-040 | Verificar impedimentos disciplinares no credenciamento e impedir participação quando houver suspensão a cumprir naquele campeonato. | Confirmado                            |
 | RF-041 | Registrar os jogos que contam para cumprimento da suspensão e apurar quantos ainda faltam.                                          | Confirmado                            |
 | RF-042 | Registrar minimamente presidente responsável e data na aplicação manual; detalhar auditoria completa em etapa posterior.            | Proposto; auditoria completa pendente |
@@ -228,7 +228,7 @@ ainda precisa confirmá-la com o cliente.
 | RN-039 | Cada jogo encerrado definitivamente do clube no campeonato, após aplicação e elegível ao cumprimento, conta uma vez, mesmo sem escalação; inclui jogos excepcionais conforme seção 11. | Confirmado |
 | RN-040 | Jogos cancelados não contam; jogos adiados só contam quando realizados.                                                                                            | Confirmado |
 | RN-041 | Suspensão automática passa a valer para os jogos seguintes, após o encerramento do jogo que originou a punição. O próprio jogo de origem não cumpre a suspensão.   | Confirmado |
-| RN-042 | Não ativar regras automáticas com critérios inventados antes de sua validação pelo cliente.                                                                        | Proposto   |
+| RN-042 | Aplicar somente os critérios automáticos aprovados na seção 12; novas regras exigem validação.                                                                    | Confirmado   |
 | RN-043 | Suspensões simultâneas do mesmo atleta no mesmo campeonato são cumpridas em paralelo, sem soma de durações. | Confirmado |
 
 A exceção da RN-025 é deliberada: a senha compartilhada permite acesso sem conferir vínculo com os
@@ -282,7 +282,7 @@ O levantamento consolidado, incluindo casos específicos e ordem sugerida de res
 | PEN-001 | A página da arbitragem deve abrir antes do início formal para credenciar os atletas?                               | Resolvido: sim; abrir credenciamento antes e iniciar a partida depois (RF-030). |
 | PEN-002 | Para usuário cadastrado que entra por senha, verificar igualmente o impedimento de pertencer a clube participante? | Resolvido: não; acesso por senha dispensa essa conferência (RN-025).            |
 | PEN-003 | Quais métricas serão efetivamente utilizadas?                                                                      | Aguardando cliente; manter temp_.                                               |
-| PEN-004 | Quais penalidades, limites de acumulação e quantidades de jogos geram suspensão automática?                        | Aguardando cliente; automática prevista, critérios não habilitados.             |
+| PEN-004 | Quais penalidades, limites de acumulação e quantidades de jogos geram suspensão automática?                        | Resolvido por Marcus em 09/11/2026; critérios na seção 12, implementação na MAR-79.             |
 | PEN-005 | O presidente continuará incluindo os clubes no campeonato?                                                         | Operação provisória expressamente adotada; aguarda confirmação do cliente.      |
 | PEN-006 | Como tratar múltiplas suspensões simultâneas? | Resolvido: cumprimento em paralelo; revisões na seção 11 e PEN-009 residual. |
 | PEN-007 | Quais ações, autores, alterações e justificativas integram a auditoria completa?                                   | Necessidade reconhecida; detalhamento adiado por solicitação de Marcus.         |
@@ -440,6 +440,12 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   muda o tipo e/ou o atleta, que deve estar credenciado no mesmo jogo; o valor continua 1 por ocorrência, e erros de
   quantidade se corrigem anulando lançamentos (ou, durante o jogo, registrando outro). A anulação guarda somente a data
   e a operação, sem autoria; a auditoria completa segue na PEN-007.
+- Atualizações imediatas (MAR-73). Detalhes aprovados por Marcus (09/11/2026): somente os dispositivos da
+  arbitragem com sessão temporária válida do jogo recebem notificações; presidente e técnicos continuam consultando
+  pela API. Cada notificação é um aviso mínimo (tipo da mudança e identificador do registro afetado, sem dados
+  esportivos ou pessoais), e o dispositivo consulta o estado oficial ao recebê-la. O dispositivo cujo acesso é
+  revogado recebe o motivo gravado na própria sessão (encerramento, adiamento, cancelamento, troca de senha ou saída;
+  nos demais casos, acesso indisponível) e é desconectado.
 
 ### Credenciamento, carteirinha e fotos
 
@@ -480,7 +486,7 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
 - Presidente pode revogar suspensão, preservando o original, jogos já cumpridos e histórico
   com indicação de suspensão revogada. Redução parcial e exigência de justificativa não foram
   explicitamente definidas; permanecem na PEN-009, sem serem presumidas.
-- Quando regras automáticas forem aprovadas, retirar uma penalidade recalcula a suspensão,
+- Na implementação da MAR-79, retirar uma penalidade recalcula a suspensão automática,
   liberando o saldo indevido. Não altera jogos passados nem compensa partidas perdidas pelo atleta.
 - Encerrar/cancelar campeonato encerra saldos restantes e preserva histórico; não transfere
   punições para outro campeonato. Registrar esse encerramento, distinto do cumprimento por jogos.
@@ -506,5 +512,39 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   e a invalidação é definitiva e preserva placar, estatísticas e cumprimentos. Também aprovado por Marcus na MAR-72:
   a arbitragem pode encerrar como normal mesmo durante uma interrupção, e o presidente pode corrigir resultado e
   vencedor de jogo já invalidado.
-- Métricas definitivas e critérios de suspensão automática continuam pendentes; manter `temp_`
-  e não ativar regras automáticas fictícias.
+- Métricas definitivas continuam pendentes; manter `temp_`. Critérios de suspensão automática
+  aprovados posteriormente estão na seção 12; implementação e validação seguem na MAR-79.
+
+## 12. Critérios de suspensão automática — MAR-78 — 09/11/2026
+
+Aprovados por Marcus em 09/11/2026 após a pesquisa de regulamentos de handebol.
+São regras da associação para atletas; a implementação pertence à MAR-79.
+Não representam adoção integral de um regulamento externo nem aprovação das métricas finais.
+
+| Ocorrência | Suspensão automática para jogos seguintes |
+| --- | --- |
+| Cartão amarelo | Nenhuma. |
+| Exclusão de dois minutos | Nenhuma; não acumula entre partidas. |
+| Terceira exclusão no mesmo jogo | Desqualifica naquela partida; por si só não gera suspensão futura. |
+| Vermelho sem relatório disciplinar | Nenhuma. |
+| Desqualificação com relatório disciplinar, sinalizada pelo cartão azul | Um jogo no mesmo campeonato. |
+
+- Não há acumulação entre jogos, reinício por fase ou aumento automático por reincidência.
+  Cada jogo com uma ocorrência válida pode gerar uma suspensão, sem reutilizar a mesma ocorrência.
+- Gerar após o encerramento definitivo, uma vez por atleta/jogo/regra. Vermelho e azul da mesma
+  desqualificação geram uma única suspensão, e o jogo de origem não conta como cumprimento.
+- Preservar as regras de cumprimento da seção 11: suspensões simultâneas correm em paralelo,
+  participação anteriormente credenciada é preservada e término/cancelamento do campeonato
+  encerra saldo sem transporte para outro campeonato.
+- Correção/anulação recalcula a automática e libera o saldo indevido, preservando histórico e
+  jogos cumpridos. Não altera partidas passadas nem compensa ausências.
+- Eventual punição adicional depende de decisão manual do presidente pelas regras vigentes;
+  não há complemento automático nem soma sequencial presumida.
+- A MAR-79 deve distinguir desqualificação com e sem relatório disciplinar. O cartão azul informa
+  o relatório da mesma desqualificação, não uma segunda infração. Não inferir esse critério apenas
+  de um vermelho ou da terceira exclusão.
+
+Exemplos de aceite: amarelos em três partidas não suspendem; três exclusões no mesmo jogo sem
+relatório não impedem a partida seguinte; vermelho com azul e relatório gera uma suspensão de
+um jogo, não duas; retirar a ocorrência que originou a automática libera apenas o saldo indevido
+restante, sem compensar jogos passados.

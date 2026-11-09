@@ -1,6 +1,6 @@
 # Pendências — gestão de handebol
 
-Atualizado em 07/11/2026.
+Atualizado em 09/11/2026.
 
 Resumo das confirmações com o cliente, lacunas de requisitos e casos específicos ainda sem decisão.
 Referências: [requisitos](requisitos.md) e [modelagem](modelo-banco-dados.md).
@@ -14,7 +14,7 @@ obrigações de implementar. Os responsáveis indicados são sugestões para con
 | ID      | Pendência e decisão necessária                                                                                                                            | Impacto / situação vigente                                                                                                                                                                     |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PEN-003 | Confirmar métricas por jogo e atleta: quais dados registrar, definições e forma de cálculo.                                                               | Manter os campos provisórios com prefixo temp_. Placar, gols, cartões amarelos/vermelhos e exclusões de dois minutos são a proposta atual, não a lista definitiva. RF-037.                     |
-| PEN-004 | Definir regras de suspensão automática: penalidades consideradas, limites, período de acumulação, quantidade de jogos e eventual reinício da contagem.    | A funcionalidade foi solicitada, mas os critérios não podem ser inventados. Regras automáticas permanecem inativas até confirmação. RF-039 e RN-041/RN-042.                                    |
+| PEN-004 | Definir regras de suspensão automática: penalidades consideradas, limites, período de acumulação, quantidade de jogos e eventual reinício da contagem.    | Resolvida por Marcus em 09/11/2026 (MAR-78). Critérios em requisitos, seção 12; implementação/validação na MAR-79, ainda sem regras automáticas ativas.                                    |
 | PEN-005 | Confirmar se o presidente continuará incluindo os clubes participantes dos campeonatos.                                                                   | É o procedimento provisoriamente adotado. Se houver inscrição pelo próprio clube, definir quem solicita, quem aprova e os prazos. RF-014.                                                      |
 | PEN-008 | Ficha cadastral final, dados da carteirinha e critérios de verificação. | Parcial: campos mínimos provisórios autorizados; foto opcional e edição sem nova aprovação definidos em requisitos, seção 11. Campos finais e critérios do cliente continuam pendentes. |
 
@@ -77,7 +77,7 @@ aprovados.
 
 ## 7. Ordem sugerida de resolução
 
-1. Confirmar métricas definitivas, critérios automáticos, ficha final e inclusão de clubes com o cliente (PEN-003/PEN-004/PEN-008/PEN-005).
+1. Confirmar métricas definitivas, ficha final e inclusão de clubes com o cliente (PEN-003/PEN-008/PEN-005). Critérios automáticos da PEN-004 já aprovados; implementar na MAR-79.
 2. Detalhar correção de credenciamento com entrada/lançamentos e redução parcial de suspensão (PEN-019/PEN-009 residuais).
 3. Confirmar eventual exceção de transferência para clube eliminado/desistente (PEN-017); até lá vale o bloqueio aprovado.
 4. Detalhar condições operacionais, retenção e auditoria completa (PEN-025/PEN-026/PEN-007), sem reabrir itens já adiados.
@@ -89,6 +89,10 @@ continuar as partes já acordadas.
 ## 8. Decisões já encerradas
 
 Não são pendências:
+
+- PEN-004: critérios de suspensão automática aprovados por Marcus em 09/11/2026 (MAR-78),
+  em [requisitos, seção 12](requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026).
+  A aprovação encerra a decisão; implementação e validação continuam na MAR-79.
 
 - Esclarecimentos desta rodada: PEN-006, PEN-010 a PEN-016, PEN-018, PEN-020, PEN-021 e PEN-023. Regras em [requisitos, seção 11](requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026). PEN-009/PEN-019 conservam somente os detalhes residuais acima.
 - Ciclo manual do campeonato e limites/permissões de fotos foram definidos na mesma seção.
@@ -131,7 +135,7 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   HTTP validados. Client não usa SSR de sessão; será preciso validar seu repasse de cookies/cache
   quando introduzido. Arbitragem temporária (MAR-65) validada localmente: cookie separado por jogo,
   revalidação transacional e revogação concorrente com troca de senha, retirada e desativação. Escritas
-  esportivas reais e o ciclo do jogo foram validados localmente (MAR-67 a 69); revogação Socket.IO continua fora da entrega, assim como TLS/proxy/cookies hospedados. Recuperação e prova
+  esportivas reais e o ciclo do jogo foram validados localmente (MAR-67 a 69), e a revogação Socket.IO em conexões abertas na MAR-73; TLS/proxy/cookies e Socket.IO hospedados continuam fora da entrega. Recuperação e prova
   de reset seguem adiadas. A escolha está encerrada; a PEN-030 **não está totalmente encerrada**.
   Regras atuais da arbitragem substituem as pendências
   históricas da conclusão: PEN-022 e PEN-021 resolvidas.
@@ -152,4 +156,7 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   de lint e a limitação de suporte do ESLint 9 continuam registrados na arquitetura.
 - PEN-033: equipe define os contratos em código/OpenAPI e detalha eventos, reconexão, publicação
   após transação e conflitos. Não exige questionário técnico ao usuário; decisões de comportamento
-  ainda indefinidas precisam ser esclarecidas; PEN-023 foi resolvida nesta rodada.
+  ainda indefinidas precisam ser esclarecidas; PEN-023 foi resolvida nesta rodada. Eventos, publicação após
+  a transação e reconexão definidos e validados localmente na MAR-73 (arquitetura); destinatários, conteúdo do
+  aviso e motivo da revogação aprovados por Marcus (requisitos, seção 11). Falta validar Socket.IO na
+  implantação de teste (MAR-76).

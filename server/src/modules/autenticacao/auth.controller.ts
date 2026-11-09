@@ -25,6 +25,7 @@ import { openapiCredenciamento } from "../participacoes/credenciamento.openapi.j
 import { openapiLancamentos } from "../resultados/lancamentos.openapi.js";
 import { openapiCicloJogo } from "../jogos/ciclo.openapi.js";
 import { openapiFotos } from "../fotos/fotos.openapi.js";
+import { openapiNotificacoes } from "../notificacoes/notificacoes.openapi.js";
 const cadastroSchema = z.discriminatedUnion("perfil", [
   camposConta.extend({ perfil: z.literal("atleta"), clubeId: z.uuid() }),
   camposConta.extend({ perfil: z.literal("tecnico") }),
@@ -42,6 +43,7 @@ export class AuthController {
     return {
       openapi: "3.1.0", info: { title: "Handebol — cadastro e sessão", version: "0.1.0" }, servers: [{ url: "/api" }],
       components: { securitySchemes: { sessionCookie: { type: "apiKey", in: "cookie", name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}better-auth.session_token` }, arbitragemCookie: securitySchemeArbitragem } },
+      "x-socketio": openapiNotificacoes,
       paths: {
         ...openapiClubes,
         ...openapiVerificacoes,
