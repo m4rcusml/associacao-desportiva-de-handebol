@@ -225,7 +225,8 @@ credenciado de novo. A camisa informada diferente da atual é 409 com a `partici
 feita devolve `alterado: false`. Cada correção e estorno grava em `AlteracaoCredenciamento` a cópia do credenciamento
 alterado. Depois do encerramento, somente o presidente corrige a camisa, em
 `POST /api/jogos/{jogoId}/credenciamentos/{atletaId}/camisa`, sem reabrir a arbitragem. Estorno ou outra correção
-de atleta que entrou ou tem lançamentos fica para o presidente quando a PEN-019 for detalhada.
+de atleta que entrou ou tem lançamentos pelo presidente segue os critérios aprovados na MAR-80
+(requisitos, seção 13), com implementação e validação ainda pendentes.
 
 #### Fotos privadas dos atletas (MAR-75)
 
@@ -643,7 +644,7 @@ histórico, cópia divergente, data retroativa, histórico imutável, estorno co
 contra estorno e a mesma correção em paralelo; lançamento e entrada contra estorno nos dois sentidos e entrada após
 correção, com espera real no bloqueio; encerramento aguardando a correção e, depois, correção somente pelo presidente.
 Uma migração nova; nenhuma dependência nova. Não validado: notificação Socket.IO (MAR-73) e correções complexas do
-presidente (PEN-019 residual).
+presidente (critérios aprovados na MAR-80, requisitos seção 13; implementação e validação pendentes).
 
 Validação local da MAR-72 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado e
 **149 testes de integração aprovados**, incluindo cinco novos: interrupção e retomada do mesmo jogo com repetição sem
@@ -688,7 +689,7 @@ encaminhamento Vercel/Render e cookies `__Host-` hospedados (MAR-76) e mais de u
    do atleta, e atribui um técnico a cada clube.
 2. **Organização da competição:** o presidente cria um campeonato de uma categoria,
    inclui os clubes participantes, agenda os jogos e designa os árbitros. A inclusão dos
-   clubes pelo presidente é a proposta inicial, ainda sujeita à confirmação do cliente.
+   clubes pelo presidente foi confirmada para esta versão na MAR-82 (requisitos, seção 15).
 3. **Preparação pelo técnico:** antes de cada partida, o técnico escolhe os atletas do seu
    clube que pretende levar ao jogo. Essa lista é preliminar e pode mudar até o início.
 4. **Chegada e credenciamento:** no dia marcado, antes da partida, os árbitros acessam a página temporária,
@@ -712,7 +713,8 @@ As decisões posteriores sobre exceções, fotos, fuso local, consulta da senha 
 competições estão em [requisitos, seção 11](docs/requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026).
 São decisões para desenvolvimento, ainda sem implementação dos respectivos fluxos.
 
-As métricas ainda provisórias usam o prefixo `temp_`. As exceções e decisões em aberto
+As métricas desta versão foram confirmadas na MAR-82 ([requisitos, seção 15](docs/requisitos.md#15-ficha-carteirinha-e-métricas--mar-82--09112026));
+os identificadores atuais ainda usam `temp_` até migração compatível em tarefa própria. As exceções e decisões em aberto
 estão detalhadas nas [pendências](docs/pendencias.md).
 
 ## Fora do escopo inicial
@@ -736,3 +738,15 @@ Fluxo no Linear: Backlog → Todo (selecionada) → In Progress → In Review �
 
 Pendência de produto não pode ser decidida pelo agente: registrar o bloqueio e esclarecer
 com Marcus. Tarefas de backend priorizam testes no backend; frontend exige escopo confirmado.
+
+
+### Decisões documentais — MAR-80/81/82 — 09/11/2026
+
+Critérios aprovados de [correção administrativa de credenciamento](docs/requisitos.md#13-correção-administrativa-de-credenciamento--mar-80--09112026),
+[redução de suspensão e recálculo](docs/requisitos.md#14-redução-parcial-e-justificativa-de-suspensão--mar-81--09112026)
+e [ficha, carteirinha e métricas](docs/requisitos.md#15-ficha-carteirinha-e-métricas--mar-82--09112026)
+estão documentados. Esta entrega não implementa novas operações ou renomeia banco/API;
+as adequações e sua validação seguem nas tarefas
+[MAR-83 — correção administrativa](https://linear.app/marcusml/issue/MAR-83),
+[MAR-84 — redução de suspensão](https://linear.app/marcusml/issue/MAR-84) e
+[MAR-85 — carteirinha e métricas](https://linear.app/marcusml/issue/MAR-85).

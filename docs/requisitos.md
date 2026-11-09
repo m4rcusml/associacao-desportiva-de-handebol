@@ -58,7 +58,7 @@ ou por conta designada; antes disso não há entrada por senha. Ela ignora maiú
 Cada entrada por senha gera um registro próprio com o nome informado, sem presumir identidade. A sessão
 temporária expira tecnicamente em 24 horas, além das revogações previstas.
 Recuperação, operações da arbitragem em quadra e demais fluxos continuam planejados. A rota demonstrativa não representa autorização para operar os fluxos esportivos.
-Campos mínimos continuam provisórios conforme PEN-008. Comandos e provas no [README](../README.md).
+Campos mínimos confirmados para esta versão na MAR-82 (seção 15). Comandos e provas no [README](../README.md).
 
 | Situação   | Significado                                                                        |
 | ---------- | ---------------------------------------------------------------------------------- |
@@ -108,12 +108,12 @@ são visualizações, não conjuntos diferentes de permissões.
 | RF-011 | Permitir ao presidente transferir atletas entre clubes quando não houver impedimento de campeonato em andamento. | Confirmado |
 | RF-012 | Preservar o histórico dos clubes representados pelo atleta, inclusive em jogos anteriores à transferência.       | Confirmado |
 | RF-013 | Permitir ao presidente criar campeonatos, cada um com uma categoria.                                             | Confirmado |
-| RF-014 | Permitir ao presidente incluir os clubes participantes do campeonato.                                            | Provisório |
+| RF-014 | Permitir ao presidente incluir os clubes participantes do campeonato.                                            | Confirmado |
 | RF-015 | Permitir ao presidente criar jogos entre dois clubes inscritos no mesmo campeonato.                              | Confirmado |
 | RF-016 | Permitir ao técnico escolher e alterar os atletas de seu clube para um jogo até o início da partida.             | Confirmado |
 
-A inclusão de clubes pelo presidente é a operação vigente da primeira versão; Marcus indicou que
-ainda precisa confirmá-la com o cliente.
+A inclusão de clubes pelo presidente foi confirmada por Marcus para esta versão na MAR-82
+(seção 15); não haverá solicitação de inscrição pelo próprio clube.
 
 ### 3.3. Credenciamento e participação
 
@@ -149,7 +149,7 @@ ainda precisa confirmá-la com o cliente.
 | RF-034 | Permitir à arbitragem corrigir ou desfazer lançamentos durante o jogo, preservando o registro da correção.                                         | Confirmado |
 | RF-035 | Permitir à arbitragem encerrar o jogo.                                                                                                             | Confirmado |
 | RF-036 | Permitir somente ao presidente corrigir os dados após o encerramento, diretamente, sem devolver o acesso à arbitragem.                             | Confirmado |
-| RF-037 | Representar provisoriamente placar por clube, gols por atleta, cartões amarelos, exclusões de dois minutos e cartões vermelhos, com prefixo temp_. | Provisório |
+| RF-037 | Representar placar por clube, gols, amarelos, exclusões de dois minutos e desqualificações por vermelho por atleta/jogo, conforme seção 15. | Confirmado |
 
 ### 3.6. Suspensões
 
@@ -216,7 +216,7 @@ ainda precisa confirmá-la com o cliente.
 | RN-032 | Todo gol deve identificar o atleta responsável; não se lança gol diretamente para clube sem identificar o atleta. | Confirmado |
 | RN-033 | O gol individual deve refletir automaticamente no placar do clube representado naquele jogo.                      | Confirmado |
 | RN-034 | Correções de lançamentos devem preservar o registro do que foi corrigido.                                         | Confirmado |
-| RN-035 | Métricas inventadas para a primeira versão usam prefixo temp_, nunca sufixo. A lista final depende do cliente.    | Confirmado |
+| RN-035 | Métricas confirmadas na seção 15. Identificadores legados temp_ permanecem até migração compatível em tarefa própria.    | Confirmado |
 | RN-036 | Histórico do atleta resulta dos registros de cada jogo e deve continuar preservado após mudanças de clube.        | Confirmado |
 
 ### 4.5. Disciplina
@@ -261,16 +261,17 @@ tempo máximo de resposta ou disponibilidade. Esses temas não devem ser tratado
 assumidos. Exportação, doações e patrocínios aparecem nas anotações iniciais, mas não foram
 detalhados nem aprovados nas rodadas que originaram este documento.
 
-## 6. Métricas provisórias
+## 6. Métricas aprovadas e identificadores atuais
 
 | Contexto                      | Identificadores provisórios                                                       |
 | ----------------------------- | --------------------------------------------------------------------------------- |
 | Placar do jogo                | temp_placarClubeA, temp_placarClubeB                                              |
 | Desempenho individual no jogo | temp_gols, temp_cartoesAmarelos, temp_exclusoesDoisMinutos, temp_cartoesVermelhos |
 
-A confirmação de registrar gols atribuídos a atletas não confirma a lista completa de métricas ou as
-regras oficiais de handebol. Em particular, registrar uma penalidade não define, por si só, o
-critério para gerar suspensão automática.
+A lista e os cálculos desta versão foram confirmados na MAR-82 (seção 15). Os identificadores
+atuais acima continuam com `temp_` até migração compatível em tarefa própria; esta entrega
+documental não altera banco/API. Penalidades não definem sozinhas o critério de suspensão
+automática, aprovado separadamente na seção 12.
 
 ## 7. Pendências e perguntas de esclarecimento
 
@@ -281,12 +282,12 @@ O levantamento consolidado, incluindo casos específicos e ordem sugerida de res
 | ------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
 | PEN-001 | A página da arbitragem deve abrir antes do início formal para credenciar os atletas?                               | Resolvido: sim; abrir credenciamento antes e iniciar a partida depois (RF-030). |
 | PEN-002 | Para usuário cadastrado que entra por senha, verificar igualmente o impedimento de pertencer a clube participante? | Resolvido: não; acesso por senha dispensa essa conferência (RN-025).            |
-| PEN-003 | Quais métricas serão efetivamente utilizadas?                                                                      | Aguardando cliente; manter temp_.                                               |
+| PEN-003 | Quais métricas serão efetivamente utilizadas?                                                                      | Resolvida para esta versão na MAR-82, seção 15; migração dos identificadores temp_ pendente.                                               |
 | PEN-004 | Quais penalidades, limites de acumulação e quantidades de jogos geram suspensão automática?                        | Resolvido por Marcus em 09/11/2026; critérios na seção 12, implementação na MAR-79.             |
-| PEN-005 | O presidente continuará incluindo os clubes no campeonato?                                                         | Operação provisória expressamente adotada; aguarda confirmação do cliente.      |
-| PEN-006 | Como tratar múltiplas suspensões simultâneas? | Resolvido: cumprimento em paralelo; revisões na seção 11 e PEN-009 residual. |
+| PEN-005 | O presidente continuará incluindo os clubes no campeonato?                                                         | Resolvida na MAR-82, seção 15: presidente inclui; sem solicitação pelo clube nesta versão.      |
+| PEN-006 | Como tratar múltiplas suspensões simultâneas? | Resolvido: cumprimento em paralelo, seção 11; redução e recálculo definidos na MAR-81, seção 14. |
 | PEN-007 | Quais ações, autores, alterações e justificativas integram a auditoria completa?                                   | Necessidade reconhecida; detalhamento adiado por solicitação de Marcus.         |
-| PEN-008 | Quais campos compõem a ficha cadastral e quais são obrigatórios? | Campos mínimos provisórios; foto e efeitos da edição definidos na seção 11. Ficha final e dados da carteirinha pendentes. |
+| PEN-008 | Quais campos compõem a ficha cadastral e quais são obrigatórios? | Resolvida para esta versão por Marcus na MAR-82, em 09/11/2026; ficha, carteirinha e aprovação na seção 15. |
 
 A conclusão da primeira versão documental não significa que as funcionalidades com critérios
 pendentes estejam prontas para implementação completa.
@@ -317,8 +318,8 @@ A [arquitetura aprovada](arquitetura.md) consolida as decisões estruturais. Par
 - Armazenamento apenas de fotos dos atletas; não haverá envio de documentos para verificação.
 - Dois ambientes, teste e produção, com implantação online de teste para demonstrações.
 
-Essas decisões complementam os requisitos existentes; a definição dos demais campos cadastrais,
-das métricas, das regras disciplinares e das metas operacionais permanece pendente.
+Essas decisões complementam os requisitos existentes. Campos, métricas e regras disciplinares
+foram definidos posteriormente nas seções 12 a 15; metas operacionais continuam na PEN-025.
 
 ## 10. Acesso da arbitragem e início do desenvolvimento — 07/11/2026
 
@@ -337,8 +338,8 @@ Decisões confirmadas por Marcus nesta rodada:
 - Contas permanentes e acessos a outros jogos permanecem válidos nessas operações.
 - Fuso da data, partidas atravessando meia-noite e consulta da senha foram esclarecidos
   posteriormente na seção 11 (PEN-021).
-- Campos cadastrais mínimos necessários aos fluxos aprovados serão usados provisoriamente,
-  com confirmação posterior do cliente (PEN-008). Não acrescentar dados pessoais sem necessidade.
+- Campos cadastrais mínimos foram autorizados provisoriamente nesta rodada. A definição final
+  para esta versão foi aprovada posteriormente na MAR-82 (seção 15). Não acrescentar dados pessoais sem necessidade.
 - Serviço de e-mail e recuperação de senha estão adiados nesta etapa, incluindo sua prova;
   a recuperação por link permanece prevista para implementação posterior.
 - Somente teste será provisionado agora. Produção será criada ao concluir a aplicação;
@@ -453,14 +454,15 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   respeitando unicidade por clube/jogo. Depois, somente presidente; preservar alterações.
 - Arbitragem pode desfazer credenciamento antes do encerramento somente sem entrada em quadra
   e sem gols/penalidades registrados. Casos com entrada/lançamentos são corrigidos pelo presidente,
-  com histórico. O procedimento dessas correções complexas ainda precisa ser detalhado (PEN-019).
+  com histórico. O procedimento dessas correções complexas foi aprovado na MAR-80 (seção 13);
+  sua implementação permanece pendente.
   Detalhes aprovados por Marcus (MAR-71, 09/11/2026): a correção informa a camisa atual vista por quem corrige, e o estorno, a camisa do
   credenciamento a desfazer; divergência é conflito com o registro atual, e repetir a operação já feita não tem
   efeito. Lançamento anulado também impede o estorno, porque continua apontando a participação. O estorno mantém
   a escolha do técnico e permite novo credenciamento pelas regras normais. Cada correção e estorno fica em
   histórico próprio com a cópia do credenciamento, sem autoria (como na MAR-70). O presidente corrige somente
   a camisa, após o encerramento, inclusive de atleta que entrou ou tem lançamentos; estorno pelo presidente
-  aguarda a PEN-019.
+  segue definido na seção 13 (MAR-80); implementação ainda pendente.
 - Presidente pode substituir o código QR da mesma carteirinha, invalidando o anterior e
   preservando credenciamentos existentes. Leitura automática não ganha conferência manual obrigatória.
   Detalhes aprovados por Marcus (MAR-58): o histórico de invalidações, reativações e substituições
@@ -484,8 +486,8 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
 - Nova suspensão preserva a participação no jogo já credenciado e só impede os próximos jogos.
   O jogo já credenciado não é consumido como um dos próximos jogos dessa nova suspensão.
 - Presidente pode revogar suspensão, preservando o original, jogos já cumpridos e histórico
-  com indicação de suspensão revogada. Redução parcial e exigência de justificativa não foram
-  explicitamente definidas; permanecem na PEN-009, sem serem presumidas.
+  com indicação de suspensão revogada. Redução parcial e justificativa foram aprovadas
+  posteriormente na MAR-81 (seção 14), inclusive a interação com recálculo automático.
 - Na implementação da MAR-79, retirar uma penalidade recalcula a suspensão automática,
   liberando o saldo indevido. Não altera jogos passados nem compensa partidas perdidas pelo atleta.
 - Encerrar/cancelar campeonato encerra saldos restantes e preserva histórico; não transfere
@@ -512,8 +514,9 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   e a invalidação é definitiva e preserva placar, estatísticas e cumprimentos. Também aprovado por Marcus na MAR-72:
   a arbitragem pode encerrar como normal mesmo durante uma interrupção, e o presidente pode corrigir resultado e
   vencedor de jogo já invalidado.
-- Métricas definitivas continuam pendentes; manter `temp_`. Critérios de suspensão automática
-  aprovados posteriormente estão na seção 12; implementação e validação seguem na MAR-79.
+- Métricas desta versão foram confirmadas posteriormente na seção 15; identificadores atuais
+  `temp_` aguardam migração compatível. Critérios automáticos estão na seção 12, com redução e
+  recálculo na seção 14; implementação e validação seguem em tarefas próprias.
 
 ## 12. Critérios de suspensão automática — MAR-78 — 09/11/2026
 
@@ -548,3 +551,90 @@ Exemplos de aceite: amarelos em três partidas não suspendem; três exclusões 
 relatório não impedem a partida seguinte; vermelho com azul e relatório gera uma suspensão de
 um jogo, não duas; retirar a ocorrência que originou a automática libera apenas o saldo indevido
 restante, sem compensar jogos passados.
+
+## 13. Correção administrativa de credenciamento — MAR-80 — 09/11/2026
+
+Decisão aprovada por Marcus em 09/11/2026, resolvendo a PEN-019. Descreve comportamento
+para futura implementação na [MAR-83](https://linear.app/marcusml/issue/MAR-83);
+não amplia as permissões atuais da arbitragem.
+
+- Presidente pode anular uma entrada em quadra registrada por engano, preservando o original
+  e o histórico da correção.
+- Gols e penalidades atribuídos ao atleta errado são corrigidos individualmente: transferir
+  o lançamento para o atleta correto ou anulá-lo se a ocorrência não aconteceu. Não transferir
+  todos os lançamentos automaticamente.
+- Essas correções também são permitidas após o encerramento, somente pelo presidente, com
+  recálculo das estatísticas e suspensões afetadas. Transferir um gol entre atletas do mesmo
+  clube mantém o placar; anular um gol altera o placar.
+
+- Se o atleta correto realmente participou, o presidente pode registrar sua participação e
+  atribuir seus gols/penalidades mesmo que ele estivesse suspenso ou inelegível naquele jogo.
+  Registrar a irregularidade: a correção preserva o que aconteceu, sem tornar regular a
+  participação nem alterar automaticamente o resultado por punição. Essa exceção administrativa
+  não permite novos credenciamentos normais de atleta inelegível pela arbitragem.
+- Presidente pode transferir um lançamento atribuído ao clube errado para um atleta do adversário,
+  atualizando os placares dos dois clubes quando se tratar de gol.
+- Após corrigir os registros, presidente pode desfazer o credenciamento do atleta que não
+  participou quando não restarem entrada ou ocorrências válidas atribuídas a ele. Preservar
+  o histórico, inclusive entradas/lançamentos anulados ou transferidos; não apagar seus originais.
+- O recálculo de suspensões respeita a seção 12, sem alterar partidas passadas ou compensar ausências.
+
+Exemplos de aceite: João foi credenciado no lugar de Pedro; presidente anula a entrada indevida
+de João, registra a participação real de Pedro e corrige separadamente seus lançamentos. Se
+Pedro estava suspenso naquele jogo, registrar a irregularidade sem regularizá-lo. Transferir
+gol do clube A para atleta do clube B diminui o placar de A e aumenta o de B. Depois de remover
+todas as entradas/ocorrências válidas de João, seu credenciamento pode ser desfeito sem apagar
+as correções e seus registros originais. Esses procedimentos também valem após o encerramento.
+
+## 14. Redução parcial e justificativa de suspensão — MAR-81 — 09/11/2026
+
+Decisão aprovada por Marcus em 09/11/2026, resolvendo a PEN-009. A implementação e sua validação permanecem
+pendentes na [MAR-84](https://linear.app/marcusml/issue/MAR-84);
+os critérios abaixo não descrevem funcionalidades já disponíveis.
+
+- Presidente pode reduzir suspensões manuais e automáticas, preservando a punição original
+  e o histórico da decisão.
+- A redução define um novo total de jogos. O saldo considera os cumprimentos já registrados
+  e nunca fica negativo; não apagar cumprimentos nem compensar jogos passados.
+- Reduzir ou revogar exige justificativa, presidente responsável e data.
+
+Exemplos: uma suspensão de cinco jogos com dois cumpridos, reduzida para três, deixa um jogo
+por cumprir. Reduzida para um ou dois, fica com saldo zero, sem compensação das ausências.
+
+- Recálculo automático posterior respeita a redução administrativa: vale o menor total entre
+  o calculado pela regra e o definido na redução. A correção não aumenta novamente a punição.
+- Anular a ocorrência que originou a automática libera o saldo indevido restante, preservando
+  a punição original, a decisão administrativa e os cumprimentos no histórico.
+- Suspensão revogada não é reativada automaticamente por recálculo.
+
+## 15. Ficha, carteirinha e métricas — MAR-82 — 09/11/2026
+
+Decisão aprovada por Marcus em 09/11/2026, resolvendo PEN-003/PEN-005/PEN-008 para esta versão.
+A aprovação documental não comprova implementação ou validação dos comportamentos.
+
+- Ficha desta versão: nome completo, e-mail, senha e perfil; clube conforme as regras de vínculo
+  já aprovadas (atleta informa clube inicial; técnico pode ficar sem clube). Foto opcional para
+  atleta. Não acrescentar CPF, RG, endereço, telefone ou data de nascimento.
+- Carteirinha do atleta exibe nome completo, foto quando houver, clube atual, código, QR e situação
+  ativa/invalidada; não exibe e-mail. Permanece a mesma carteirinha após transferência de clube.
+- Presidente confere nome e vínculo com o clube para aprovar/rejeitar o cadastro. Não há envio
+  de documentos ou verificação externa automática. Permanecem reapresentação e edição permitida
+  sem nova aprovação, conforme seção 11.
+
+- Métricas desta versão por atleta/jogo: quantidade de gols, cartões amarelos, exclusões de dois
+  minutos e desqualificações por cartão vermelho. O azul identifica o relatório da mesma
+  desqualificação, não uma punição adicional na contagem.
+- Placar é a soma dos gols válidos de cada clube; histórico é a soma dos registros válidos do
+  atleta. Correções recalculam totais; lançamentos anulados não contam. Permanecem regras de
+  jogos excepcionais e vencedor separado do placar, conforme seção 11.
+- Não incluir assistências, defesas, aproveitamento ou tempo jogado nesta versão.
+- Presidente continua incluindo os clubes participantes do campeonato; não há solicitação de
+  inscrição pelo próprio clube nesta versão.
+
+Exemplos de aceite: dois gols válidos e um anulado contam dois; transferir um gol entre atletas
+do mesmo clube muda os totais individuais sem mudar o placar; vermelho acompanhado de azul
+conta uma desqualificação; atleta sem foto mantém carteirinha utilizável, sem e-mail exibido.
+
+A confirmação das métricas encerra a decisão de produto. A migração dos identificadores legados
+`temp_` e a adequação das consultas de carteirinha devem ser implementadas e validadas em tarefa
+própria, [MAR-85](https://linear.app/marcusml/issue/MAR-85), sem renomeação de banco/API nesta entrega documental.
