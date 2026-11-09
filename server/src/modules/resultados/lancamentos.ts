@@ -150,9 +150,13 @@ function exigirStatus(corretor: Corretor, status: string) {
   }
 }
 
-/** Status do jogo para o presidente, com o mesmo bloqueio compartilhado do jogo usado pela arbitragem. */
-async function statusParaPresidente(tx: Tx, jogoId: string) {
-  const [jogo] = await tx.$queryRaw<{ status: string }[]>`SELECT status::text AS status FROM "Jogo" WHERE id = ${jogoId}::uuid FOR SHARE`;
+/** Correções serializam o jogo e bloqueiam antes o campeonato, que pode encerrar os saldos. */
+async function statusParaPresidente(tx: Tx, jogoId: string, corrigindo = false) {
+  const referencia = await tx.jogo.findUnique({ where: { id: jogoId }, select: { campeonatoId: true } });
+  if (!referencia) throw new NotFoundException("Jogo não encontrado.");
+  await tx.$queryRaw`SELECT id FROM "Campeonato" WHERE id = ${referencia.campeonatoId}::uuid FOR SHARE`;
+  const bloqueio = corrigindo ? Prisma.sql`FOR NO KEY UPDATE` : Prisma.sql`FOR SHARE`;
+  const [jogo] = await tx.$queryRaw<{ status: string }[]>`SELECT status::text AS status FROM "Jogo" WHERE id = ${jogoId}::uuid ${bloqueio}`;
   if (!jogo) throw new NotFoundException("Jogo não encontrado.");
   return jogo.status;
 }
@@ -283,12 +287,12 @@ export async function anularPelaArbitragem(tx: Tx, jogoId: string, token: string
  * retirada anula a automática, liberando só o saldo restante; a acrescentada gera uma nova, para os próximos jogos.
  */
 export async function corrigirPeloPresidente(tx: Tx, jogoId: string, lancamentoId: string, dados: DadosLancamento) {
-  const resultado = await corrigir(tx, "presidente", await statusParaPresidente(tx, jogoId), jogoId, lancamentoId, normalizar(dados));
+  const resultado = await corrigir(tx, "presidente", await statusParaPresidente(tx, jogoId, true), jogoId, lancamentoId, normalizar(dados));
   return { ...resultado, suspensoesAutomaticas: await reconciliarSuspensoesAutomaticas(tx, jogoId) };
 }
 
 export async function anularPeloPresidente(tx: Tx, jogoId: string, lancamentoId: string, dados: z.infer<typeof anulacaoSchema>) {
-  const resultado = await anular(tx, "presidente", await statusParaPresidente(tx, jogoId), jogoId, lancamentoId, dados);
+  const resultado = await anular(tx, "presidente", await statusParaPresidente(tx, jogoId, true), jogoId, lancamentoId, dados);
   return { ...resultado, suspensoesAutomaticas: await reconciliarSuspensoesAutomaticas(tx, jogoId) };
 }
 

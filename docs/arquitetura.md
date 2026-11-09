@@ -164,7 +164,7 @@ usam a mesma criação de identidade/credencial do cadastro público (`autentica
 Hooks posteriores não são usados para garantir atomicidade. Falha de FK e falha no commit foram
 injetadas em teste; a identidade e o domínio não persistem. E-mail único normalizado resolve
 repetições concorrentes com 201/409; uma resposta perdida após commit é recuperável pelo login.
-Campos mínimos provisórios: nome completo, e-mail, senha e perfil; atleta escolhe clube existente,
+Campos mínimos confirmados para esta versão na MAR-82 (requisitos, seção 15): nome completo, e-mail, senha e perfil; atleta escolhe clube existente,
 técnico começa sem clube. A solicitação é registrada e o status inicial é pendente.
 
 O handler oficial precede os parsers, com allowlist de rotas/métodos. POST exige origem exata
@@ -285,26 +285,33 @@ Suspensões (MAR-66): `modules/suspensoes` expõe ao presidente aplicação, con
 campeonato (`FOR SHARE`: encerramento concorrente aguarda) e a conta do atleta (`FOR UPDATE`), e só então
 lê `aplicadaEm`; revogar bloqueia a suspensão (`FOR UPDATE`) e consulta o saldo em uma instrução posterior,
 para enxergar cumprimentos confirmados durante a espera pelo bloqueio. `registrarCumprimentos(tx, jogoId)` é o ponto
-de integração do encerramento do jogo (MAR-69/MAR-72): na mesma transação, bloqueia o jogo (`FOR SHARE`),
-as contas de todos os atletas com vínculo nos dois clubes (`FOR SHARE`, por id) e as suspensões vigentes do
+de integração do encerramento do jogo (MAR-69/MAR-72): na mesma transação, obtém o bloqueio do jogo (`FOR SHARE`)
+e os bloqueios consultivos de geração automática por atleta/campeonato (por atleta); bloqueia as contas dos atletas
+envolvidos (`FOR SHARE`, por id: vínculos nos dois clubes, ocorrências com relatório e automáticas do jogo) e as suspensões vigentes do
 campeonato (`FOR UPDATE`, por id), e insere com `ON CONFLICT DO NOTHING`, o que o torna idempotente mesmo em
 paralelo. `atletasComSuspensaoVigente` é a consulta de impedimento: o credenciamento (MAR-67) deve chamá-la
-depois de bloquear a conta do atleta (`FOR SHARE`), para ver aplicações concorrentes. Ordem geral:
-campeonato → jogo → conta → suspensão, sem ciclo com escalação e transferências. Triggers repetem no banco
+depois do bloqueio consultivo atleta/campeonato e da conta do atleta (`FOR SHARE`), para ver aplicações concorrentes.
+Ordem geral: campeonato → jogo → bloqueio consultivo atleta/campeonato → conta → suspensão. Triggers repetem no banco
 as regras de aplicação, término do saldo e cumprimento.
 Suspensões automáticas (MAR-79): `reconciliarSuspensoesAutomaticas(tx, jogoId)` roda no encerramento, depois de
 `registrarCumprimentos`, e nas correções/anulações do presidente após o encerramento, na mesma transação. Compara as
 automáticas não anuladas do jogo com os vermelhos não anulados com `relatorioDisciplinar`: cria as que faltam (1 jogo,
 `aplicadaEm` lido agora) e anula (`anuladaEm`) as que perderam a ocorrência, sem tocar em revogadas ou com saldo
-encerrado. Bloqueio consultivo por jogo serializa reconciliações concorrentes; depois, contas dos atletas envolvidos
-em `FOR UPDATE` (por id), como na aplicação manual. O índice único parcial (atleta, jogo de origem, regra) sem
+encerrado. Campeonato (`FOR SHARE`) precede o jogo; correções do presidente usam `FOR NO KEY UPDATE` no jogo,
+serializando-as antes de alterar ocorrências. Bloqueio consultivo por jogo serializa reconciliações concorrentes;
+depois, bloqueios consultivos por atleta/campeonato (por atleta), compartilhados com o credenciamento, e contas
+dos atletas envolvidos em `FOR SHARE` (por id). No encerramento, os bloqueios consultivos já foram adquiridos
+antes dos cumprimentos. A geração automática não promove bloqueios das contas para `FOR UPDATE`, pois a mesma
+conta pode autorizar arbitragem designada em outro jogo. A função SQL `bloquear_geracao_suspensao` mantém a mesma
+chave de bloqueio na API e nos triggers de geração/credenciamento. O índice único parcial (atleta, jogo de origem, regra) sem
 anulação e o `ON CONFLICT DO NOTHING` impedem duplicação.
 Credenciamento (MAR-67): `participacoes/credenciamento.ts` expõe à sessão temporária da arbitragem a lista de
 atletas do jogo, a leitura do QR, o credenciamento (manual ou QR) e a entrada em quadra. Cada operação chama
 `revalidarArbitragem` na própria transação e depois bloqueia a conta do atleta (`FOR SHARE`: desativação,
 transferência e aplicação de suspensão aguardam ou são vistas) e a carteirinha (`FOR SHARE`: invalidação e
 substituição do QR aguardam ou são vistas; o QR é conferido de novo com o bloqueio), na ordem jogo →
-arbitragem → sessão → conta → carteirinha → vínculo, a mesma da escalação. A elegibilidade usa
+arbitragem → sessão → bloqueio consultivo atleta/campeonato → conta → carteirinha → vínculo. A escalação
+compartilha a ordem das linhas, sem precisar serializar geração automática, pois só sinaliza a suspensão. A elegibilidade usa
 `atletasComSuspensaoVigente`. A gravação é condicional (`UPDATE ... WHERE credenciadoEm IS NULL` ou
 `INSERT ... ON CONFLICT DO NOTHING`): o mesmo atleta em paralelo termina com `alterado: false`, e a camisa
 disputada fica com o primeiro, o segundo recebendo 409. O trigger repete as regras no banco.
@@ -326,8 +333,8 @@ lista de lançamentos em uma única instrução SQL, compartilhando o mesmo snap
 a revalidação mantém seus bloqueios e o isolamento READ COMMITTED. O trigger
 repete no banco jogo em andamento e participação credenciada do mesmo jogo. O encerramento (MAR-69) altera a
 linha do jogo e por isso aguarda lançamentos em curso.
-Correções (MAR-70): na mesma transação, jogo (`FOR SHARE`, pela revalidação da arbitragem ou pela leitura do
-presidente) → operação (advisory lock transacional) → lançamento (`FOR UPDATE`) → participação (`FOR SHARE`) → anulação do original → inserção do
+Correções (MAR-70): na mesma transação, jogo (`FOR SHARE` pela revalidação da arbitragem; pelo presidente,
+campeonato `FOR SHARE` → jogo `FOR NO KEY UPDATE`, para a reconciliação da MAR-79) → operação (advisory lock transacional) → lançamento (`FOR UPDATE`) → participação (`FOR SHARE`) → anulação do original → inserção do
 substituto. De duas correções/anulações do mesmo lançamento, a segunda aguarda o `FOR UPDATE` e o encontra anulado:
 recebe 409 com o registro atualizado, salvo quando é a mesma operação (`anulacaoOperacaoId` igual ao seu
 `operacaoId`), tratada como reenvio. O trigger só aceita, como alteração, a anulação única sem mudar dados, com o
@@ -426,8 +433,8 @@ Referências da validação de imagens: [Sharp 0.35.5](https://sharp.pixelplumbi
   na publicação. Para Prisma 7, o fluxo padrão é `migrate dev` local e `migrate deploy` nos ambientes;
   confirmar os comandos na versão fixada. Não alterar o esquema manualmente pelo painel.
 - Seed reproduzível com dados fictícios baseados na modelagem para desenvolvimento e demonstração.
-- Usar campos cadastrais mínimos para os fluxos aprovados, provisórios até confirmação do cliente
-  (PEN-008), sem acrescentar dados pessoais sem necessidade.
+- Usar os campos cadastrais mínimos confirmados para esta versão na MAR-82
+  (requisitos, seção 15), sem acrescentar dados pessoais além dos aprovados.
 
 ### Matriz inicial — 07/11/2026
 
@@ -515,7 +522,9 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 4. Retomar serviço de e-mail, recuperação de senha e sua validação em etapa posterior.
 5. Detalhar produção, logs e backup/restauração posteriormente, sem bloquear o início local.
 
-Métricas e detalhes disciplinares ainda pendentes continuam registrados em
-[pendencias.md](pendencias.md). Os critérios de suspensão automática foram aprovados na MAR-78
+Decisões das MAR-80/81/82 estão em requisitos, seções 13 a 15: correção administrativa,
+redução de suspensão, ficha/carteirinha e métricas. A aprovação não comprova implementação;
+migração dos identificadores `temp_` exige tarefa própria. Demais questões em aberto
+continuam em [pendencias.md](pendencias.md). Os critérios de suspensão automática foram aprovados na MAR-78
 ([requisitos, seção 12](requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026))
-e implementados na MAR-79.
+e foram implementados na MAR-79.

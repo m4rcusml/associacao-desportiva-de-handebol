@@ -161,6 +161,9 @@ sem presidente, com jogo e regra; anulação exclusiva com revogação e términ
 mesmo campeonato; origem, jogo, regra e anulação são imutáveis; o cumprimento recusa a suspensão anulada e o
 próprio jogo de origem. A migração `credenciamento_suspensao_anulada` faz o trigger de credenciamento ignorar a
 suspensão anulada.
+A migração incremental `gate_suspensao_automatica` instala a função de bloqueio consultivo por
+atleta/campeonato e triggers que a obtêm antes dos validadores de nova automática e novo credenciamento.
+A API usa a mesma função e adquire esses bloqueios antes das contas compartilhadas e dos cumprimentos.
 A migração `lancamentos` (MAR-68) cria `LancamentoJogo` (`operacaoId` UUID único enviado pelo cliente, `jogoId`,
 `participacaoId`, `tipo` com os quatro valores `temp_`, `valor` e `registradoEm`) e as views `EstatisticasDoJogo`
 (`temp_placarClubeA`/`B`, somente jogos com `iniciadoEm`) e `DesempenhoDoAtleta` (as quatro métricas `temp_`, somente
@@ -208,8 +211,8 @@ extensão correspondente, com `usuarioId` como `PK` e `FK` para
 `Usuario`.`id`. A exclusividade entre as três extensões exige validação
 transacional/trigger na implementação; as relações de herança no desenho não são herança nativa de
 tabelas PostgreSQL. `ativo` controla a conta e não se confunde com carteirinha ou
-suspensão esportiva. Nenhum atributo de métrica provisória perde o prefixo `temp_` até
-confirmação do cliente.
+suspensão esportiva. As métricas foram confirmadas na MAR-82 (requisitos, seção 15); o banco/API
+atual conserva `temp_` até migração compatível em tarefa própria.
 
 ## Chaves, campos opcionais e unicidade
 
@@ -361,9 +364,16 @@ Cancelar ou finalizar mantém o acesso bloqueado. Contas permanentes e outros jo
 Aplicar as mudanças junto da invalidação das sessões, com controle de concorrência e notificações
 apenas após persistência (`EventoJogo`, MAR-73). Repetições de início/fim e conflitos de correção seguem requisitos, seção 11.
 
-## Métricas provisórias, correções e histórico
+A correção administrativa de credenciamento aprovada na MAR-80 está em requisitos, seção 13,
+e ainda não foi implementada. A futura representação deve preservar os originais de entradas,
+lançamentos e credenciamentos corrigidos, identificar participação irregular sem regularizá-la
+e permitir estorno administrativo sem apagar referências históricas. Não confundir com os
+limites do estorno atualmente implementado na MAR-71.
 
-`LancamentoJogo` é a fonte dos registros esportivos. `tipo` usa provisoriamente:
+## Métricas aprovadas, identificadores atuais, correções e histórico
+
+`LancamentoJogo` é a fonte dos registros esportivos. A lista desta versão foi aprovada na MAR-82
+(requisitos, seção 15). O `tipo` atual ainda usa identificadores legados:
 `temp_gol`, `temp_cartaoAmarelo`, `temp_exclusaoDoisMinutos` e `temp_cartaoVermelho`. `valor` é
 inteiro positivo, inicialmente 1 por ocorrência. O vermelho traz `relatorioDisciplinar` (MAR-79): `true` é a
 desqualificação com relatório, sinalizada pelo azul, que não é segunda infração nem métrica separada. Ocorrências de atleta exigem `participacaoId`. Um
@@ -372,7 +382,7 @@ há lançamento de gol sem atleta.
 
 `EstatisticasDoJogo` e `DesempenhoDoAtleta` são projeções (views), não tabelas editáveis em paralelo:
 somam os lançamentos não anulados. Placar é zero a zero ao iniciar. O histórico soma desempenho de
-cada participação e continua válido após mudança de clube. Todas as métricas provisórias têm prefixo
+cada participação e continua válido após mudança de clube. As métricas atuais ainda têm prefixo
 `temp_`: `temp_placarClubeA`, `temp_placarClubeB`, `temp_gols`, `temp_cartoesAmarelos`,
 `temp_exclusoesDoisMinutos` e `temp_cartoesVermelhos`.
 
@@ -414,27 +424,33 @@ entre clubes. Suspensões simultâneas são cumpridas em paralelo: cada jogo ele
 vigente uma vez, respeitando a chave composta. Presidente pode revogar, preservando original e
 cumprimentos; `revogadaEm` e `revogadaPorPresidenteId` registram a revogação (MAR-66).
 Encerramento/cancelamento do campeonato registra o término do saldo em `saldoEncerradoEm`, distinto
-de revogação e de jogos cumpridos. Redução parcial e justificativa obrigatória continuam pendentes.
+de revogação e de jogos cumpridos. Redução parcial e justificativa obrigatória foram aprovadas
+na MAR-81 (requisitos, seção 14), com implementação pendente. Preservar punição original,
+cumprimentos e histórico de decisão; representar novo total e saldo nunca negativo. O recálculo
+automático posterior usa o menor total entre regra e redução administrativa, libera saldo indevido
+se a origem for anulada e não reativa revogadas, conforme requisitos, seção 14.
 
 ## Pendências que não bloqueiam esta versão documental
 
-- Validar métricas `temp_` com cliente. Critérios automáticos aprovados em requisitos, seção 12, e implementados na MAR-79.
+- Métricas confirmadas na MAR-82 (requisitos, seção 15); migração compatível dos identificadores `temp_` e adequação de carteirinha pendentes. Critérios automáticos aprovados em requisitos, seção 12, e implementados na MAR-79.
 - Auditoria completa: autoria, valores anteriores/novos e justificativas de alterações.
-- Redução parcial de suspensão, justificativa obrigatória e procedimento de correção de
-  credenciamento com entrada/lançamentos. Revogação, paralelismo e recálculo sem compensação
-  foram definidos em requisitos, seção 11.
-- Detalhes da ficha cadastral além de `nome`, autenticação, foto opcional e vínculos.
+- Redução administrativa e recálculo automático posterior foram aprovados na MAR-81
+  (requisitos, seção 14), com implementação e validação pendentes. Revogação, paralelismo
+  e recálculo sem compensação foram definidos em requisitos, seção 11. Correção administrativa
+  de credenciamento foi aprovada na MAR-80 (requisitos, seção 13), ainda sem implementação.
+- A ficha desta versão e os dados da carteirinha foram definidos na MAR-82 (requisitos, seção 15); verificar implementação sem acrescentar dados pessoais além dos aprovados.
 
 Essas pendências limitam implementação das respectivas funcionalidades; esta versão não afirma que
-regras automáticas ou auditoria completa estejam prontas para produção.
+as funcionalidades estejam prontas para produção ou que a auditoria completa esteja implementada.
 
 ## Esclarecimentos posteriores — 06/11/2026
 
 Conforme a [arquitetura](arquitetura.md), somente fotos de atletas serão enviadas.
-A verificação esportiva não terá upload de documentos. A ficha cadastral continua pendente.
+A verificação esportiva não terá upload de documentos. A ficha e a carteirinha desta versão
+foram definidas posteriormente na MAR-82 (requisitos, seção 15).
 A escolha do Better Auth foi concluída na PEN-030; seu complemento lógico está abaixo.
-Para começar, os campos já modelados e essenciais aos fluxos serão usados provisoriamente,
-sem exigir dados adicionais até confirmação do cliente. E-mail e credencial pertencem à
+Os campos mínimos inicialmente provisórios foram confirmados para esta versão na MAR-82,
+sem exigir dados pessoais adicionais. E-mail e credencial pertencem à
 autenticação; atleta informa clube inicial e técnico pode ficar sem clube. Fotos usam Supabase
 Storage na franquia gratuita. Formatos, tamanho e permissões definidos nos requisitos, seção 11.
 `Atleta.fotoChave` guarda somente a chave privada do objeto atual (`atletas/<atletaId>/<uuid>.<ext>`), nunca URL;

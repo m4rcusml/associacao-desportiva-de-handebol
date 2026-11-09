@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Prisma, type StatusJogo } from "../../generated/prisma/client.js";
 import { revalidarArbitragem } from "../arbitragem/acesso.js";
 import { exigirJogoSemInterrupcao } from "../jogos/jogos.js";
-import { atletasComSuspensaoVigente } from "../suspensoes/suspensoes.js";
+import { atletasComSuspensaoVigente, bloquearGeracaoAutomatica } from "../suspensoes/suspensoes.js";
 import { registrarEvento } from "../notificacoes/eventos.js";
 
 type Tx = Prisma.TransactionClient;
@@ -177,7 +177,7 @@ export async function lerQrNoJogo(tx: Tx, jogoId: string, token: string | undefi
  * Arbitragem autorizada credencia o atleta com a camisa do jogo (RF-017 a 021, RN-015 a 019), por confirmação
  * manual ou QR, antes do início ou durante a partida (atrasados), escolhido ou não pelo técnico. Grava carteirinha,
  * data e camisa juntos na participação do vínculo atual, reaproveitando a escolha se houver.
- * Ordem dos bloqueios: jogo → arbitragem → sessão (revalidação) → conta do atleta → carteirinha → vínculo (trigger).
+ * Ordem: jogo → arbitragem → sessão (revalidação) → bloqueio consultivo atleta/campeonato → conta → carteirinha → vínculo (trigger).
  * Atleta já credenciado neste jogo com a mesma camisa (QR repetido, reenvio ou pedido simultâneo) devolve o registro
  * com `alterado: false`, mesmo que tenha ficado inapto depois: o credenciamento anterior é preservado (RN-013, PEN-011).
  */
@@ -185,6 +185,7 @@ export async function credenciar(tx: Tx, jogoId: string, token: string | undefin
   await revalidarArbitragem(tx, jogoId, token);
   const jogo = await lerJogo(tx, jogoId);
   const atletaId = "atletaId" in dados ? dados.atletaId : await atletaDoQr(tx, dados.tokenQr);
+  await bloquearGeracaoAutomatica(tx, jogo.campeonatoId, atletaId);
   await bloquearAtleta(tx, atletaId);
   if ("tokenQr" in dados) {
     // Substituição do QR concorrente (FOR UPDATE da carteirinha) aguarda ou é vista: o QR antigo não credencia.

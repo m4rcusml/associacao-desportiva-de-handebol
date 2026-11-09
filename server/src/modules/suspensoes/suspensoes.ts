@@ -142,7 +142,8 @@ export async function encerrarSaldosDoCampeonato(tx: Tx, campeonatoId: string) {
  * clubes do jogo e aplicada antes do encerramento, recebe este jogo uma vez — mesmo sem escalação ou
  * credenciamento —, exceto se o atleta já estava credenciado nele antes da aplicação (jogo preservado, PEN-011).
  * Idempotente: repetir, inclusive em paralelo, não duplica nem ultrapassa a quantidade. Ordem dos bloqueios: jogo
- * (FOR SHARE) → contas dos atletas do clube (FOR SHARE, ordem por id) → suspensões (FOR UPDATE, ordem por id).
+ * (FOR SHARE) → bloqueios consultivos por atleta/campeonato → contas dos atletas envolvidos (FOR SHARE, ordem por id)
+ * → suspensões (FOR UPDATE, ordem por id).
  * Devolve os ids das suspensões que receberam o jogo nesta chamada.
  */
 export async function registrarCumprimentos(tx: Tx, jogoId: string): Promise<string[]> {
@@ -151,16 +152,7 @@ export async function registrarCumprimentos(tx: Tx, jogoId: string): Promise<str
   if (!jogo) throw new NotFoundException("Jogo não encontrado");
   if (jogo.status !== "finalizado" || !jogo.encerradoEm) throw new ConflictException("Somente jogo finalizado cumpre suspensões.");
 
-  // Todos os atletas com vínculo, no encerramento, com um dos clubes do jogo: uma aplicação concorrente, mesmo
-  // a primeira do atleta, aguarda ou já é vista.
-  await tx.$queryRaw`
-    SELECT u.id FROM "Usuario" u
-    WHERE u.id IN (
-      SELECT v."atletaId" FROM "VinculoClube" v
-        JOIN "InscricaoClube" i ON i."clubeId" = v."clubeId"
-        JOIN "Jogo" j ON i.id IN (j."inscricaoClubeAId", j."inscricaoClubeBId")
-      WHERE j.id = ${jogoId}::uuid AND v.inicio <= j."encerradoEm" AND (v.fim IS NULL OR v.fim > j."encerradoEm"))
-    ORDER BY u.id FOR SHARE`;
+  await bloquearAtletasDoJogo(tx, jogoId);
   await tx.$queryRaw`
     SELECT s.id FROM "Suspensao" s
     WHERE s."campeonatoId" = ${jogo.campeonatoId}::uuid AND s."revogadaEm" IS NULL AND s."saldoEncerradoEm" IS NULL AND s."anuladaEm" IS NULL
@@ -185,6 +177,30 @@ export async function registrarCumprimentos(tx: Tx, jogoId: string): Promise<str
   return registradas.map(r => r.suspensaoId).sort();
 }
 
+/** Bloqueios consultivos vêm antes das contas compartilhadas e de qualquer suspensão, inclusive no cumprimento. */
+async function bloquearAtletasDoJogo(tx: Tx, jogoId: string) {
+  const atletas = await tx.$queryRaw<{ atletaId: string; campeonatoId: string }[]>`
+    SELECT DISTINCT d."atletaId", j."campeonatoId" FROM "Jogo" j JOIN (
+      SELECT v."atletaId", j.id AS "jogoId" FROM "VinculoClube" v
+        JOIN "InscricaoClube" i ON i."clubeId" = v."clubeId"
+        JOIN "Jogo" j ON i.id IN (j."inscricaoClubeAId", j."inscricaoClubeBId")
+      WHERE j.id = ${jogoId}::uuid AND v.inicio <= j."encerradoEm" AND (v.fim IS NULL OR v.fim > j."encerradoEm")
+      UNION
+      SELECT p."atletaId", l."jogoId" FROM "LancamentoJogo" l JOIN "Participacao" p ON p.id = l."participacaoId"
+      WHERE l.tipo = 'temp_cartaoVermelho' AND l."relatorioDisciplinar"
+      UNION
+      SELECT s."atletaId", s."jogoOrigemId" AS "jogoId" FROM "Suspensao" s
+    ) d ON d."jogoId" = j.id
+    WHERE j.id = ${jogoId}::uuid ORDER BY d."atletaId"`;
+  for (const atleta of atletas) await bloquearGeracaoAutomatica(tx, atleta.campeonatoId, atleta.atletaId);
+  await tx.$queryRaw`SELECT id FROM "Usuario" WHERE id = ANY(${atletas.map(a => a.atletaId)}::uuid[]) ORDER BY id FOR SHARE`;
+}
+
+/** Geração automática e credenciamento do mesmo atleta/campeonato se enfileiram sem bloquear sua autorização. */
+export async function bloquearGeracaoAutomatica(tx: Tx, campeonatoId: string, atletaId: string) {
+  await tx.$queryRaw`SELECT bloquear_geracao_suspensao(${campeonatoId}::uuid, ${atletaId}::uuid)::text`;
+}
+
 /** Motivo gravado na suspensão automática; a regra e o jogo de origem ficam em campos próprios. */
 export const MOTIVO_DESQUALIFICACAO_COM_RELATORIO = "Suspensão automática: desqualificação com relatório disciplinar (cartão azul)";
 
@@ -202,24 +218,20 @@ export const MOTIVO_DESQUALIFICACAO_COM_RELATORIO = "Suspensão automática: des
  *
  * Idempotente: repetir não duplica (índice único parcial + `ON CONFLICT`). Duas reconciliações do mesmo jogo se
  * serializam por um bloqueio consultivo da transação; a segunda enxerga o que a primeira confirmou. Depois dele, as
- * contas dos atletas envolvidos são bloqueadas (FOR UPDATE, ordem por id), como na aplicação manual: credenciamentos
- * concorrentes aguardam ou já veem a suspensão. Devolve os ids criados e anulados.
+ * bloqueios consultivos de geração por atleta/campeonato (ordem por atleta) serializam o credenciamento concorrente. As contas ficam
+ * em FOR SHARE: a geração não precisa atualizar a conta usada na autorização de outro jogo. Devolve os ids criados e anulados.
  */
 export async function reconciliarSuspensoesAutomaticas(tx: Tx, jogoId: string): Promise<{ criadas: string[]; anuladas: string[] }> {
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${jogoId}::text, 79079))::text`;
+  const referencia = await tx.jogo.findUnique({ where: { id: jogoId }, select: { campeonatoId: true } });
+  if (!referencia) throw new NotFoundException("Jogo não encontrado");
+  await tx.$queryRaw`SELECT id FROM "Campeonato" WHERE id = ${referencia.campeonatoId}::uuid FOR SHARE`;
   const [jogo] = await tx.$queryRaw<{ status: StatusJogo; campeonatoId: string }[]>`
-    SELECT status, "campeonatoId" FROM "Jogo" WHERE id = ${jogoId}::uuid`;
+    SELECT status, "campeonatoId" FROM "Jogo" WHERE id = ${jogoId}::uuid FOR SHARE`;
   if (!jogo) throw new NotFoundException("Jogo não encontrado");
   if (jogo.status !== "finalizado") return { criadas: [], anuladas: [] };
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${jogoId}::text, 79079))::text`;
 
-  await tx.$queryRaw`
-    SELECT u.id FROM "Usuario" u
-    WHERE u.id IN (
-      SELECT p."atletaId" FROM "LancamentoJogo" l JOIN "Participacao" p ON p.id = l."participacaoId"
-      WHERE l."jogoId" = ${jogoId}::uuid AND l.tipo = 'temp_cartaoVermelho' AND l."relatorioDisciplinar"
-      UNION
-      SELECT s."atletaId" FROM "Suspensao" s WHERE s."jogoOrigemId" = ${jogoId}::uuid)
-    ORDER BY u.id FOR UPDATE`;
+  await bloquearAtletasDoJogo(tx, jogoId);
 
   const anuladas = await tx.$queryRaw<{ id: string }[]>`
     UPDATE "Suspensao" s SET "anuladaEm" = ${new Date()}

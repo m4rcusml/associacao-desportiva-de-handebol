@@ -5,8 +5,13 @@
 -- 1. Relatório disciplinar no próprio lançamento do vermelho: o azul informa o relatório da mesma desqualificação,
 -- não uma segunda infração. Obrigatório (true/false) somente no vermelho; vermelhos anteriores ficam sem relatório
 -- (nada permite inferi-lo). Muda apenas por correção (anula e cria substituto), como tipo e atleta (MAR-70).
+BEGIN;
 ALTER TABLE "LancamentoJogo" ADD COLUMN "relatorioDisciplinar" BOOLEAN;
+-- O backfill preserva as ocorrências legadas, inclusive anuladas; o trigger normal só permite anulação.
+-- O lock da alteração da tabela dura até o COMMIT: nenhuma escrita ocorre com o trigger desabilitado.
+ALTER TABLE "LancamentoJogo" DISABLE TRIGGER "LancamentoJogo_validar";
 UPDATE "LancamentoJogo" SET "relatorioDisciplinar" = false WHERE tipo = 'temp_cartaoVermelho';
+ALTER TABLE "LancamentoJogo" ENABLE TRIGGER "LancamentoJogo_validar";
 ALTER TABLE "LancamentoJogo" ADD CONSTRAINT "LancamentoJogo_relatorio_somente_vermelho"
   CHECK (("tipo" = 'temp_cartaoVermelho') = ("relatorioDisciplinar" IS NOT NULL));
 
@@ -164,3 +169,5 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+COMMIT;

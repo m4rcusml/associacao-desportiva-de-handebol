@@ -218,6 +218,16 @@ retirar a ocorrência anula a automática (`anuladaEm`, situação `anulada`), l
 alterar jogos passados nem compensar ausências; acrescentá-la gera uma nova, aplicada a partir da correção.
 Revogada ou com saldo encerrado não muda.
 
+Na revisão da MAR-79, a migração `20261109100000_suspensao_automatica` foi corrigida para preencher
+os vermelhos legados, inclusive anulados: a transação desabilita somente `LancamentoJogo_validar` durante
+o preenchimento e o reabilita antes do commit, mantendo o bloqueio da tabela. Isso altera o checksum da
+versão anterior ainda não integrada. Bancos que já a aplicaram precisam de reconciliação controlada do
+histórico de migrações; não execute reset nem altere `_prisma_migrations` automaticamente. A suíte no banco
+já migrado não comprova esse preenchimento: o teste de regressão de migração usa um esquema isolado.
+A migração incremental `20261109120000_gate_suspensao_automatica` instala o bloqueio consultivo por
+atleta/campeonato usado pela API e pelos triggers antes de gerar automática ou credenciar. Ela também é
+aplicada por `migrate deploy` em bancos que já receberam as duas migrações anteriores, sem reexecutá-las.
+
 #### Credenciamento e entrada em quadra (MAR-67)
 
 Com o cookie temporário do jogo, a arbitragem consulta em `GET /api/arbitragem/jogos/{jogoId}/atletas`, por
@@ -242,7 +252,8 @@ credenciado de novo. A camisa informada diferente da atual é 409 com a `partici
 feita devolve `alterado: false`. Cada correção e estorno grava em `AlteracaoCredenciamento` a cópia do credenciamento
 alterado. Depois do encerramento, somente o presidente corrige a camisa, em
 `POST /api/jogos/{jogoId}/credenciamentos/{atletaId}/camisa`, sem reabrir a arbitragem. Estorno ou outra correção
-de atleta que entrou ou tem lançamentos fica para o presidente quando a PEN-019 for detalhada.
+de atleta que entrou ou tem lançamentos pelo presidente segue os critérios aprovados na MAR-80
+(requisitos, seção 13), com implementação e validação ainda pendentes.
 
 #### Fotos privadas dos atletas (MAR-75)
 
@@ -660,7 +671,7 @@ histórico, cópia divergente, data retroativa, histórico imutável, estorno co
 contra estorno e a mesma correção em paralelo; lançamento e entrada contra estorno nos dois sentidos e entrada após
 correção, com espera real no bloqueio; encerramento aguardando a correção e, depois, correção somente pelo presidente.
 Uma migração nova; nenhuma dependência nova. Não validado: notificação Socket.IO (MAR-73) e correções complexas do
-presidente (PEN-019 residual).
+presidente (critérios aprovados na MAR-80, requisitos seção 13; implementação e validação pendentes).
 
 Validação local da MAR-72 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado e
 **149 testes de integração aprovados**, incluindo cinco novos: interrupção e retomada do mesmo jogo com repetição sem
@@ -697,7 +708,7 @@ revogação sem NOTIFY (transferência para clube do jogo) retirada pela varredu
 novas `socket.io` e `pg` (e `socket.io-client`/`@types/pg` de desenvolvimento). Não validado: Socket.IO pelo
 encaminhamento Vercel/Render e cookies `__Host-` hospedados (MAR-76) e mais de uma instância (fora do escopo).
 
-Validação local da MAR-79 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado,
+Validação inicial da MAR-79 em 09/11/2026, no commit `b41ce8b`: lint, tipos/build, schema Prisma sem diferença para o banco migrado,
 `npm audit --omit=dev` sem alertas e **163 testes de integração aprovados**, incluindo cinco novos: amarelos em três
 jogos, três exclusões e vermelho sem relatório sem suspensão (e a partida seguinte liberada); `relatorioDisciplinar`
 recusado fora do vermelho; vermelho com relatório (após a terceira exclusão e repetido) gerando uma única suspensão
@@ -709,6 +720,17 @@ encerrado intactos na reconciliação; restrições do banco (CHECK, triggers e 
 novas; nenhuma dependência nova. Não validado: regras do regulamento externo além da seção 12 e consultas por
 atleta/técnico (MAR-74).
 
+Revisão local da MAR-79 em 09/11/2026, na árvore corrigida com as decisões da PR #24 integradas:
+lint, tipos/build e **180/180 testes de integração aprovados**, sem testes ignorados, em PostgreSQL
+descartável exclusivo com as 24 migrações aplicadas desde zero; `prisma migrate diff` sem diferença.
+Sete regressões adicionais cobrem o backfill de vermelhos legados válidos/anulados, encerramentos de jogos
+distintos, correção concorrente com encerramento do campeonato, árbitros designados de clubes de outros jogos,
+geração/credenciamento nas duas ordens, cumprimento após geração concorrente e credenciamento SQL direto
+aguardando o trigger. O banco descartável foi removido; bancos existentes e seus históricos não foram alterados.
+A migração incremental de bloqueios é a terceira da MAR-79; o aviso sobre o checksum do backfill está na seção
+de suspensões automáticas. Os checks hospedados são conferidos na PR; esta validação local não comprova
+implantação. Não revalidado: ambiente hospedado e consultas da MAR-74.
+
 ## Caminho feliz
 
 1. **Preparação pelo presidente:** o presidente pré-cadastrado cria os clubes. Atletas e
@@ -717,7 +739,7 @@ atleta/técnico (MAR-74).
    do atleta, e atribui um técnico a cada clube.
 2. **Organização da competição:** o presidente cria um campeonato de uma categoria,
    inclui os clubes participantes, agenda os jogos e designa os árbitros. A inclusão dos
-   clubes pelo presidente é a proposta inicial, ainda sujeita à confirmação do cliente.
+   clubes pelo presidente foi confirmada para esta versão na MAR-82 (requisitos, seção 15).
 3. **Preparação pelo técnico:** antes de cada partida, o técnico escolhe os atletas do seu
    clube que pretende levar ao jogo. Essa lista é preliminar e pode mudar até o início.
 4. **Chegada e credenciamento:** no dia marcado, antes da partida, os árbitros acessam a página temporária,
@@ -741,7 +763,8 @@ As decisões posteriores sobre exceções, fotos, fuso local, consulta da senha 
 competições estão em [requisitos, seção 11](docs/requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026).
 São decisões para desenvolvimento, ainda sem implementação dos respectivos fluxos.
 
-As métricas ainda provisórias usam o prefixo `temp_`. As exceções e decisões em aberto
+As métricas desta versão foram confirmadas na MAR-82 ([requisitos, seção 15](docs/requisitos.md#15-ficha-carteirinha-e-métricas--mar-82--09112026));
+os identificadores atuais ainda usam `temp_` até migração compatível em tarefa própria. As exceções e decisões em aberto
 estão detalhadas nas [pendências](docs/pendencias.md).
 
 ## Fora do escopo inicial
@@ -765,3 +788,15 @@ Fluxo no Linear: Backlog → Todo (selecionada) → In Progress → In Review �
 
 Pendência de produto não pode ser decidida pelo agente: registrar o bloqueio e esclarecer
 com Marcus. Tarefas de backend priorizam testes no backend; frontend exige escopo confirmado.
+
+
+### Decisões documentais — MAR-80/81/82 — 09/11/2026
+
+Critérios aprovados de [correção administrativa de credenciamento](docs/requisitos.md#13-correção-administrativa-de-credenciamento--mar-80--09112026),
+[redução de suspensão e recálculo](docs/requisitos.md#14-redução-parcial-e-justificativa-de-suspensão--mar-81--09112026)
+e [ficha, carteirinha e métricas](docs/requisitos.md#15-ficha-carteirinha-e-métricas--mar-82--09112026)
+estão documentados. Esta entrega não implementa novas operações ou renomeia banco/API;
+as adequações e sua validação seguem nas tarefas
+[MAR-83 — correção administrativa](https://linear.app/marcusml/issue/MAR-83),
+[MAR-84 — redução de suspensão](https://linear.app/marcusml/issue/MAR-84) e
+[MAR-85 — carteirinha e métricas](https://linear.app/marcusml/issue/MAR-85).

@@ -2,11 +2,19 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { randomInt, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { setTimeout } from "node:timers/promises";
+import { Client } from "pg";
 import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
 import { reconciliarSuspensoesAutomaticas } from "../dist/modules/suspensoes/suspensoes.js";
+import { revalidarArbitragem } from "../dist/modules/arbitragem/acesso.js";
+import { credenciar } from "../dist/modules/participacoes/credenciamento.js";
+import { encerrarJogo } from "../dist/modules/jogos/ciclo.js";
+import { corrigirPeloPresidente } from "../dist/modules/resultados/lancamentos.js";
+import { transicionarCampeonato } from "../dist/modules/campeonatos/campeonatos.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
@@ -106,6 +114,7 @@ async function cenario() {
     let camisa = 1;
     return {
       id,
+      token: decodeURIComponent(arbitro.split("=")[1]),
       credenciamento: (atletaId: string) => request("POST", `/arbitragem/jogos/${id}/credenciamentos`, arbitro, { atletaId, numeroCamisa: camisa++ }),
       async credenciar(atletaId: string) {
         return (await ok<{ participacao: { participacaoId: string } }>(this.credenciamento(atletaId))).participacao.participacaoId;
@@ -363,4 +372,246 @@ test("restrições do banco: relatório só no vermelho e imutável, origem cons
   await prisma.$executeRaw`UPDATE "Suspensao" SET "anuladaEm" = now() WHERE id = ${automatica.id}::uuid`;
   await rejeita(prisma.$executeRaw`UPDATE "Suspensao" SET "anuladaEm" = NULL WHERE id = ${automatica.id}::uuid`);
   assert.equal((await listar())[0].situacao, "anulada");
+});
+
+
+/** A terceira transação retém uma suspensão até as duas operações concorrentes chegarem a um bloqueio real. */
+async function concorrerComSuspensaoBloqueada(suspensaoId: string, operacoes: ((tx: Parameters<typeof encerrarJogo>[0]) => Promise<unknown>)[]) {
+  const resultados: Promise<unknown>[] = [];
+  await prisma.$transaction(async bloqueio => {
+    await bloqueio.$queryRaw`SELECT id FROM "Suspensao" WHERE id = ${suspensaoId}::uuid FOR UPDATE`;
+    for (const operacao of operacoes) {
+      let conectou!: (pid: number) => void;
+      const conectado = new Promise<number>(resolve => { conectou = resolve; });
+      let terminou = false;
+      resultados.push(prisma.$transaction(async tx => {
+        const [conexao] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+        conectou(conexao.pid);
+        return operacao(tx);
+      }, { timeout: 15_000 }).then(valor => ({ valor }), erro => ({ erro })).finally(() => { terminou = true; }));
+      const pid = await conectado;
+      const limite = Date.now() + 5_000;
+      while (true) {
+        const [estado] = await prisma.$queryRaw<{ aguardando: boolean }[]>`
+          SELECT wait_event_type = 'Lock' AS aguardando FROM pg_stat_activity WHERE pid = ${pid}`;
+        if (estado?.aguardando) break;
+        assert.equal(terminou, false, "a operação deve aguardar a suspensão ou a outra transação");
+        assert.ok(Date.now() < limite, "a operação não chegou ao bloqueio esperado");
+        await setTimeout(10);
+      }
+    }
+  }, { timeout: 15_000 });
+  const respostas = await Promise.all(resultados) as ({ valor?: unknown; erro?: unknown })[];
+  for (const resposta of respostas) assert.equal(resposta.erro, undefined, String(resposta.erro));
+}
+
+test("encerramentos de jogos distintos com vermelho e atletas dos mesmos clubes não entram em deadlock", async () => {
+  const { ana, carla, campeonato, jogo, listar } = await cenario();
+  const jogos = [await jogo(), await jogo()];
+  for (const j of jogos) {
+    const participacaoId = await j.credenciar(ana);
+    await j.iniciar();
+    await j.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  }
+  const manual = await ok<Suspensao>(request("POST", `/campeonatos/${campeonato}/suspensoes`, presidente.cookie, {
+    atletaId: carla, quantidadeJogos: 3, motivo: "Suspensão para sincronizar os encerramentos",
+  }), 201);
+  await concorrerComSuspensaoBloqueada(manual.id, jogos.map(j => tx => encerrarJogo(tx, j.id, j.token, {
+    resultado: "normal", vencedorInscricaoId: null,
+  })));
+  assert.equal(await prisma.jogo.count({ where: { id: { in: jogos.map(j => j.id) }, status: "finalizado" } }), 2);
+  const suspensoes = await listar();
+  assert.equal(suspensoes.filter(s => s.origem === "automatica" && s.atleta.id === ana).length, 2);
+  assert.equal(suspensoes.find(s => s.id === manual.id)!.jogosCumpridos, 2);
+});
+
+test("correção que transfere o relatório e encerramento do campeonato respeitam a mesma ordem de bloqueios", async () => {
+  const { ana, bruno, campeonato, jogo, listar } = await cenario();
+  const origem = await jogo();
+  const pAna = await origem.credenciar(ana);
+  const pBruno = await origem.credenciar(bruno);
+  await origem.iniciar();
+  const vermelho = await origem.lancar(pAna, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  await origem.encerrar();
+  const [automatica] = await listar();
+  await concorrerComSuspensaoBloqueada(automatica.id, [
+    tx => corrigirPeloPresidente(tx, origem.id, vermelho.id, {
+      operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pBruno, relatorioDisciplinar: true,
+    }),
+    tx => transicionarCampeonato(tx, campeonato, "encerrar"),
+  ]);
+  const finais = await listar();
+  assert.equal(finais.find(s => s.id === automatica.id)!.situacao, "anulada");
+  assert.equal(finais.find(s => s.atleta.id === bruno)!.situacao, "saldo_encerrado");
+});
+
+test("migração preserva vermelhos legados válidos e anulados e restaura a proteção de imutabilidade", async () => {
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  const schema = `mig_automatica_${randomUUID().replaceAll("-", "")}`;
+  await client.connect();
+  try {
+    await client.query(`CREATE SCHEMA "${schema}"; SET search_path TO "${schema}", public`);
+    // Tabelas isoladas: sem alterar dados nem o histórico Prisma do banco compartilhado pelo runner.
+    for (const tabela of ["Jogo", "Suspensao", "LancamentoJogo"]) {
+      await client.query(`CREATE TABLE "${tabela}" (LIKE public."${tabela}" INCLUDING ALL)`);
+    }
+    await client.query(`ALTER TABLE "LancamentoJogo" DROP COLUMN "relatorioDisciplinar" CASCADE;
+      ALTER TABLE "Suspensao" DROP COLUMN origem CASCADE, DROP COLUMN regra CASCADE,
+        DROP COLUMN "jogoOrigemId" CASCADE, DROP COLUMN "anuladaEm" CASCADE`);
+    const ids = [randomUUID(), randomUUID()];
+    await client.query(`INSERT INTO "LancamentoJogo"
+      (id, "operacaoId", "jogoId", "participacaoId", tipo, valor, "registradoEm", "anuladoEm", "anulacaoOperacaoId")
+      VALUES ($1, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'temp_cartaoVermelho', 1, now(), NULL, NULL),
+        ($2, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'temp_cartaoVermelho', 1, now(), now(), gen_random_uuid())`, ids);
+    const anteriores = (await client.query('SELECT * FROM "LancamentoJogo" ORDER BY id')).rows;
+    const funcao = (await client.query("SELECT pg_get_functiondef('public.validar_lancamento()'::regprocedure) AS ddl")).rows[0].ddl as string;
+    await client.query(funcao.replace('public.validar_lancamento()', `"${schema}".validar_lancamento()`));
+    await client.query(`CREATE TRIGGER "LancamentoJogo_validar" BEFORE INSERT OR UPDATE OR DELETE ON "LancamentoJogo"
+      FOR EACH ROW EXECUTE FUNCTION validar_lancamento()`);
+    await client.query(await readFile(new URL("../prisma/migrations/20261109100000_suspensao_automatica/migration.sql", import.meta.url), "utf8"));
+    const posteriores = (await client.query('SELECT * FROM "LancamentoJogo" ORDER BY id')).rows;
+    assert.deepEqual(posteriores.map(({ relatorioDisciplinar, ...dados }) => {
+      assert.equal(relatorioDisciplinar, false);
+      return dados;
+    }), anteriores);
+    const trigger = (await client.query(`SELECT tgenabled FROM pg_trigger
+      WHERE tgrelid = '"LancamentoJogo"'::regclass AND tgname = 'LancamentoJogo_validar'`)).rows[0];
+    assert.equal(trigger.tgenabled, "O");
+    for (const id of ids) {
+      await assert.rejects(client.query('UPDATE "LancamentoJogo" SET valor = 2 WHERE id = $1', [id]), /só pode ser anulado/);
+    }
+  } finally {
+    await client.query("ROLLBACK");
+    await client.query(`SET search_path TO public; DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await client.end();
+  }
+});
+
+
+async function tokenDesignado(jogoId: string, usuarioId: string) {
+  const usuario = await prisma.usuario.findUniqueOrThrow({ where: { id: usuarioId }, select: { authId: true } });
+  const { email } = await prisma.authUser.findUniqueOrThrow({ where: { id: usuario.authId }, select: { email: true } });
+  assert.equal((await request("POST", `/jogos/${jogoId}/arbitragens`, presidente.cookie, { usuarioId })).status, 201);
+  const entrada = await request("POST", `/arbitragem/jogos/${jogoId}/entrada/designacao`, await login(email), {});
+  assert.equal(entrada.status, 201, await entrada.clone().text());
+  return decodeURIComponent(entrada.headers.getSetCookie().find(c => c.startsWith(`handebol.arbitragem.${jogoId}=`))!.split(";")[0].split("=")[1]);
+}
+
+test("árbitros designados que jogam pelos clubes do outro encerramento não disputam bloqueio exclusivo de conta", async () => {
+  for (const comRelatorio of [false, true]) {
+    const a = await cenario();
+    const b = await cenario();
+    const jogos = [await a.jogo(), await b.jogo()];
+    const tokens = [await tokenDesignado(jogos[0].id, b.ana), await tokenDesignado(jogos[1].id, a.ana)];
+    for (const [indice, j] of jogos.entries()) {
+      const participacaoId = await j.credenciar(indice === 0 ? a.ana : b.ana);
+      await j.iniciar();
+      if (comRelatorio) await j.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+    }
+    let chegaram = 0;
+    let liberar!: () => void;
+    const ambosAutorizados = new Promise<void>(resolve => { liberar = resolve; });
+    const resultados = await Promise.allSettled(jogos.map((j, indice) => prisma.$transaction(async tx => {
+      // Ambos mantêm a conta designada em SHARE antes de disputar atletas: reproduz a inversão anterior.
+      await revalidarArbitragem(tx, j.id, tokens[indice]);
+      if (++chegaram === 2) liberar();
+      await ambosAutorizados;
+      return encerrarJogo(tx, j.id, tokens[indice], { resultado: "normal", vencedorInscricaoId: null });
+    }, { timeout: 15_000 })));
+    for (const resultado of resultados) {
+      assert.equal(resultado.status, "fulfilled", resultado.status === "rejected" ? String(resultado.reason) : "");
+    }
+    assert.equal(await prisma.jogo.count({ where: { id: { in: jogos.map(j => j.id) }, status: "finalizado" } }), 2);
+    assert.equal((await a.listar()).length + (await b.listar()).length, comRelatorio ? 2 : 0);
+  }
+});
+
+/** Mantém a primeira operação sem commit até a segunda confirmar espera no bloqueio consultivo, sem depender de pausas fixas. */
+async function disputarGate(primeira: (tx: Parameters<typeof encerrarJogo>[0]) => Promise<unknown>, segunda: (tx: Parameters<typeof encerrarJogo>[0]) => Promise<unknown>) {
+  let segundaOperacao!: Promise<{ valor?: unknown; erro?: unknown }>;
+  await prisma.$transaction(async tx => {
+    await primeira(tx);
+    let conectou!: (pid: number) => void;
+    const conectado = new Promise<number>(resolve => { conectou = resolve; });
+    let terminou = false;
+    segundaOperacao = prisma.$transaction(async concorrente => {
+      const [conexao] = await concorrente.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+      conectou(conexao.pid);
+      return segunda(concorrente);
+    }, { timeout: 15_000 }).then(valor => ({ valor }), erro => ({ erro })).finally(() => { terminou = true; });
+    const pid = await conectado;
+    const limite = Date.now() + 5_000;
+    while (true) {
+      const [estado] = await prisma.$queryRaw<{ aguardando: boolean }[]>`
+        SELECT wait_event = 'advisory' AS aguardando FROM pg_stat_activity WHERE pid = ${pid}`;
+      if (estado?.aguardando) break;
+      assert.equal(terminou, false, "a segunda operação deve aguardar a geração/credenciamento concorrente");
+      assert.ok(Date.now() < limite, "a segunda operação não aguardou o bloqueio consultivo");
+      await setTimeout(10);
+    }
+  }, { timeout: 15_000 });
+  return segundaOperacao;
+}
+
+test("geração automática e credenciamento concorrentes usam o bloqueio consultivo nos dois sentidos", async () => {
+  for (const credenciarPrimeiro of [false, true]) {
+    const { ana, jogo, listar } = await cenario();
+    const origem = await jogo();
+    const proximo = await jogo();
+    const participacaoId = await origem.credenciar(ana);
+    await origem.iniciar();
+    await origem.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+    const gerar = (tx: Parameters<typeof encerrarJogo>[0]) => encerrarJogo(tx, origem.id, origem.token, { resultado: "normal", vencedorInscricaoId: null });
+    const credenciamento = (tx: Parameters<typeof encerrarJogo>[0]) => credenciar(tx, proximo.id, proximo.token, { atletaId: ana, numeroCamisa: 7 });
+    const resultado = await disputarGate(credenciarPrimeiro ? credenciamento : gerar, credenciarPrimeiro ? gerar : credenciamento);
+    if (credenciarPrimeiro) {
+      assert.equal(resultado.erro, undefined, String(resultado.erro));
+      assert.equal(await prisma.participacao.count({ where: { jogoId: proximo.id, atletaId: ana, credenciadoEm: { not: null } } }), 1);
+      await proximo.iniciar();
+      await proximo.encerrar();
+      assert.equal((await listar())[0].jogosCumpridos, 0, "o credenciamento anterior à geração é preservado e não cumpre");
+    } else {
+      assert.ok(resultado.erro instanceof Error);
+      assert.match(resultado.erro.message, /suspensão a cumprir/);
+      assert.equal(await prisma.participacao.count({ where: { jogoId: proximo.id, atletaId: ana, credenciadoEm: { not: null } } }), 0);
+    }
+  }
+});
+
+test("encerramento concorrente vê a automática aplicada antes de seu horário e registra o cumprimento", async () => {
+  const { ana, jogo, listar } = await cenario();
+  const origem = await jogo();
+  const proximo = await jogo();
+  const participacaoId = await origem.credenciar(ana);
+  await origem.iniciar();
+  await proximo.iniciar();
+  await origem.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  const resultado = await disputarGate(
+    tx => encerrarJogo(tx, origem.id, origem.token, { resultado: "normal", vencedorInscricaoId: null }),
+    tx => encerrarJogo(tx, proximo.id, proximo.token, { resultado: "normal", vencedorInscricaoId: null }),
+  );
+  assert.equal(resultado.erro, undefined, String(resultado.erro));
+  assert.deepEqual((await listar())[0].cumprimentos.map(c => c.jogoId), [proximo.id]);
+});
+
+
+test("INSERT direto de credenciamento aguarda a geração pelo trigger e recusa a suspensão confirmada", async () => {
+  const { ana, jogo } = await cenario();
+  const origem = await jogo();
+  const proximo = await jogo();
+  const participacaoId = await origem.credenciar(ana);
+  await origem.iniciar();
+  await origem.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  const vinculo = await prisma.vinculoClube.findFirstOrThrow({ where: { atletaId: ana, fim: null }, select: { id: true } });
+  const carteirinha = await prisma.carteirinha.findUniqueOrThrow({ where: { atletaId: ana }, select: { id: true } });
+  const { inscricaoClubeAId } = await prisma.jogo.findUniqueOrThrow({ where: { id: proximo.id }, select: { inscricaoClubeAId: true } });
+  const resultado = await disputarGate(
+    tx => encerrarJogo(tx, origem.id, origem.token, { resultado: "normal", vencedorInscricaoId: null }),
+    tx => tx.$executeRaw`
+      INSERT INTO "Participacao" (id, "jogoId", "inscricaoClubeId", "vinculoClubeId", "atletaId", "carteirinhaId", "credenciadoEm", "numeroCamisa")
+      VALUES (gen_random_uuid(), ${proximo.id}::uuid, ${inscricaoClubeAId}::uuid, ${vinculo.id}::uuid, ${ana}::uuid, ${carteirinha.id}::uuid, now(), 7)`,
+  );
+  assert.ok(resultado.erro instanceof Error);
+  assert.match(resultado.erro.message, /23514/);
+  assert.equal(await prisma.participacao.count({ where: { jogoId: proximo.id, atletaId: ana } }), 0);
 });
