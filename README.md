@@ -550,6 +550,16 @@ totais parciais; acesso sem sessão ou com sessão de outro jogo negado e encerr
 gravação. Uma migração nova; nenhuma dependência nova. Não validado: início/encerramento reais (MAR-69, os testes
 alteram o status no banco), correção/anulação (MAR-70) e notificação Socket.IO (MAR-73).
 
+Validação local da MAR-69 em 08/11/2026: lint, tipos/build e **130 testes de integração aprovados**, incluindo oito
+novos: início único com pedidos simultâneos e reenvio (`alterado: false`); encerramento por dois árbitros ao mesmo
+tempo com placar, cumprimento único da suspensão e revogação de todas as sessões, reenvio reconhecido sem liberar
+lançamento, credenciamento, sessão ou nova entrada; lançamento e credenciamento aguardando o encerramento recusados;
+rollback do encerramento sem efeitos; adiamento com nova senha, revogação dos dois métodos, nova data, jogo sem data,
+jogo sem senha emitida e credenciamentos preservados; credenciamento concorrente com o adiamento recusado;
+cancelamento idempotente sem cumprimento; campeonato cancelado com sessões abertas e início concorrente recusado;
+transições recusadas no banco. Uma migração nova; nenhuma dependência nova. Não validado: W.O./interrupção (MAR-72)
+e notificação Socket.IO (MAR-73).
+
 ## Caminho feliz
 
 1. **Preparação pelo presidente:** o presidente pré-cadastrado cria os clubes. Atletas e
