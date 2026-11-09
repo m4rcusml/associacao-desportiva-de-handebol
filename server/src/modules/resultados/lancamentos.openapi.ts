@@ -30,7 +30,7 @@ export const openapiLancamentos = {
       "200": resposta(registros),
       "400": resposta("UUID inválido"), ...indisponivel, "404": resposta("Jogo não encontrado"),
     } },
-    post: { summary: "Arbitragem registra gol ou penalidade (tipos ) do atleta credenciado, com o jogo em andamento. O clube vem da participação e cada ocorrência vale 1. No vermelho, relatorioDisciplinar true registra a desqualificação com relatório disciplinar (azul), que gera um jogo de suspensão no encerramento; ausente vale false. operacaoId, gerado pelo cliente, torna o reenvio seguro", security, parameters, requestBody: { required: true, ...json(z.toJSONSchema(lancamentoSchema, { io: "input" })) }, responses: {
+    post: { summary: "Arbitragem registra gol ou penalidade (gol, cartaoAmarelo, exclusaoDoisMinutos ou cartaoVermelho) do atleta credenciado, com o jogo em andamento. O clube vem da participação e cada ocorrência vale 1. No vermelho, relatorioDisciplinar true registra a desqualificação com relatório disciplinar (azul), que gera um jogo de suspensão no encerramento; ausente vale false. operacaoId, gerado pelo cliente, torna o reenvio seguro", security, parameters, requestBody: { required: true, ...json(z.toJSONSchema(lancamentoSchema, { io: "input" })) }, responses: {
       "200": resposta(`{ lancamento, alterado, placar }; alterado é false no reenvio da mesma operação. lancamento: ${lancamento}; ${placar}`),
       "400": resposta("UUID ou corpo inválido, tipo desconhecido, relatorioDisciplinar fora do vermelho, campos adicionais (inclusive valor ou clube)"), ...indisponivel,
       "404": resposta("Jogo não encontrado ou participação de outro jogo/inexistente"),
