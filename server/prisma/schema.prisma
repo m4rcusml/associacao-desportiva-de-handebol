@@ -481,8 +481,9 @@ model CumprimentoSuspensao {
 /// Ocorrência esportiva registrada pela arbitragem (RF-031/032, RN-032/033, MAR-68): fonte do placar e do
 /// desempenho, que são projeções (views `EstatisticasDoJogo` e `DesempenhoDoAtleta` da migração
 /// `lancamentos`), nunca tabelas editáveis. O clube vem da participação, sem campo próprio. `operacaoId` é o
-/// identificador enviado pelo cliente: o reenvio devolve o registro existente, sem duplicar. Somente inclusão
-/// nesta tarefa; anulação e correção com `substituiLancamentoId` ficam para a MAR-70.
+/// identificador enviado pelo cliente: o reenvio devolve o registro existente, sem duplicar. O lançamento
+/// nunca é apagado (MAR-70): a anulação é lógica (`anuladoEm`) e a correção anula o original e cria o substituto
+/// (`substituiLancamentoId`) na mesma transação; as projeções ignoram os anulados.
 model LancamentoJogo {
   id             String         @id @default(uuid()) @db.Uuid
   operacaoId     String         @unique @db.Uuid
@@ -495,6 +496,13 @@ model LancamentoJogo {
   /// Inteiro positivo, 1 por ocorrência (RF-037).
   valor          Int            @default(1)
   registradoEm   DateTime       @db.Timestamptz
+  /// Lançamento anulado por esta correção (MAR-70); cada um é substituído no máximo uma vez.
+  substituiLancamentoId String?         @unique @db.Uuid
+  substitui             LancamentoJogo? @relation("CorrecaoLancamento", fields: [substituiLancamentoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  substituidoPor        LancamentoJogo? @relation("CorrecaoLancamento")
+  /// Anulação lógica (MAR-70): data e operação que anulou (a do substituto, na correção). Sem autoria (RN-030, PEN-007).
+  anuladoEm             DateTime?       @db.Timestamptz
+  anulacaoOperacaoId    String?         @unique @db.Uuid
 
   @@index([jogoId, registradoEm])
   @@index([participacaoId])

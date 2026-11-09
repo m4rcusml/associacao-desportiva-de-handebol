@@ -432,6 +432,9 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   recusada como conflito, com registro atualizado para nova decisão. Não sobrescrever silenciosamente.
 - Um único árbitro autorizado pode confirmar o encerramento após conferir placar/registros;
   não há aprovação de um segundo árbitro. Depois, somente presidente corrige.
+  Detalhes aprovados por Marcus (MAR-70): após o encerramento, o presidente corrige ou anula os lançamentos
+  existentes, mas não inclui lançamentos novos. A correção pode mudar o tipo e/ou o atleta, que deve estar credenciado
+  no mesmo jogo. A anulação guarda somente a data e a operação, sem autoria; a auditoria completa segue na PEN-007.
 
 ### Credenciamento, carteirinha e fotos
 

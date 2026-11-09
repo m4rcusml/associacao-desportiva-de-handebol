@@ -148,7 +148,13 @@ A migração `lancamentos` (MAR-68) cria `LancamentoJogo` (`operacaoId` UUID ún
 participações credenciadas), sem tabelas de totais. CHECKs: `valor` positivo e `participacaoId` obrigatório nos tipos
 atuais, todos de atleta. O trigger exige jogo em andamento (`FOR SHARE` de `Jogo`) e participação credenciada do
 mesmo jogo (`FOR SHARE`), recusa alteração e só permite exclusão na cascata do jogo. Não há coluna de autoria do
-árbitro (RN-030). `substituiLancamentoId`, anulação e o filtro de anulados nas views ficam para a MAR-70.
+árbitro (RN-030).
+A migração `correcao_lancamentos` (MAR-70) acrescenta `substituiLancamentoId` (FK para o próprio `LancamentoJogo`,
+UNIQUE), `anuladoEm` e `anulacaoOperacaoId` (UNIQUE; CHECK: os dois juntos). O trigger passa a aceitar como única
+alteração a anulação, uma vez e sem mudar os demais dados, com o jogo em andamento ou finalizado; o substituto nasce
+com o jogo em andamento ou finalizado, apontando lançamento do mesmo jogo anulado pela mesma operação
+(`anulacaoOperacaoId` = `operacaoId` do substituto). Inclusão sem `substituiLancamentoId` continua exigindo jogo em
+andamento. As views passam a ignorar os anulados. Não há autoria da anulação (RN-030, PEN-007).
 A migração `ciclo_jogo` (MAR-69) acrescenta o trigger de transições de `Jogo`, sem colunas novas: o jogo nasce
 agendado; agendado passa a em andamento, cancelado ou finalizado (este último reservado ao W.O. sem início, MAR-72);
 em andamento passa somente a finalizado. Finalizado e cancelado não mudam status, horários, data ou fuso;
@@ -195,7 +201,7 @@ administrativas não geram linhas adicionais.
 | `Participacao`         | `PK` `id`; `UNIQUE` `jogoId` + `vinculoClubeId`; `UNIQUE` `jogoId` + `inscricaoClubeId` + `numeroCamisa` quando preenchido | `escolhidaPorTecnicoId`, `escolhidaEm`, `carteirinhaId`, `credenciadoEm`, `numeroCamisa`, `entrouEmQuadraEm`                     |
 | `AcessoArbitragem`     | `PK`/`FK` `jogoId`; uma senha compartilhada por jogo                                                                       | `revogadoEm`                                                                                                                     |
 | `Arbitragem`           | `PK` `id`; `UNIQUE` `jogoId` + `usuarioId` quando preenchido                                                               | `usuarioId`, `designadoPorPresidenteId`, `designadoEm`, `acessouEm`                                                              |
-| `LancamentoJogo`       | `PK` `id`; `UNIQUE` `operacaoId`; `FK` `substituiLancamentoId` para o lançamento corrigido; `UNIQUE` `substituiLancamentoId` quando preenchido | `participacaoId` somente em ocorrência geral do jogo; `substituiLancamentoId`                                                    |
+| `LancamentoJogo`       | `PK` `id`; `UNIQUE` `operacaoId`; `FK` `substituiLancamentoId` para o lançamento corrigido; `UNIQUE` `substituiLancamentoId` e `anulacaoOperacaoId` quando preenchidos | `participacaoId` somente em ocorrência geral do jogo; `substituiLancamentoId`; `anuladoEm` e `anulacaoOperacaoId` (juntos) |
 | `EstatisticasDoJogo`   | `PK`/`FK` `jogoId`; projeção calculada                                                                                     | Registro ausente antes de iniciar o jogo                                                                                         |
 | `DesempenhoDoAtleta`   | `PK`/`FK` `participacaoId`; projeção calculada                                                                             | Registro ausente antes do credenciamento                                                                                         |
 | `RegraSuspensao`       | `PK` `id`                                                                                                                  | Nenhum; permanece inativa sem confirmação dos critérios                                                                          |
@@ -331,11 +337,13 @@ cada participação e continua válido após mudança de clube. Todas as métric
 `temp_`: `temp_placarClubeA`, `temp_placarClubeB`, `temp_gols`, `temp_cartoesAmarelos`,
 `temp_exclusoesDoisMinutos` e `temp_cartoesVermelhos`.
 
-`Arbitragem` corrige durante o jogo; presidente corrige também após encerramento. Uma correção
-anula o lançamento anterior e cria o substituto apontando `substituiLancamentoId`, na mesma transação; uma
+`Arbitragem` corrige durante o jogo; após o encerramento, somente o presidente corrige ou anula, sem
+incluir lançamentos novos (MAR-70). Uma correção anula o lançamento anterior e cria o substituto apontando
+`substituiLancamentoId`, na mesma transação, mudando tipo e/ou atleta credenciado; `valor` continua 1. Uma
 exclusão lógica apenas anula. Não apagar o registro anterior. Isso é rastreabilidade mínima da
-correção, não auditoria completa de autores e alterações. Corrigir penalidades exige reconciliar
-suspensões automáticas e cumprimentos afetados, sem duplicação.
+correção, não auditoria completa de autores e alterações. Corrigir penalidades exigirá reconciliar
+suspensões automáticas e cumprimentos afetados, sem duplicação, quando os critérios forem aprovados (MAR-79);
+hoje o cumprimento depende só do encerramento e não é refeito pela correção.
 
 ## Suspensões
 
