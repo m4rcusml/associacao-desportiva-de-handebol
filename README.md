@@ -871,8 +871,12 @@ Validação local da MAR-76 em 09/11/2026: lint e tipos/build de backend e clien
 smoke contra `next start` com o `proxy.ts` encaminhando para o backend local com `PROXY_SEGREDO`, com todos os checks
 aprovados, exceto o de IP forjado. Esse check falhou como esperado: o `next start` local repassa o `X-Real-IP` enviado
 pelo cliente, o que a Vercel não faz. Sem cabeçalhos forjados, o 4º login seguido respondeu 429 pelo proxy.
-**Não validado: o ambiente hospedado**, que depende do provisionamento acima; a MAR-76 só fecha seus critérios
-hospedados com a saída do smoke registrada.
+Validação hospedada em 09/11/2026 (Vercel preview, Render free em Node 26.13.0, Supabase PostgreSQL 17.11 pelo
+Session Pooler em `us-west-2`): 27 migrações aplicadas no build e smoke com **todas as verificações aprovadas**: saúde,
+recusa direta (403), origem estranha (403), cookie seguro, sessão isolada e logout (conta técnica fictícia), limite do
+login com IPs forjados (429 no 4º), long-polling com ping após 25,0 s, handshake só pelo domínio e origem, corpo de 4 MB
+pela Vercel e bucket não público. Um corpo de 5 MB foi recusado pela Vercel (`FUNCTION_PAYLOAD_TOO_LARGE`), daí o limite
+de 4 MB das fotos. Não validado: envio real de foto ao Storage (exige presidente e atleta) e WebSocket (fora do teste).
 
 ## Caminho feliz
 
