@@ -221,8 +221,20 @@ do atleta credenciado no jogo. Não há clube nem valor no corpo: o clube vem da
 Reenviar a mesma operação devolve o registro existente com `alterado: false`; o mesmo `operacaoId` com outro
 conteúdo é 409 e não sobrescreve o original. A resposta traz o placar atualizado. `GET .../lancamentos` devolve o
 placar (`null` antes do início), o desempenho de cada credenciado e os lançamentos em ordem de registro. Placar e
-desempenho são as views `EstatisticasDoJogo` e `DesempenhoDoAtleta`, calculadas dos lançamentos. Lançamentos
-ainda não são corrigidos nem anulados (MAR-70).
+desempenho são as views `EstatisticasDoJogo` e `DesempenhoDoAtleta`, calculadas dos lançamentos não anulados.
+
+#### Correção e anulação de lançamentos (MAR-70)
+
+Com o jogo em andamento, a arbitragem corrige em `POST .../lancamentos/{lancamentoId}/correcao` (corpo igual ao do
+registro: novo `operacaoId`, `tipo` e `participacaoId` de atleta credenciado; é preciso mudar o tipo ou o atleta) e
+anula em `POST .../lancamentos/{lancamentoId}/anulacao` (`{ operacaoId }`). A correção anula o original e cria o
+substituto (`substituiLancamentoId`) na mesma transação; a anulação é lógica. Nada é apagado: a consulta continua
+listando os anulados, com `anuladoEm` e `substituidoPorId`, fora do placar e do desempenho. O valor continua 1 por
+ocorrência. Reenvio da mesma operação devolve `alterado: false`; a segunda correção ou anulação do mesmo lançamento
+recebe 409 com `lancamento` (registro atualizado) e `substituto`. Após o encerramento, somente o presidente consulta
+(`GET /api/jogos/{jogoId}/lancamentos`, em qualquer status), corrige e anula pelas rotas equivalentes em
+`/api/jogos/{jogoId}/lancamentos/{lancamentoId}/...`, sem incluir lançamentos novos, sem reabrir a arbitragem e sem
+refazer o cumprimento de suspensões.
 
 #### Ciclo do jogo (MAR-69)
 
@@ -559,6 +571,15 @@ jogo sem senha emitida e credenciamentos preservados; credenciamento concorrente
 cancelamento idempotente sem cumprimento; campeonato cancelado com sessões abertas e início concorrente recusado;
 transições recusadas no banco. Uma migração nova; nenhuma dependência nova. Não validado: W.O./interrupção (MAR-72)
 e notificação Socket.IO (MAR-73).
+
+Validação local da MAR-70 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado e
+**136 testes de integração aprovados**, incluindo seis novos: correção de atleta e de tipo, cadeia de correções e
+anulação com histórico preservado e projeções sem os anulados; regras repetidas no banco (anulação única, sem
+alteração de dados, sem exclusão, substituto só de lançamento anulado pela mesma operação); cinco correções e
+anulações simultâneas do mesmo lançamento com uma vencedora e conflitos com o registro atualizado; a mesma correção
+e a mesma anulação em paralelo gravadas uma vez; reenvio e reuso de `operacaoId`; rollback da correção e da anulação;
+correção e anulação pelo presidente somente após o encerramento, sem reabrir sessões nem repetir o cumprimento.
+Uma migração nova; nenhuma dependência nova. Não validado: notificação Socket.IO (MAR-73) e vencedor (MAR-72).
 
 ## Caminho feliz
 

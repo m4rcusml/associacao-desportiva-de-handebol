@@ -46,7 +46,7 @@ server/
       jogos/             # Agendamento e designação (MAR-62); ciclo do jogo (MAR-69)
       arbitragem/        # Acesso temporário e senha do jogo (MAR-65)
       suspensoes/        # Suspensões manuais e cumprimento (MAR-66)
-      resultados/        # Lançamentos de gols e penalidades (MAR-68)
+      resultados/        # Lançamentos de gols e penalidades (MAR-68); correção e anulação (MAR-70)
       disciplina/
     infrastructure/      # Banco, e-mail e armazenamento
   prisma/                # Esquema e migrações
@@ -280,8 +280,19 @@ Operações diferentes não disputam bloqueio exclusivo, então lançamentos sim
 Placar e desempenho são views SQL, sem totais armazenados (RNF-006). A consulta reúne as duas projeções e a
 lista de lançamentos em uma única instrução SQL, compartilhando o mesmo snapshot mesmo com gols concorrentes;
 a revalidação mantém seus bloqueios e o isolamento READ COMMITTED. O trigger
-repete no banco jogo em andamento e participação credenciada do mesmo jogo, e torna o lançamento somente de
-inclusão até a MAR-70. O encerramento (MAR-69) altera a linha do jogo e por isso aguarda lançamentos em curso.
+repete no banco jogo em andamento e participação credenciada do mesmo jogo. O encerramento (MAR-69) altera a
+linha do jogo e por isso aguarda lançamentos em curso.
+Correções (MAR-70): na mesma transação, jogo (`FOR SHARE`, pela revalidação da arbitragem ou pela leitura do
+presidente) → operação (advisory lock transacional) → lançamento (`FOR UPDATE`) → participação (`FOR SHARE`) → anulação do original → inserção do
+substituto. De duas correções/anulações do mesmo lançamento, a segunda aguarda o `FOR UPDATE` e o encontra anulado:
+recebe 409 com o registro atualizado, salvo quando é a mesma operação (`anulacaoOperacaoId` igual ao seu
+`operacaoId`), tratada como reenvio. O trigger só aceita, como alteração, a anulação única sem mudar dados, com o
+jogo em andamento ou finalizado; o substituto precisa apontar lançamento do mesmo jogo anulado pela mesma operação.
+Inclusão nova continua exigindo jogo em andamento. A API separa as permissões: arbitragem com o jogo em andamento,
+presidente com o jogo finalizado.
+Registro, correção e anulação bloqueiam o hash de `operacaoId` antes de consultar seu uso nas duas colunas
+(`operacaoId` e `anulacaoOperacaoId`); assim, mesmo em jogos distintos, um identificador concorrente não confirma
+operações diferentes. O bloqueio é liberado no commit ou rollback; identificadores diferentes continuam independentes.
 Ciclo do jogo (MAR-69): `jogos/ciclo.ts` inicia e encerra pela sessão temporária e adia ou cancela pelo
 presidente. Toda operação bloqueia campeonato (`FOR SHARE`) → jogo (`FOR NO KEY UPDATE`), a mesma ordem do
 cancelamento do campeonato (campeonato `FOR UPDATE` → jogos), e só então revalida a arbitragem. O bloqueio do
