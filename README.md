@@ -649,7 +649,9 @@ Socket.IO (MAR-73) e retomada em outro dia com sessão expirada (coberta pela re
 6. **Encerramento e acompanhamento:** a arbitragem encerra o jogo e seu acesso temporário
    expira. O resultado e o desempenho ficam no histórico dos atletas; correções posteriores
    cabem ao presidente. Suspensões manuais são aplicadas por ele, por quantidade de jogos
-   naquele campeonato; punições automáticas dependem de critérios a confirmar com o cliente.
+   naquele campeonato. Os critérios automáticos foram aprovados na MAR-78
+   ([requisitos, seção 12](docs/requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026));
+   implementação e validação seguem na MAR-79.
 
 As decisões posteriores sobre exceções, fotos, fuso local, consulta da senha e ciclo de contas/
 competições estão em [requisitos, seção 11](docs/requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026).

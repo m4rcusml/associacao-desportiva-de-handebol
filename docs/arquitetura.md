@@ -448,5 +448,7 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 4. Retomar serviço de e-mail, recuperação de senha e sua validação em etapa posterior.
 5. Detalhar produção, logs e backup/restauração posteriormente, sem bloquear o início local.
 
-Métricas e critérios disciplinares pendentes do cliente continuam registrados em
-[pendencias.md](pendencias.md).
+Métricas e detalhes disciplinares ainda pendentes continuam registrados em
+[pendencias.md](pendencias.md). Os critérios de suspensão automática foram aprovados na MAR-78
+([requisitos, seção 12](requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026));
+implementação e validação pertencem à MAR-79.
