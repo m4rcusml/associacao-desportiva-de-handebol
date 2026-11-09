@@ -229,6 +229,7 @@ model Presidente {
   arbitragensDesignadas            Arbitragem[]
   suspensoesAplicadas              Suspensao[]               @relation("aplicadaPor")
   suspensoesRevogadas              Suspensao[]               @relation("revogadaPor")
+  reducoesSuspensao                ReducaoSuspensao[]
   alteracoesResultado              AlteracaoResultadoJogo[]
   entradasAnuladas                 Participacao[]            @relation("entradaAnulada")
   participacoesRegistradas         Participacao[]            @relation("participacaoRegistrada")
@@ -611,7 +612,8 @@ model SessaoArbitragem {
 }
 
 /// Suspensão manual aplicada pelo presidente (RF-038, RN-037/038/043, MAR-66) ou automática (RF-039, MAR-79): impede o
-/// atleta somente no campeonato, por quantidade de jogos. Saldo = `quantidadeJogos` − cumprimentos, nunca armazenado.
+/// atleta somente no campeonato, por quantidade de jogos. Saldo = total atual (`quantidadeReduzida` ou `quantidadeJogos`)
+/// − cumprimentos, nunca negativo nem armazenado; reduções ficam em `ReducaoSuspensao` (MAR-84).
 /// Revogar (`revogadaEm`/`revogadaPor`), encerrar o saldo com o campeonato (`saldoEncerradoEm`) e anular a automática
 /// pela retirada da ocorrência de origem (`anuladaEm`) são registros distintos e definitivos, que preservam a suspensão
 /// e seus cumprimentos. Manual: presidente, sem jogo nem regra; automática: jogo de origem e regra, sem presidente
@@ -639,11 +641,37 @@ model Suspensao {
   saldoEncerradoEm        DateTime?              @db.Timestamptz
   /// Automática cuja ocorrência de origem foi corrigida ou anulada (MAR-79): saldo indevido liberado, histórico preservado.
   anuladaEm               DateTime?              @db.Timestamptz
+  /// Total atual definido pela última redução (MAR-84), menor que `quantidadeJogos`, que permanece como a punição original.
+  quantidadeReduzida      Int?
+  /// Obrigatória nas revogações a partir da MAR-84; revogações anteriores ficam sem ela.
+  justificativaRevogacao  String?
   cumprimentos            CumprimentoSuspensao[]
+  reducoes                ReducaoSuspensao[]
 
   @@index([atletaId, campeonatoId])
   @@index([campeonatoId])
   @@index([jogoOrigemId])
+}
+
+/// Decisão de redução de suspensão (MAR-84, requisitos seção 14): novo total menor que o anterior, com presidente,
+/// justificativa e data; ou redução herdada (`herdadaDeReducaoId`) pela automática recriada do mesmo atleta/jogo/regra
+/// após a anulação da anterior. Imutável (trigger da migração `reducao_suspensao`).
+model ReducaoSuspensao {
+  id                      String             @id @db.Uuid
+  suspensaoId             String             @db.Uuid
+  suspensao               Suspensao          @relation(fields: [suspensaoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  quantidadeAnterior      Int
+  novaQuantidade          Int
+  justificativa           String?
+  reduzidaPorPresidenteId String?            @db.Uuid
+  reduzidaPor             Presidente?        @relation(fields: [reduzidaPorPresidenteId], references: [usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  herdadaDeReducaoId      String?            @db.Uuid
+  herdadaDe               ReducaoSuspensao?  @relation("herdadaDe", fields: [herdadaDeReducaoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  herdeiras               ReducaoSuspensao[] @relation("herdadaDe")
+  reduzidaEm              DateTime           @db.Timestamptz
+
+  @@index([suspensaoId])
+  @@index([herdadaDeReducaoId])
 }
 
 /// Jogo encerrado definitivamente que contou para uma suspensão (RF-041, RN-039). A chave composta impede

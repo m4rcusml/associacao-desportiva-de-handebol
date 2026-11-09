@@ -31,7 +31,7 @@ escalação é preliminar e credenciamento e entrada em quadra continuam na MAR-
 Desde a MAR-65, a arbitragem entra no dia do jogo (fuso do local) pela conta designada ou por nome e
 senha do jogo, com sessão temporária própria; presidente e contas designadas consultam e trocam a senha.
 Desde a MAR-66, o presidente aplica, consulta e revoga suspensões manuais; encerrar/cancelar o campeonato
-encerra os saldos.
+encerra os saldos. Desde a MAR-84, reduz suspensões manuais e automáticas, e reduzir ou revogar exige justificativa.
 Desde a MAR-79, o vermelho registra se a desqualificação tem relatório disciplinar (azul); com relatório, o
 encerramento do jogo gera uma suspensão automática de um jogo, e as correções do presidente a recalculam.
 Desde a MAR-74, o presidente e o técnico atual de um dos clubes consultam as métricas de cada jogo, e o próprio
@@ -527,8 +527,8 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   vencedor de jogo já invalidado.
 - Métricas desta versão foram confirmadas posteriormente na seção 15; identificadores atuais
   `temp_` aguardam migração compatível. Critérios automáticos estão na seção 12, com redução e
-  recálculo na seção 14. A suspensão automática da seção 12 foi implementada na MAR-79; redução e migração
-  dos identificadores seguem para as MAR-84 e MAR-85, respectivamente.
+  recálculo na seção 14. A suspensão automática da seção 12 foi implementada na MAR-79 e a redução na MAR-84;
+  a migração dos identificadores segue para a MAR-85.
 
 ## 12. Critérios de suspensão automática — MAR-78 — 09/11/2026
 
@@ -606,9 +606,13 @@ as correções e seus registros originais. Esses procedimentos também valem ap�
 
 ## 14. Redução parcial e justificativa de suspensão — MAR-81 — 09/11/2026
 
-Decisão aprovada por Marcus em 09/11/2026, resolvendo a PEN-009. A implementação e sua validação permanecem
-pendentes na [MAR-84](https://linear.app/marcusml/issue/MAR-84);
-os critérios abaixo não descrevem funcionalidades já disponíveis.
+Decisão aprovada por Marcus em 09/11/2026, resolvendo a PEN-009. Implementada na
+[MAR-84](https://linear.app/marcusml/issue/MAR-84).
+
+Detalhes aprovados por Marcus na MAR-84 (09/11/2026): o novo total pode ser qualquer inteiro de zero até o total
+atual menos um; reduzir para zero libera o saldo como redução, distinta da revogação. A automática recriada para o
+mesmo atleta/jogo/regra, depois que uma correção anulou a anterior e outra restaurou a ocorrência, herda o menor
+total já definido por redução, registrado como redução herdada da decisão original.
 
 - Presidente pode reduzir suspensões manuais e automáticas, preservando a punição original
   e o histórico da decisão.

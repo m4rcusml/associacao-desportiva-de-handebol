@@ -263,10 +263,22 @@ classDiagram
         string origem
         string motivo
         int quantidadeJogos
+        int quantidadeReduzida
         datetime aplicadaEm
         datetime revogadaEm
         uuid revogadaPorPresidenteId
+        string justificativaRevogacao
         datetime saldoEncerradoEm
+    }
+    class ReducaoSuspensao {
+        uuid id
+        uuid suspensaoId
+        int quantidadeAnterior
+        int novaQuantidade
+        string justificativa
+        uuid reduzidaPorPresidenteId
+        uuid herdadaDeReducaoId
+        datetime reduzidaEm
     }
     class CumprimentoSuspensao {
         uuid suspensaoId
@@ -308,4 +320,5 @@ classDiagram
     Campeonato "1" -- "0..*" RegraSuspensao : define regras
     RegraSuspensao "0..1" -- "0..*" Suspensao : gera automaticamente
     Suspensao "1" -- "0..*" CumprimentoSuspensao : registra cumprimento
+    Suspensao "1" -- "0..*" ReducaoSuspensao : registra reducoes
     Jogo "1" -- "0..*" CumprimentoSuspensao : conta como cumprido

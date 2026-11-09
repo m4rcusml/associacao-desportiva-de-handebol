@@ -6,7 +6,7 @@ import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
-import { registrarCumprimentos } from "../dist/modules/suspensoes/suspensoes.js";
+import { reduzirSuspensao, registrarCumprimentos } from "../dist/modules/suspensoes/suspensoes.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
@@ -85,10 +85,11 @@ async function cenario({ iniciar = true } = {}) {
 
 type Pessoa = { id: string; nomeCompleto: string };
 type Suspensao = {
-  id: string; campeonatoId: string; atleta: Pessoa; quantidadeJogos: number; motivo: string; aplicadaPor: Pessoa; aplicadaEm: string;
-  revogadaEm: string | null; revogadaPor: Pessoa | null; saldoEncerradoEm: string | null;
+  id: string; campeonatoId: string; atleta: Pessoa; quantidadeJogos: number; quantidadeAtual: number; motivo: string; aplicadaPor: Pessoa; aplicadaEm: string;
+  revogadaEm: string | null; revogadaPor: Pessoa | null; justificativaRevogacao: string | null; saldoEncerradoEm: string | null;
   situacao: "vigente" | "cumprida" | "revogada" | "saldo_encerrado"; jogosCumpridos: number; jogosRestantes: number;
   cumprimentos: { jogoId: string; registradoEm: string }[];
+  reducoes: { id: string; quantidadeAnterior: number; novaQuantidade: number; justificativa: string | null; reduzidaPor: Pessoa | null; reduzidaEm: string; herdadaDeReducaoId: string | null }[];
 };
 const aplicar = (campeonato: string, atletaId: string, quantidadeJogos = 1, cookie = presidente.cookie) =>
   request("POST", `/campeonatos/${campeonato}/suspensoes`, cookie, { atletaId, quantidadeJogos, motivo: "Conduta antidesportiva" });
@@ -97,7 +98,26 @@ async function suspender(campeonato: string, atletaId: string, quantidadeJogos =
   assert.equal(response.status, 201, await response.clone().text());
   return response.json();
 }
-const revogar = (campeonato: string, id: string) => request("POST", `/campeonatos/${campeonato}/suspensoes/${id}/revogar`, presidente.cookie);
+const revogar = (campeonato: string, id: string, justificativa = "Recurso deferido pela associação") =>
+  request("POST", `/campeonatos/${campeonato}/suspensoes/${id}/revogar`, presidente.cookie, { justificativa });
+const reduzir = (campeonato: string, id: string, novaQuantidade: number, justificativa = "Recurso parcialmente deferido", cookie = presidente.cookie) =>
+  request("POST", `/campeonatos/${campeonato}/suspensoes/${id}/reduzir`, cookie, { novaQuantidade, justificativa });
+async function reduzida(campeonato: string, id: string, novaQuantidade: number, justificativa?: string) {
+  const response = await reduzir(campeonato, id, novaQuantidade, justificativa);
+  assert.equal(response.status, 200, await response.clone().text());
+  return response.json() as Promise<{ suspensao: Suspensao; alterado: boolean }>;
+}
+/** Espera até que alguma conexão aguarde um bloqueio mantido pela conexão `pid`. */
+async function aguardarBloqueio(pid: number, mensagem: string) {
+  const limite = Date.now() + 3_000;
+  while (true) {
+    const [{ esperando }] = await prisma.$queryRaw<{ esperando: boolean }[]>`
+      SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE ${pid} = ANY(pg_blocking_pids(pid))) AS esperando`;
+    if (esperando) return;
+    assert.ok(Date.now() < limite, mensagem);
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+}
 async function listar(campeonato: string, atletaId?: string): Promise<Suspensao[]> {
   const response = await request("GET", `/campeonatos/${campeonato}/suspensoes${atletaId ? `?atletaId=${atletaId}` : ""}`, presidente.cookie);
   assert.equal(response.status, 200, await response.clone().text());
@@ -376,4 +396,173 @@ test("escalação sinaliza suspensão vigente sem impedir a escolha", async () =
   assert.deepEqual(await finalizar(jogo), [daAna.id]);
   const depois = await (await request("GET", `/jogos/${proximo}/escalacao`, tecnico.cookie)).json() as Escalacao;
   assert.deepEqual(depois.clubes[0].escalados.map(e => e.suspensaoPendente), [false]);
+});
+
+test("revogação exige justificativa, registra presidente e data e mantém a justificativa original na repetição", async () => {
+  const { ana, campeonato } = await cenario();
+  const daAna = await suspender(campeonato, ana.id, 2);
+  for (const corpo of [undefined, {}, { justificativa: "   " }, { justificativa: "x".repeat(501) }, { justificativa: "ok", outro: 1 }]) {
+    assert.equal((await request("POST", `/campeonatos/${campeonato}/suspensoes/${daAna.id}/revogar`, presidente.cookie, corpo)).status, 400, JSON.stringify(corpo));
+  }
+  const tecnico = await cadastrar("tecnico");
+  assert.equal((await request("POST", `/campeonatos/${campeonato}/suspensoes/${daAna.id}/revogar`, tecnico.cookie, { justificativa: "x" })).status, 403);
+
+  const primeira = await revogar(campeonato, daAna.id, "  Recurso deferido  ");
+  assert.equal(primeira.status, 200);
+  const { suspensao, alterado } = await primeira.json() as { suspensao: Suspensao; alterado: boolean };
+  assert.deepEqual([alterado, suspensao.situacao, suspensao.justificativaRevogacao, suspensao.revogadaPor?.id], [true, "revogada", "Recurso deferido", presidente.id]);
+  assert.ok(suspensao.revogadaEm);
+  const repeticao = await (await revogar(campeonato, daAna.id, "Outra justificativa")).json() as { suspensao: Suspensao; alterado: boolean };
+  assert.deepEqual([repeticao.alterado, repeticao.suspensao.justificativaRevogacao], [false, "Recurso deferido"]);
+
+  // No banco: revogar sem justificativa é recusado e a justificativa registrada não muda.
+  const outra = await suspender(campeonato, ana.id, 1);
+  await assert.rejects(prisma.suspensao.update({ where: { id: outra.id }, data: { revogadaEm: new Date(), revogadaPorPresidenteId: presidente.id } }));
+  await assert.rejects(prisma.suspensao.update({ where: { id: daAna.id }, data: { justificativaRevogacao: "Alterada" } }));
+  await assert.rejects(prisma.suspensao.update({ where: { id: outra.id }, data: { justificativaRevogacao: "Sem revogação" } }));
+});
+
+test("redução define novo total, preserva original, histórico e cumprimentos; saldo nunca negativo", async () => {
+  const { a, b, ana, bia, campeonato } = await cenario();
+  const daAna = await suspender(campeonato, ana.id, 5);
+  const jogos = [await agendar(campeonato, a, b), await agendar(campeonato, b, a)];
+  for (const jogo of jogos) assert.deepEqual(await finalizar(jogo), [daAna.id]);
+
+  // 5 jogos, 2 cumpridos, reduzida para 3: falta 1.
+  const tres = await reduzida(campeonato, daAna.id, 3, "  Recurso parcialmente deferido  ");
+  assert.equal(tres.alterado, true);
+  assert.deepEqual([tres.suspensao.quantidadeJogos, tres.suspensao.quantidadeAtual, tres.suspensao.jogosCumpridos, tres.suspensao.jogosRestantes, tres.suspensao.situacao],
+    [5, 3, 2, 1, "vigente"]);
+  const [decisao] = tres.suspensao.reducoes;
+  assert.deepEqual([decisao.quantidadeAnterior, decisao.novaQuantidade, decisao.justificativa, decisao.reduzidaPor?.id, decisao.herdadaDeReducaoId],
+    [5, 3, "Recurso parcialmente deferido", presidente.id, null]);
+  assert.ok(decisao.reduzidaEm);
+  // Repetir o total já definido por redução devolve alterado: false sem nova decisão; aumentar é recusado.
+  const repeticao = await reduzida(campeonato, daAna.id, 3);
+  assert.deepEqual([repeticao.alterado, repeticao.suspensao.reducoes.length], [false, 1]);
+  assert.equal((await reduzir(campeonato, daAna.id, 4)).status, 409);
+
+  // Reduzida para 1: saldo zero, sem apagar cumprimentos nem compensar ausências.
+  const um = (await reduzida(campeonato, daAna.id, 1, "Nova decisão")).suspensao;
+  assert.deepEqual([um.quantidadeJogos, um.quantidadeAtual, um.jogosCumpridos, um.jogosRestantes, um.situacao, um.cumprimentos.map(c => c.jogoId).sort()],
+    [5, 1, 2, 0, "cumprida", [...jogos].sort()]);
+  assert.deepEqual(um.reducoes.map(r => [r.quantidadeAnterior, r.novaQuantidade]), [[5, 3], [3, 1]]);
+  // Cumprida não é reduzida nem revogada; o próximo jogo não registra cumprimento e Ana volta a ser credenciada.
+  assert.equal((await reduzir(campeonato, daAna.id, 0)).status, 409);
+  assert.equal((await revogar(campeonato, daAna.id)).status, 409);
+  const proximo = await agendar(campeonato, a, b);
+  await credenciar(proximo, ana.id, a, 9);
+  assert.deepEqual(await finalizar(proximo), []);
+
+  // Reduzida para 0 sem cumprimento: libera a suspensão, e o credenciamento volta a ser aceito pelo banco.
+  const daBia = await suspender(campeonato, bia.id, 2);
+  const semJogo = await agendar(campeonato, a, b);
+  await assert.rejects(credenciar(semJogo, bia.id, b, 4));
+  const zero = (await reduzida(campeonato, daBia.id, 0)).suspensao;
+  assert.deepEqual([zero.quantidadeAtual, zero.jogosCumpridos, zero.jogosRestantes, zero.situacao], [0, 0, 0, "cumprida"]);
+  await credenciar(semJogo, bia.id, b, 4);
+});
+
+test("redução: validações, permissões, estados recusados e proteção no banco", async () => {
+  const { a, b, ana, bia, campeonato } = await cenario();
+  const daAna = await suspender(campeonato, ana.id, 3);
+  for (const corpo of [{}, { novaQuantidade: 1 }, { novaQuantidade: -1, justificativa: "x" }, { novaQuantidade: 1.5, justificativa: "x" },
+    { novaQuantidade: "1", justificativa: "x" }, { novaQuantidade: 1, justificativa: " " }, { novaQuantidade: 1, justificativa: "x", outro: 1 }]) {
+    assert.equal((await request("POST", `/campeonatos/${campeonato}/suspensoes/${daAna.id}/reduzir`, presidente.cookie, corpo)).status, 400, JSON.stringify(corpo));
+  }
+  const tecnico = await cadastrar("tecnico");
+  assert.equal((await reduzir(campeonato, daAna.id, 1, "x", tecnico.cookie)).status, 403);
+  assert.equal((await reduzir(campeonato, daAna.id, 1, "x", ana.cookie)).status, 403);
+  assert.equal((await reduzir(campeonato, randomUUID(), 1)).status, 404);
+  assert.equal((await reduzir(await campeonatoCom([a, b], false), daAna.id, 1)).status, 404);
+  assert.equal((await reduzir(campeonato, daAna.id, 3)).status, 409);
+
+  // Revogada não é reduzida, e a reduzida pode ser revogada depois, preservando a redução.
+  const revogada = await suspender(campeonato, bia.id, 2);
+  await reduzida(campeonato, revogada.id, 1);
+  const final = (await (await revogar(campeonato, revogada.id)).json() as { suspensao: Suspensao }).suspensao;
+  assert.deepEqual([final.situacao, final.quantidadeAtual, final.reducoes.length], ["revogada", 1, 1]);
+  assert.equal((await reduzir(campeonato, revogada.id, 0)).status, 409);
+
+  // Banco: total não muda sem decisão registrada, não aumenta e a decisão é imutável.
+  await assert.rejects(prisma.suspensao.update({ where: { id: daAna.id }, data: { quantidadeReduzida: 1 } }));
+  await assert.rejects(prisma.reducaoSuspensao.create({ data: { id: randomUUID(), suspensaoId: daAna.id, quantidadeAnterior: 3, novaQuantidade: 2, reduzidaEm: new Date() } }));
+  await assert.rejects(prisma.reducaoSuspensao.create({ data: { id: randomUUID(), suspensaoId: daAna.id, quantidadeAnterior: 2, novaQuantidade: 1, justificativa: "x", reduzidaPorPresidenteId: presidente.id, reduzidaEm: new Date() } }));
+  const [decisao] = (await reduzida(campeonato, daAna.id, 2)).suspensao.reducoes;
+  await assert.rejects(prisma.suspensao.update({ where: { id: daAna.id }, data: { quantidadeReduzida: 3 } }));
+  await assert.rejects(prisma.reducaoSuspensao.update({ where: { id: decisao.id }, data: { justificativa: "Alterada" } }));
+  await assert.rejects(prisma.reducaoSuspensao.delete({ where: { id: decisao.id } }));
+
+  // Saldo encerrado com o campeonato não é reduzido.
+  assert.equal((await request("POST", `/campeonatos/${campeonato}/encerrar`, presidente.cookie)).status, 200);
+  assert.equal((await reduzir(campeonato, daAna.id, 1)).status, 409);
+});
+
+test("banco recusa no commit a decisão de redução sem o total da suspensão atualizado", async () => {
+  const { ana, campeonato } = await cenario();
+  const daAna = await suspender(campeonato, ana.id, 3);
+  await assert.rejects(prisma.$transaction(tx => tx.reducaoSuspensao.create({ data: {
+    id: randomUUID(), suspensaoId: daAna.id, quantidadeAnterior: 3, novaQuantidade: 1, justificativa: "Decisão órfã",
+    reduzidaPorPresidenteId: presidente.id, reduzidaEm: new Date(),
+  } })), /total da suspensão atualizado/);
+  const consultada = await (await request("GET", `/campeonatos/${campeonato}/suspensoes`, presidente.cookie)).json() as Suspensao[];
+  const semReducao = consultada.find(s => s.id === daAna.id)!;
+  assert.deepEqual([semReducao.quantidadeAtual, semReducao.reducoes, semReducao.situacao], [3, [], "vigente"]);
+  assert.equal(await prisma.reducaoSuspensao.count({ where: { suspensaoId: daAna.id } }), 0);
+});
+
+test("redução aguarda o cumprimento em andamento e o cumprimento aguarda a redução", async () => {
+  const { a, b, ana, campeonato } = await cenario();
+  // Cumprimento primeiro: a redução enxerga o jogo recém-cumprido e o saldo fica zero, sem negativo.
+  const suspensao = await suspender(campeonato, ana.id, 3);
+  assert.deepEqual(await finalizar(await agendar(campeonato, a, b)), [suspensao.id]);
+  const jogo = await agendar(campeonato, b, a);
+  let liberar!: () => void;
+  let informarPid!: (pid: number) => void;
+  const liberacao = new Promise<void>(resolve => { liberar = resolve; });
+  const registrado = new Promise<number>(resolve => { informarPid = resolve; });
+  const encerramento = prisma.$transaction(async tx => {
+    const [{ pid }] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+    await tx.jogo.update({ where: { id: jogo }, data: { status: "finalizado", iniciadoEm: new Date(), encerradoEm: new Date(), resultado: "normal" } });
+    assert.deepEqual(await registrarCumprimentos(tx, jogo), [suspensao.id]);
+    informarPid(pid);
+    await liberacao;
+  }, { timeout: 10_000 });
+  const pid = await Promise.race([registrado, encerramento.then(() => { throw new Error("Encerramento sem barreira"); })]);
+  const resposta = reduzir(campeonato, suspensao.id, 1);
+  try {
+    await aguardarBloqueio(pid, "Redução deve aguardar o cumprimento em andamento");
+  } finally {
+    liberar();
+    await encerramento;
+  }
+  const depois = await (await resposta).json() as { suspensao: Suspensao };
+  assert.deepEqual([depois.suspensao.quantidadeAtual, depois.suspensao.jogosCumpridos, depois.suspensao.jogosRestantes, depois.suspensao.situacao], [1, 2, 0, "cumprida"]);
+
+  // Redução primeiro: o cumprimento concorrente aguarda e não ultrapassa o novo total.
+  const outra = await suspender(campeonato, ana.id, 3);
+  assert.deepEqual(await finalizar(await agendar(campeonato, a, b)), [outra.id]);
+  const seguinte = await agendar(campeonato, a, b);
+  await prisma.jogo.update({ where: { id: seguinte }, data: { status: "finalizado", iniciadoEm: new Date(), encerradoEm: new Date(), resultado: "normal" } });
+  let liberarReducao!: () => void;
+  let informarReducao!: (pid: number) => void;
+  const fim = new Promise<void>(resolve => { liberarReducao = resolve; });
+  const reduzidaPid = new Promise<number>(resolve => { informarReducao = resolve; });
+  const reducao = prisma.$transaction(async tx => {
+    const [{ pid: atual }] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+    await reduzirSuspensao(tx, campeonato, outra.id, presidente.id, { novaQuantidade: 1, justificativa: "Decisão concorrente" });
+    informarReducao(atual);
+    await fim;
+  }, { timeout: 10_000 });
+  const pidReducao = await Promise.race([reduzidaPid, reducao.then(() => { throw new Error("Redução sem barreira"); })]);
+  const cumprimento = cumprir(seguinte);
+  try {
+    await aguardarBloqueio(pidReducao, "Cumprimento deve aguardar a redução em andamento");
+  } finally {
+    liberarReducao();
+    await reducao;
+  }
+  assert.deepEqual(await cumprimento, []);
+  const final = await consultar(campeonato, outra.id);
+  assert.deepEqual([final.quantidadeAtual, final.jogosCumpridos, final.situacao], [1, 1, "cumprida"]);
 });

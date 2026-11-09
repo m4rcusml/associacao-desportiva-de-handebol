@@ -164,6 +164,18 @@ suspensão anulada.
 A migração incremental `gate_suspensao_automatica` instala a função de bloqueio consultivo por
 atleta/campeonato e triggers que a obtêm antes dos validadores de nova automática e novo credenciamento.
 A API usa a mesma função e adquire esses bloqueios antes das contas compartilhadas e dos cumprimentos.
+A migração `reducao_suspensao` (MAR-84) acrescenta a `Suspensao` `quantidadeReduzida` (total atual, de 0 até
+`quantidadeJogos` − 1; a punição original não muda) e `justificativaRevogacao` (1 a 500 caracteres, somente com
+revogação), e cria `ReducaoSuspensao` (`suspensaoId` em cascata, `quantidadeAnterior`, `novaQuantidade` menor que a
+anterior, `reduzidaEm`; CHECK: decisão do presidente com `reduzidaPorPresidenteId` e `justificativa`, ou herdada com
+`herdadaDeReducaoId` e sem ambos). Triggers: a suspensão nasce sem redução nem justificativa; revogar exige
+justificativa, que é definitiva com a revogação; `quantidadeReduzida` só diminui, em suspensão não revogada, anulada
+nem encerrada, acompanhada da decisão registrada a partir do total atual. A decisão bloqueia a suspensão
+(`FOR UPDATE`), exige saldo a cumprir e é imutável (exclusão só em cascata); a herdada exige automática anterior
+anulada do mesmo atleta/jogo/regra e repete o total da decisão de origem. Um constraint trigger diferido
+(`DEFERRABLE INITIALLY DEFERRED`, no commit) recusa a decisão cuja suspensão, se ainda existir, não tenha o total
+atual atualizado para no máximo o novo total, impedindo decisão sem efeito. Cumprimento e credenciamento passam a
+usar o total atual (`COALESCE(quantidadeReduzida, quantidadeJogos)`).
 A migração `lancamentos` (MAR-68) cria `LancamentoJogo` (`operacaoId` UUID único enviado pelo cliente, `jogoId`,
 `participacaoId`, `tipo` com os quatro valores `temp_`, `valor` e `registradoEm`) e as views `EstatisticasDoJogo`
 (`temp_placarClubeA`/`B`, somente jogos com `iniciadoEm`) e `DesempenhoDoAtleta` (as quatro métricas `temp_`, somente
@@ -245,8 +257,9 @@ administrativas não geram linhas adicionais.
 | `LancamentoJogo`       | `PK` `id`; `UNIQUE` `operacaoId`; `FK` `substituiLancamentoId` para o lançamento corrigido; `UNIQUE` `substituiLancamentoId` e `anulacaoOperacaoId` quando preenchidos | `participacaoId` somente em ocorrência geral do jogo; `substituiLancamentoId`; `anuladoEm` e `anulacaoOperacaoId` (juntos); `relatorioDisciplinar` fora do vermelho |
 | `EstatisticasDoJogo`   | `PK`/`FK` `jogoId`; projeção calculada                                                                                     | Registro ausente antes de iniciar o jogo                                                                                         |
 | `DesempenhoDoAtleta`   | `PK`/`FK` `participacaoId`; projeção calculada                                                                             | Registro ausente antes do credenciamento                                                                                         |
-| `Suspensao`            | `PK` `id`; `origem` manual ou automatica; `FK` `jogoOrigemId`; `UNIQUE` parcial `atletaId` + `jogoOrigemId` + `regra` sem `anuladaEm` | `jogoOrigemId` e `regra` (enum `RegraSuspensao`) na manual; `aplicadaPorPresidenteId` na automática; `revogadaEm`/`revogadaPorPresidenteId`; `saldoEncerradoEm`; `anuladaEm` (somente automática) |
+| `Suspensao`            | `PK` `id`; `origem` manual ou automatica; `FK` `jogoOrigemId`; `UNIQUE` parcial `atletaId` + `jogoOrigemId` + `regra` sem `anuladaEm` | `jogoOrigemId` e `regra` (enum `RegraSuspensao`) na manual; `aplicadaPorPresidenteId` na automática; `revogadaEm`/`revogadaPorPresidenteId`/`justificativaRevogacao`; `saldoEncerradoEm`; `anuladaEm` (somente automática); `quantidadeReduzida` |
 | `CumprimentoSuspensao` | `PK` composta `suspensaoId` + `jogoId`                                                                                     | Nenhum                                                                                                                           |
+| `ReducaoSuspensao`     | `PK` `id`; `FK` `suspensaoId`; `FK` `herdadaDeReducaoId` para a decisão de origem                                          | `justificativa` e `reduzidaPorPresidenteId` na herdada; `herdadaDeReducaoId` na decisão do presidente                             |
 
 Todos os demais campos são obrigatórios. Não se exige `nome` único para pessoas ou
 clubes. Nome de campeonato/edição também não é uma chave de identidade.
@@ -421,29 +434,31 @@ Nova suspensão preserva jogo já credenciado; o impedimento e cumprimento se re
 jogos. Jogos excepcionais e retomadas seguem requisitos, seção 11. O próprio jogo que originou
 a punição não conta. Todo encerramento definitivo (normal, interrompido, abandono ou W.O.) cumpre uma vez;
 interrupção temporária, correção de resultado e invalidação não registram nem desfazem cumprimentos (MAR-72). `CumprimentoSuspensao` registra os jogos usados
-na contagem; saldo é `quantidadeJogos` menos a quantidade de cumprimentos, nunca negativo. Não
+na contagem; saldo é o total atual (`quantidadeReduzida` ou, sem redução, `quantidadeJogos`) menos a quantidade
+de cumprimentos, nunca negativo. Não
 armazenar saldo divergente em outro campo. Jogos adiados só contam quando realizados; cancelados não
 contam. Lançar cumprimento e verificar credenciamento exige consistência transacional. Alteração do
 `status` de um jogo exige reconciliar cumprimentos. Não recontar ao corrigir placar.
 Transferência durante campeonato em andamento está bloqueada, portanto não transportamos suspensão
 entre clubes. Suspensões simultâneas são cumpridas em paralelo: cada jogo elegível cumpre cada suspensão
 vigente uma vez, respeitando a chave composta. Presidente pode revogar, preservando original e
-cumprimentos; `revogadaEm` e `revogadaPorPresidenteId` registram a revogação (MAR-66).
+cumprimentos; `revogadaEm`, `revogadaPorPresidenteId` e, desde a MAR-84, `justificativaRevogacao` registram a
+revogação (MAR-66).
 Encerramento/cancelamento do campeonato registra o término do saldo em `saldoEncerradoEm`, distinto
-de revogação e de jogos cumpridos. Redução parcial e justificativa obrigatória foram aprovadas
-na MAR-81 (requisitos, seção 14), com implementação pendente. Preservar punição original,
-cumprimentos e histórico de decisão; representar novo total e saldo nunca negativo. O recálculo
-automático posterior usa o menor total entre regra e redução administrativa, libera saldo indevido
-se a origem for anulada e não reativa revogadas, conforme requisitos, seção 14.
+de revogação e de jogos cumpridos. Redução parcial (MAR-84, requisitos, seção 14): o presidente define novo
+total menor que o atual, inclusive zero, com justificativa; `quantidadeJogos` preserva a punição original,
+`quantidadeReduzida` o total atual e `ReducaoSuspensao` cada decisão. O recálculo automático não altera o total
+reduzido (a regra atual vale um jogo, então vale o menor entre regra e redução); a automática recriada após uma
+anulação herda o menor total já decidido para o mesmo atleta/jogo/regra (decisão de Marcus, MAR-84). Anular a
+origem libera o saldo indevido restante, e revogadas não são reativadas.
 
 ## Pendências que não bloqueiam esta versão documental
 
 - Métricas confirmadas na MAR-82 (requisitos, seção 15); migração compatível dos identificadores `temp_` e adequação de carteirinha pendentes. Critérios automáticos aprovados em requisitos, seção 12, e implementados na MAR-79.
 - Auditoria completa: autoria, valores anteriores/novos e justificativas de alterações.
-- Redução administrativa e recálculo automático posterior foram aprovados na MAR-81
-  (requisitos, seção 14), com implementação e validação pendentes. Revogação, paralelismo
-  e recálculo sem compensação foram definidos em requisitos, seção 11. Correção administrativa
-  de credenciamento foi aprovada na MAR-80 (requisitos, seção 13), ainda sem implementação.
+- Redução administrativa e recálculo automático posterior (requisitos, seção 14) foram implementados na
+  MAR-84. Revogação, paralelismo e recálculo sem compensação foram definidos em requisitos, seção 11.
+  Correção administrativa de credenciamento (requisitos, seção 13) foi implementada na MAR-83.
 - A ficha desta versão e os dados da carteirinha foram definidos na MAR-82 (requisitos, seção 15); verificar implementação sem acrescentar dados pessoais além dos aprovados.
 
 Essas pendências limitam implementação das respectivas funcionalidades; esta versão não afirma que

@@ -85,8 +85,9 @@ type Pessoa = { id: string; nomeCompleto: string };
 type Suspensao = {
   id: string; campeonatoId: string; origem: "manual" | "automatica"; regra: string | null; jogoOrigemId: string | null; atleta: Pessoa; quantidadeJogos: number;
   motivo: string; aplicadaPor: Pessoa | null; aplicadaEm: string; revogadaEm: string | null; saldoEncerradoEm: string | null; anuladaEm: string | null;
-  situacao: string; jogosCumpridos: number; jogosRestantes: number; cumprimentos: { jogoId: string }[];
+  situacao: string; jogosCumpridos: number; jogosRestantes: number; cumprimentos: { jogoId: string }[]; quantidadeAtual: number; reducoes: Reducao[];
 };
+type Reducao = { id: string; quantidadeAnterior: number; novaQuantidade: number; justificativa: string | null; reduzidaPor: Pessoa | null; herdadaDeReducaoId: string | null };
 type Lancamento = { id: string; tipo: string; relatorioDisciplinar: boolean | null; anuladoEm: string | null };
 type Correcao = { lancamento: Lancamento; alterado: boolean; suspensoesAutomaticas: { criadas: string[]; anuladas: string[] } };
 
@@ -255,7 +256,7 @@ test("correção do presidente recalcula: libera só o saldo restante, gera nova
   const anulada = (await listar()).find(s => s.id === primeira.id)!;
   assert.deepEqual([anulada.situacao, anulada.jogosCumpridos, anulada.jogosRestantes, anulada.revogadaEm], ["anulada", 0, 0, null]);
   assert.ok(anulada.anuladaEm);
-  await recusa(request("POST", `/campeonatos/${campeonato}/suspensoes/${primeira.id}/revogar`, presidente.cookie), 409, /anulada/);
+  await recusa(request("POST", `/campeonatos/${campeonato}/suspensoes/${primeira.id}/revogar`, presidente.cookie, { justificativa: "Recurso deferido" }), 409, /anulada/);
 
   // Ana volta a ser credenciada no jogo seguinte, antes da nova correção.
   const segundo = await jogo();
@@ -299,7 +300,7 @@ test("paralelismo com a manual, revogação e término do saldo com o campeonato
   assert.deepEqual((await listar()).find(s => s.id === manual.id)!.jogosCumpridos, 1, "o jogo de origem cumpre a manual de outro atleta");
 
   // Revogada pelo presidente: a correção posterior não a altera nem gera outra.
-  assert.equal((await request("POST", `/campeonatos/${campeonato}/suspensoes/${automatica.id}/revogar`, presidente.cookie)).status, 200);
+  assert.equal((await request("POST", `/campeonatos/${campeonato}/suspensoes/${automatica.id}/revogar`, presidente.cookie, { justificativa: "Recurso deferido" })).status, 200);
   const semRelatorio = await corrigir(origem.id, vermelho.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pBruno, relatorioDisciplinar: false });
   assert.deepEqual(semRelatorio.suspensoesAutomaticas, { criadas: [], anuladas: [] });
   const comRelatorio = await corrigir(origem.id, semRelatorio.lancamento.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pBruno, relatorioDisciplinar: true });
@@ -614,4 +615,65 @@ test("INSERT direto de credenciamento aguarda a geração pelo trigger e recusa 
   assert.ok(resultado.erro instanceof Error);
   assert.match(resultado.erro.message, /23514/);
   assert.equal(await prisma.participacao.count({ where: { jogoId: proximo.id, atletaId: ana } }), 0);
+});
+
+test("redução da automática: recálculo não aumenta, anulação preserva a decisão e a recriada herda o menor total", async () => {
+  const { ana, carla, bruno, campeonato, jogo, listar } = await cenario();
+  const origem = await jogo();
+  const [pAna, pCarla] = [await origem.credenciar(ana), await origem.credenciar(carla)];
+  await origem.credenciar(bruno);
+  await origem.iniciar();
+  const vermelho = await origem.lancar(pAna, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  await origem.encerrar();
+  const [automatica] = await listar();
+  type Decisao = { suspensao: Suspensao; alterado: boolean };
+  const reduzida = await ok<Decisao>(request("POST", `/campeonatos/${campeonato}/suspensoes/${automatica.id}/reduzir`, presidente.cookie,
+    { novaQuantidade: 0, justificativa: "Relatório disciplinar reavaliado" }));
+  assert.deepEqual([reduzida.alterado, reduzida.suspensao.quantidadeJogos, reduzida.suspensao.quantidadeAtual, reduzida.suspensao.situacao], [true, 1, 0, "cumprida"]);
+  const [decisao] = reduzida.suspensao.reducoes;
+  assert.deepEqual([decisao.reduzidaPor?.id, decisao.justificativa], [presidente.id, "Relatório disciplinar reavaliado"]);
+  // Ana volta a ser credenciada no jogo seguinte.
+  await (await jogo()).credenciar(ana);
+
+  // Recálculo com a ocorrência mantida não altera o total reduzido.
+  assert.deepEqual(await prisma.$transaction(tx => reconciliarSuspensoesAutomaticas(tx, origem.id)), { criadas: [], anuladas: [] });
+  assert.equal((await listar()).find(s => s.id === automatica.id)!.quantidadeAtual, 0);
+
+  // Retirar a ocorrência anula a automática, preservando a punição original e a decisão.
+  const semRelatorio = await corrigir(origem.id, vermelho.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: false });
+  assert.deepEqual(semRelatorio.suspensoesAutomaticas, { criadas: [], anuladas: [automatica.id] });
+  const anulada = (await listar()).find(s => s.id === automatica.id)!;
+  assert.deepEqual([anulada.situacao, anulada.quantidadeJogos, anulada.quantidadeAtual, anulada.reducoes.map(r => r.id)], ["anulada", 1, 0, [decisao.id]]);
+
+  // Ocorrência atribuída à Carla: suspensão integral, pois a decisão era sobre a Ana.
+  const paraCarla = await corrigir(origem.id, semRelatorio.lancamento.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pCarla, relatorioDisciplinar: true });
+  const [daCarla] = paraCarla.suspensoesAutomaticas.criadas;
+  const carlaSuspensa = (await listar()).find(s => s.id === daCarla)!;
+  assert.deepEqual([carlaSuspensa.quantidadeAtual, carlaSuspensa.situacao, carlaSuspensa.reducoes], [1, "vigente", []]);
+
+  // De volta à Ana: a nova automática herda o total reduzido, sem presidente nem justificativa próprios.
+  const paraAna = await corrigir(origem.id, paraCarla.lancamento.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: true });
+  assert.deepEqual(paraAna.suspensoesAutomaticas.anuladas, [daCarla]);
+  const [nova] = paraAna.suspensoesAutomaticas.criadas;
+  const herdeira = (await listar()).find(s => s.id === nova)!;
+  assert.deepEqual([herdeira.quantidadeJogos, herdeira.quantidadeAtual, herdeira.situacao, herdeira.jogosRestantes], [1, 0, "cumprida", 0]);
+  assert.deepEqual(herdeira.reducoes.map(r => [r.quantidadeAnterior, r.novaQuantidade, r.justificativa, r.reduzidaPor, r.herdadaDeReducaoId]),
+    [[1, 0, null, null, decisao.id]]);
+  await (await jogo()).credenciar(ana);
+
+  // A herança exige automática anterior anulada do mesmo atleta/jogo/regra também no banco: recusada em automática
+  // vigente de outro atleta e em manual vigente da própria Ana.
+  const outro = await jogo();
+  const pBruno = await outro.credenciar(bruno);
+  await outro.iniciar();
+  await outro.lancar(pBruno, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  await outro.encerrar();
+  const doBruno = (await listar()).find(s => s.atleta.id === bruno && s.situacao === "vigente")!;
+  const manual = await ok<Suspensao>(request("POST", `/campeonatos/${campeonato}/suspensoes`, presidente.cookie,
+    { atletaId: ana, quantidadeJogos: 2, motivo: "Conduta" }), 201);
+  for (const [suspensaoId, quantidadeAnterior] of [[doBruno.id, 1], [manual.id, 2]] as const) {
+    await assert.rejects(prisma.reducaoSuspensao.create({ data: {
+      id: randomUUID(), suspensaoId, quantidadeAnterior, novaQuantidade: 0, herdadaDeReducaoId: decisao.id, reduzidaEm: new Date(),
+    } }), /Redução herdada exige/);
+  }
 });

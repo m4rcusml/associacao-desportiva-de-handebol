@@ -280,11 +280,13 @@ bloqueia a linha `Usuario` com `FOR UPDATE`, recusa conta já desativada (401) e
 `Usuario.nomeCompleto` e `AuthUser.name` juntos; falha em qualquer gravação desfaz as duas. As rotas
 nativas do Better Auth (`update-user`, `change-email`, `change-password`) seguem fora da lista
 permitida em `app.ts`; e-mail e senha só mudarão com contrato aprovado.
-Suspensões (MAR-66): `modules/suspensoes` expõe ao presidente aplicação, consulta e revogação. O saldo não
-é armazenado: é `quantidadeJogos` menos os registros de `CumprimentoSuspensao`. Aplicar bloqueia o
+Suspensões (MAR-66): `modules/suspensoes` expõe ao presidente aplicação, consulta, redução e revogação (as duas
+últimas com justificativa desde a MAR-84). O saldo não é armazenado: é o total atual (`quantidadeReduzida` ou, sem
+redução, `quantidadeJogos`) menos os registros de `CumprimentoSuspensao`. Aplicar bloqueia o
 campeonato (`FOR SHARE`: encerramento concorrente aguarda) e a conta do atleta (`FOR UPDATE`), e só então
-lê `aplicadaEm`; revogar bloqueia a suspensão (`FOR UPDATE`) e consulta o saldo em uma instrução posterior,
-para enxergar cumprimentos confirmados durante a espera pelo bloqueio. `registrarCumprimentos(tx, jogoId)` é o ponto
+lê `aplicadaEm`; reduzir e revogar bloqueiam somente a suspensão (`FOR UPDATE`) e consultam o saldo em uma instrução
+posterior, para enxergar cumprimentos confirmados durante a espera pelo bloqueio; o cumprimento concorrente, por sua
+vez, aguarda a decisão e já usa o novo total. `registrarCumprimentos(tx, jogoId)` é o ponto
 de integração do encerramento do jogo (MAR-69/MAR-72): na mesma transação, obtém o bloqueio do jogo (`FOR SHARE`)
 e os bloqueios consultivos de geração automática por atleta/campeonato (por atleta); bloqueia as contas dos atletas
 envolvidos (`FOR SHARE`, por id: vínculos nos dois clubes, ocorrências com relatório e automáticas do jogo) e as suspensões vigentes do
