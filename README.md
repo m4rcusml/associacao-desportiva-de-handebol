@@ -207,7 +207,7 @@ Somente o presidente consulta suspensões nesta etapa.
 
 Único critério aprovado ([requisitos, seção 12](docs/requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026)):
 desqualificação com relatório disciplinar, sinalizada pelo azul, gera **um jogo** de suspensão no mesmo campeonato.
-A arbitragem a registra no próprio vermelho: `relatorioDisciplinar: true` no lançamento `temp_cartaoVermelho`
+A arbitragem a registra no próprio vermelho: `relatorioDisciplinar: true` no lançamento `cartaoVermelho`
 (ausente vale `false`; nos demais tipos é recusado com 400 e fica `null`). Amarelos, exclusões (inclusive a
 terceira no jogo) e vermelho sem relatório não geram suspensão; não há acumulação entre partidas, reinício por
 fase nem progressão por reincidência. No encerramento definitivo, depois dos cumprimentos, cada atleta com essa
@@ -312,7 +312,7 @@ fora de envios em andamento: um objeto recém-enviado fica sem referência até 
 
 Com o cookie temporário do jogo e o jogo em andamento, a arbitragem registra em `POST
 /api/arbitragem/jogos/{jogoId}/lancamentos` uma ocorrência por vez: `operacaoId` (UUID gerado pelo cliente),
-`tipo` (`temp_gol`, `temp_cartaoAmarelo`, `temp_exclusaoDoisMinutos` ou `temp_cartaoVermelho`) e `participacaoId`
+`tipo` (`gol`, `cartaoAmarelo`, `exclusaoDoisMinutos` ou `cartaoVermelho`) e `participacaoId`
 do atleta credenciado no jogo. Não há clube nem valor no corpo: o clube vem da participação e cada ocorrência vale 1.
 Reenviar a mesma operação devolve o registro existente com `alterado: false`; o mesmo `operacaoId` com outro
 conteúdo é 409 e não sobrescreve o original. A resposta traz o placar atualizado. `GET .../lancamentos` devolve o
@@ -423,7 +423,9 @@ geradas pelo build. `build` gera o cliente Prisma antes de compilar. Um único `
    confirma o vínculo e emite a carteirinha na mesma transação; técnico não recebe carteirinha.
    Rejeitado solicita nova análise pela própria conta (`POST /api/verificacoes/solicitacao`).
    Não há retirada de aprovação; contas desativadas não recebem decisão (409).
-   O atleta aprovado consulta a própria carteirinha e o QR vigente (`GET /api/carteirinhas/minha`).
+   O atleta aprovado consulta a própria carteirinha e o QR vigente (`GET /api/carteirinhas/minha`), com nome,
+   clube atual, `possuiFoto` (a imagem fica em `GET /api/atletas/{atletaId}/foto`) e situação, sem e-mail;
+   a mesma carteirinha continua após transferência.
    O presidente consulta a carteirinha e o histórico (`GET /api/carteirinhas/atleta/{atletaId}`),
    invalida ou reativa (`POST .../invalidacao` ou `.../reativacao`, corpo vazio) e substitui o QR
    (`POST .../substituicao-qr` com `versaoQr`, a versão a invalidar). `POST /api/carteirinhas/leitura`
@@ -806,6 +808,15 @@ vínculo, camisa em uso, W.O. sem início, jogo em andamento, corpo inválido e 
 transferido movendo a suspensão automática, registros e estornos simultâneos serializados. Uma migração nova;
 nenhuma dependência nova. Não validado: ambiente hospedado (MAR-76).
 
+Validação local da MAR-85 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado e
+**197/197 testes de integração aprovados**, incluindo um novo: carteirinha com e sem foto (`possuiFoto`, sem expor a
+chave), clube atual, ausência de e-mail na visão do atleta e do presidente, a mesma carteirinha após transferência
+com o novo clube, leitura do QR ainda mínima e carteirinha invalidada exibindo a situação. Os exemplos de aceite das
+métricas (dois gols válidos e um anulado contam dois, gol corrigido no mesmo clube sem mudar o placar, vermelho com
+azul contando uma desqualificação) seguem cobertos pelo teste de histórico, agora com os nomes sem `temp_`;
+`temp_gol` passa a ser recusado como tipo inválido. A migração `identificadores_metricas` renomeia enum e colunas das
+views sem reescrever dados. Nenhuma dependência nova. Não validado: ambiente hospedado (MAR-76).
+
 ## Caminho feliz
 
 1. **Preparação pelo presidente:** o presidente pré-cadastrado cria os clubes. Atletas e
@@ -839,7 +850,7 @@ competições estão em [requisitos, seção 11](docs/requisitos.md#11-esclareci
 São decisões para desenvolvimento, ainda sem implementação dos respectivos fluxos.
 
 As métricas desta versão foram confirmadas na MAR-82 ([requisitos, seção 15](docs/requisitos.md#15-ficha-carteirinha-e-métricas--mar-82--09112026));
-os identificadores atuais ainda usam `temp_` até migração compatível em tarefa própria. As exceções e decisões em aberto
+os identificadores perderam o prefixo `temp_` na MAR-85. As exceções e decisões em aberto
 estão detalhadas nas [pendências](docs/pendencias.md).
 
 ## Fora do escopo inicial

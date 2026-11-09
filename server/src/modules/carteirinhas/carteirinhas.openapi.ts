@@ -4,7 +4,9 @@ const json = (schema: object, required = true) => ({ required, content: { "appli
 const corpoVazio = json({ type: "object", additionalProperties: false }, false);
 const atletaParam = { name: "atletaId", in: "path", required: true, schema: { type: "string", format: "uuid" } };
 const negado = { "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Perfil sem permissão ou origem não autorizada") };
-const detalhe = "id, atletaId, nomeCompleto, codigo, tokenQr (vigente), versaoQr, status (ativa ou invalidada), emitidaEm, emitidaPorPresidenteId, " +
+const exibicao = "nomeCompleto, clubeAtual ({id, nome} do vínculo atual ou null; a mesma carteirinha segue o atleta após transferência), " +
+  "possuiFoto (true quando há foto, lida em GET /atletas/{atletaId}/foto); sem e-mail";
+const detalhe = `id, atletaId, ${exibicao}, codigo, tokenQr (vigente), versaoQr, status (ativa ou invalidada), emitidaEm, emitidaPorPresidenteId, ` +
   "historico (tipo invalidacao, reativacao ou substituicao_qr; versaoQr; presidenteId; ocorridoEm), do mais antigo ao mais recente";
 const operacao = (summary: string, ok: string, conflito: string, requestBody: object = corpoVazio) => ({
   post: { summary, security, parameters: [atletaParam], requestBody, responses: {
@@ -17,7 +19,7 @@ const operacao = (summary: string, ok: string, conflito: string, requestBody: ob
 export const openapiCarteirinhas = {
   "/carteirinhas/minha": {
     get: { summary: "Atleta consulta a própria carteirinha com o QR vigente", security, responses: {
-      "200": resposta("id, codigo, tokenQr, status, emitidaEm, nomeCompleto"), ...negado, "404": resposta("Carteirinha ainda não emitida"),
+      "200": resposta(`id, codigo, tokenQr, status (ativa ou invalidada), emitidaEm, ${exibicao}`), ...negado, "404": resposta("Carteirinha ainda não emitida"),
     } },
   },
   "/carteirinhas/leitura": {

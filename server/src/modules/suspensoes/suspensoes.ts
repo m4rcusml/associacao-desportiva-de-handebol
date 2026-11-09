@@ -254,7 +254,7 @@ async function bloquearAtletasDoJogo(tx: Tx, jogoId: string) {
       WHERE j.id = ${jogoId}::uuid AND v.inicio <= j."encerradoEm" AND (v.fim IS NULL OR v.fim > j."encerradoEm")
       UNION
       SELECT p."atletaId", l."jogoId" FROM "LancamentoJogo" l JOIN "Participacao" p ON p.id = l."participacaoId"
-      WHERE l.tipo = 'temp_cartaoVermelho' AND l."relatorioDisciplinar"
+      WHERE l.tipo = 'cartaoVermelho' AND l."relatorioDisciplinar"
       UNION
       SELECT s."atletaId", s."jogoOrigemId" AS "jogoId" FROM "Suspensao" s
     ) d ON d."jogoId" = j.id
@@ -310,7 +310,7 @@ export async function reconciliarSuspensoesAutomaticas(tx: Tx, jogoId: string): 
       AND NOT EXISTS (
         SELECT 1 FROM "LancamentoJogo" l JOIN "Participacao" p ON p.id = l."participacaoId"
         WHERE l."jogoId" = s."jogoOrigemId" AND p."atletaId" = s."atletaId" AND l."anuladoEm" IS NULL
-          AND l.tipo = 'temp_cartaoVermelho' AND l."relatorioDisciplinar")
+          AND l.tipo = 'cartaoVermelho' AND l."relatorioDisciplinar")
     RETURNING s.id`;
 
   // `aplicadaEm` lido agora, depois do `encerradoEm` do jogo; além disso, o jogo de origem é excluído do cumprimento.
@@ -320,7 +320,7 @@ export async function reconciliarSuspensoesAutomaticas(tx: Tx, jogoId: string): 
       ${MOTIVO_DESQUALIFICACAO_COM_RELATORIO}, ${new Date()}
     FROM (
       SELECT DISTINCT p."atletaId" FROM "LancamentoJogo" l JOIN "Participacao" p ON p.id = l."participacaoId"
-      WHERE l."jogoId" = ${jogoId}::uuid AND l."anuladoEm" IS NULL AND l.tipo = 'temp_cartaoVermelho' AND l."relatorioDisciplinar"
+      WHERE l."jogoId" = ${jogoId}::uuid AND l."anuladoEm" IS NULL AND l.tipo = 'cartaoVermelho' AND l."relatorioDisciplinar"
     ) d
     JOIN "Campeonato" c ON c.id = ${jogo.campeonatoId}::uuid AND c.status IN ('planejado', 'em_andamento')
     JOIN "Atleta" a ON a."usuarioId" = d."atletaId" AND a."statusVerificacao" = 'aprovado'

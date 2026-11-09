@@ -114,7 +114,7 @@ async function recusa(response: Promise<Response>, status: number, mensagem?: Re
   if (mensagem) assert.match(JSON.parse(texto).message, mensagem);
 }
 type Inicio = { jogo: { id: string; status: string; iniciadoEm: string }; alterado: boolean };
-type Encerramento = { jogo: { id: string; status: string; iniciadoEm: string; encerradoEm: string }; placar: { temp_placarClubeA: number; temp_placarClubeB: number }; alterado: boolean };
+type Encerramento = { jogo: { id: string; status: string; iniciadoEm: string; encerradoEm: string }; placar: { placarClubeA: number; placarClubeB: number }; alterado: boolean };
 type JogoDetalhado = { id: string; status: string; inicioPrevistoEm: string | null; inicioPrevistoLocal: string | null; local: string | null; fusoHorario: string };
 const iniciar = (jogo: string, cookie: string) => request("POST", `/arbitragem/jogos/${jogo}/inicio`, cookie);
 const NORMAL = { resultado: "normal" as const, vencedorInscricaoId: null };
@@ -123,7 +123,7 @@ const adiar = (jogo: string, body: unknown, cookie = presidente.cookie) => reque
 const cancelar = (jogo: string, cookie = presidente.cookie) => request("POST", `/jogos/${jogo}/cancelamento`, cookie);
 const credenciar = (jogo: string, cookie: string, atletaId: string, numeroCamisa: number) =>
   request("POST", `/arbitragem/jogos/${jogo}/credenciamentos`, cookie, { atletaId, numeroCamisa });
-const lancar = (jogo: string, cookie: string, participacaoId: string, tipo = "temp_gol") =>
+const lancar = (jogo: string, cookie: string, participacaoId: string, tipo = "gol") =>
   request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, cookie, { operacaoId: randomUUID(), tipo, participacaoId });
 const sessao = (jogo: string, cookie: string) => request("GET", `/arbitragem/jogos/${jogo}/sessao`, cookie);
 async function suspender(campeonato: string, atletaId: string, quantidadeJogos: number) {
@@ -209,7 +209,7 @@ test("encerramento persiste resultado, cumprimento e revogação juntos; reenvio
   const corpos = [await ok<Encerramento>(Promise.resolve(primeiro)), await ok<Encerramento>(Promise.resolve(segundo))];
   assert.deepEqual(corpos.map(c => c.alterado).sort(), [false, true]);
   for (const c of corpos) {
-    assert.deepEqual([c.jogo.status, c.placar.temp_placarClubeA, c.placar.temp_placarClubeB], ["finalizado", 2, 1]);
+    assert.deepEqual([c.jogo.status, c.placar.placarClubeA, c.placar.placarClubeB], ["finalizado", 2, 1]);
     assert.deepEqual(Object.keys(c).sort(), ["alterado", "jogo", "placar"], "confirmação restrita");
   }
   assert.equal(corpos[0].jogo.encerradoEm, corpos[1].jogo.encerradoEm);

@@ -537,7 +537,7 @@ atletas, jogos simultâneos ou conexões. Não é uma meta de capacidade ou disp
 
 Decisões das MAR-80/81/82 estão em requisitos, seções 13 a 15: correção administrativa,
 redução de suspensão, ficha/carteirinha e métricas. A aprovação não comprova implementação;
-migração dos identificadores `temp_` exige tarefa própria. Demais questões em aberto
+a adequação da carteirinha e a remoção do prefixo `temp_` das métricas foram feitas na MAR-85. Demais questões em aberto
 continuam em [pendencias.md](pendencias.md). Os critérios de suspensão automática foram aprovados na MAR-78
 ([requisitos, seção 12](requisitos.md#12-critérios-de-suspensão-automática--mar-78--09112026))
 e foram implementados na MAR-79.

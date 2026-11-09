@@ -19,6 +19,7 @@ let base: string;
 const password = "Senha-local-de-teste-2026";
 const emails: string[] = [];
 const clubeId = randomUUID();
+const clubeDestinoId = randomUUID();
 const ip = () => `10.${randomInt(256)}.${randomInt(256)}.${randomInt(1, 255)}`;
 const novoEmail = () => { const email = `${randomUUID()}@example.invalid`; emails.push(email); return email; };
 
@@ -114,6 +115,7 @@ before(async () => {
   base = `${await app.getUrl()}/api`;
   presidente = await criarPresidente();
   await prisma.clube.create({ data: { id: clubeId, nome: "Clube das carteirinhas", criadoPorPresidenteId: presidente.id } });
+  await prisma.clube.create({ data: { id: clubeDestinoId, nome: "Clube de destino das carteirinhas", criadoPorPresidenteId: presidente.id } });
 });
 
 after(async () => {
@@ -125,7 +127,7 @@ after(async () => {
     await tx.carteirinha.deleteMany({ where: { atletaId: { in: ids } } });
     await tx.atleta.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.tecnico.deleteMany({ where: { usuarioId: { in: ids } } });
-    await tx.clube.deleteMany({ where: { id: clubeId } });
+    await tx.clube.deleteMany({ where: { id: { in: [clubeId, clubeDestinoId] } } });
     await tx.presidente.deleteMany({ where: { usuarioId: { in: ids } } });
     await tx.usuario.deleteMany({ where: { id: { in: ids } } });
     await tx.authUser.deleteMany({ where: { email: { in: emails } } });
@@ -136,15 +138,17 @@ after(async () => {
 test("atleta consulta a própria carteirinha; leitura do QR devolve somente identificação mínima", async () => {
   const atleta = await atletaAprovado();
   const minha = await propria(atleta.cookie);
-  assert.deepEqual(Object.keys(minha).sort(), ["codigo", "emitidaEm", "id", "nomeCompleto", "status", "tokenQr"]);
-  assert.deepEqual([minha.status, minha.nomeCompleto], ["ativa", "Pessoa atleta"]);
+  assert.deepEqual(Object.keys(minha).sort(), ["clubeAtual", "codigo", "emitidaEm", "id", "nomeCompleto", "possuiFoto", "status", "tokenQr"]);
+  assert.deepEqual([minha.status, minha.nomeCompleto, minha.clubeAtual, minha.possuiFoto], ["ativa", "Pessoa atleta", { id: clubeId, nome: "Clube das carteirinhas" }, false]);
+  assert.equal(JSON.stringify(minha).includes(atleta.email), false, "carteirinha não exibe e-mail");
   assert.match(minha.tokenQr, /^[A-Za-z0-9_-]{43}$/);
 
   const detalhe = await consultar(atleta.id.toUpperCase());
   assert.deepEqual({ ...detalhe, emitidaEm: undefined }, {
-    id: minha.id, atletaId: atleta.id, nomeCompleto: "Pessoa atleta", codigo: minha.codigo, tokenQr: minha.tokenQr, versaoQr: 1,
-    status: "ativa", emitidaEm: undefined, emitidaPorPresidenteId: presidente.id, historico: [],
+    id: minha.id, atletaId: atleta.id, nomeCompleto: "Pessoa atleta", clubeAtual: { id: clubeId, nome: "Clube das carteirinhas" }, possuiFoto: false,
+    codigo: minha.codigo, tokenQr: minha.tokenQr, versaoQr: 1, status: "ativa", emitidaEm: undefined, emitidaPorPresidenteId: presidente.id, historico: [],
   });
+  assert.equal(JSON.stringify(detalhe).includes(atleta.email), false, "visão do presidente também sem e-mail");
 
   const leitura = await ler(minha.tokenQr);
   assert.equal(leitura.status, 200, await leitura.clone().text());
@@ -154,6 +158,34 @@ test("atleta consulta a própria carteirinha; leitura do QR devolve somente iden
   // O código manual não substitui o token na leitura; token desconhecido não é reconhecido.
   assert.equal((await ler(minha.codigo)).status, 404);
   assert.equal((await ler(randomUUID())).status, 404);
+});
+
+test("carteirinha indica a foto sem expor a chave e permanece a mesma após transferência, com o clube atual", async () => {
+  const atleta = await atletaAprovado();
+  const antes = await propria(atleta.cookie);
+  const chave = `atletas/${atleta.id}/${randomUUID()}.webp`;
+  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: { fotoChave: chave } });
+  const comFoto = await propria(atleta.cookie);
+  assert.equal(comFoto.possuiFoto, true);
+  assert.equal(JSON.stringify(comFoto).includes(chave), false, "chave do armazenamento não é exposta");
+  assert.equal(JSON.stringify(await consultar(atleta.id)).includes(chave), false);
+  assert.equal((await consultar(atleta.id)).possuiFoto, true);
+  // QR sozinho continua sem foto nem clube.
+  const leitura = await (await ler(antes.tokenQr)).json();
+  assert.deepEqual(Object.keys(leitura).sort(), ["atleta", "carteirinhaId", "codigo", "status"]);
+
+  const transferencia = await request("POST", `/atletas/${atleta.id}/transferencia`, presidente.cookie, { clubeAtualId: clubeId, clubeDestinoId });
+  assert.equal(transferencia.status, 200, await transferencia.clone().text());
+  const depois = await propria(atleta.cookie);
+  assert.deepEqual({ ...depois, clubeAtual: undefined }, { ...comFoto, clubeAtual: undefined }, "mesma carteirinha: id, código, QR e situação");
+  assert.deepEqual(depois.clubeAtual, { id: clubeDestinoId, nome: "Clube de destino das carteirinhas" });
+  assert.deepEqual((await consultar(atleta.id)).clubeAtual, { id: clubeDestinoId, nome: "Clube de destino das carteirinhas" });
+
+  // Invalidada, a carteirinha segue exibida com a situação; sem foto continua utilizável.
+  await prisma.atleta.update({ where: { usuarioId: atleta.id }, data: { fotoChave: null } });
+  assert.equal((await operar("invalidacao", atleta.id)).status, 200);
+  const invalidada = await propria(atleta.cookie);
+  assert.deepEqual([invalidada.status, invalidada.possuiFoto, invalidada.codigo], ["invalidada", false, antes.codigo]);
 });
 
 test("invalidar e reativar registram histórico e responsável sem bloquear a conta", async () => {

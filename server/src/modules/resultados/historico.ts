@@ -6,12 +6,12 @@ type Tx = Prisma.TransactionClient;
 
 /** Métricas da participação credenciada pela projeção `DesempenhoDoAtleta` (somente lançamentos válidos, RNF-009). */
 export interface Metricas {
-  temp_gols: number;
-  temp_cartoesAmarelos: number;
-  temp_exclusoesDoisMinutos: number;
-  temp_cartoesVermelhos: number;
+  gols: number;
+  cartoesAmarelos: number;
+  exclusoesDoisMinutos: number;
+  cartoesVermelhos: number;
 }
-const METRICAS = ["temp_gols", "temp_cartoesAmarelos", "temp_exclusoesDoisMinutos", "temp_cartoesVermelhos"] as const;
+const METRICAS = ["gols", "cartoesAmarelos", "exclusoesDoisMinutos", "cartoesVermelhos"] as const;
 
 export interface ClubeNoJogo { inscricaoId: string; clube: { id: string; nome: string } }
 
@@ -48,8 +48,8 @@ const resumoJogo = (j: string, c: string) => Prisma.raw(`jsonb_build_object(
 
 /** Métricas em jsonb a partir da linha `d` da projeção; null sem credenciamento (a projeção só tem credenciados). */
 const metricasSql = `CASE WHEN d."participacaoId" IS NOT NULL THEN jsonb_build_object(
-  'temp_gols', d."temp_gols", 'temp_cartoesAmarelos', d."temp_cartoesAmarelos",
-  'temp_exclusoesDoisMinutos', d."temp_exclusoesDoisMinutos", 'temp_cartoesVermelhos', d."temp_cartoesVermelhos") END`;
+  'gols', d."gols", 'cartoesAmarelos', d."cartoesAmarelos",
+  'exclusoesDoisMinutos', d."exclusoesDoisMinutos", 'cartoesVermelhos', d."cartoesVermelhos") END`;
 
 const situacaoSql = Prisma.raw(`'participacaoId', p.id, 'numeroCamisa', p."numeroCamisa",
   'escalado', p."escolhidaEm" IS NOT NULL, 'credenciado', p."credenciadoEm" IS NOT NULL,
@@ -62,7 +62,7 @@ const participacaoVisivel = Prisma.raw(`(p."escolhidaEm" IS NOT NULL OR p."crede
 
 export type DesempenhoDoJogo = {
   jogo: Record<string, unknown> & { id: string };
-  placar: { clubeA: ClubeNoJogo; temp_placarClubeA: number; clubeB: ClubeNoJogo; temp_placarClubeB: number } | null;
+  placar: { clubeA: ClubeNoJogo; placarClubeA: number; clubeB: ClubeNoJogo; placarClubeB: number } | null;
   participacoes: (Situacao & { inscricaoId: string; atleta: { id: string; nomeCompleto: string } })[];
 };
 
@@ -89,9 +89,9 @@ export async function consultarDesempenhoDoJogo(tx: Tx, ator: Ator, jogoId: stri
     SELECT ${resumoJogo("j", "c")} AS jogo,
       (SELECT jsonb_build_object(
         'clubeA', jsonb_build_object('inscricaoId', a.id, 'clube', jsonb_build_object('id', ca.id, 'nome', ca.nome)),
-        'temp_placarClubeA', e."temp_placarClubeA",
+        'placarClubeA', e."placarClubeA",
         'clubeB', jsonb_build_object('inscricaoId', b.id, 'clube', jsonb_build_object('id', cb.id, 'nome', cb.nome)),
-        'temp_placarClubeB', e."temp_placarClubeB")
+        'placarClubeB', e."placarClubeB")
        FROM "EstatisticasDoJogo" e
        JOIN "InscricaoClube" a ON a.id = j."inscricaoClubeAId" JOIN "Clube" ca ON ca.id = a."clubeId"
        JOIN "InscricaoClube" b ON b.id = j."inscricaoClubeBId" JOIN "Clube" cb ON cb.id = b."clubeId"
@@ -145,8 +145,8 @@ export async function consultarHistoricoDoAtleta(tx: Tx, ator: Ator, atletaId: s
       'clube', jsonb_build_object('inscricaoId', ip.id, 'clube', jsonb_build_object('id', cp.id, 'nome', cp.nome)),
       'adversario', jsonb_build_object('inscricaoId', io.id, 'clube', jsonb_build_object('id', co.id, 'nome', co.nome)),
       'placar', CASE WHEN e."jogoId" IS NOT NULL THEN jsonb_build_object(
-        'clube', CASE WHEN ip.id = j."inscricaoClubeAId" THEN e."temp_placarClubeA" ELSE e."temp_placarClubeB" END,
-        'adversario', CASE WHEN ip.id = j."inscricaoClubeAId" THEN e."temp_placarClubeB" ELSE e."temp_placarClubeA" END) END,
+        'clube', CASE WHEN ip.id = j."inscricaoClubeAId" THEN e."placarClubeA" ELSE e."placarClubeB" END,
+        'adversario', CASE WHEN ip.id = j."inscricaoClubeAId" THEN e."placarClubeB" ELSE e."placarClubeA" END) END,
       ${situacaoSql}) AS item
     FROM "Participacao" p
     JOIN "Jogo" j ON j.id = p."jogoId" JOIN "Campeonato" c ON c.id = j."campeonatoId"

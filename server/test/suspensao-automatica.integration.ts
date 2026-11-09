@@ -176,17 +176,17 @@ test("amarelos em três jogos, três exclusões e vermelho sem relatório não g
     const j = await jogo();
     const [pAna, pBruno] = [await j.credenciar(ana), await j.credenciar(bruno)];
     await j.iniciar();
-    await j.lancar(pAna, "temp_cartaoAmarelo");
+    await j.lancar(pAna, "cartaoAmarelo");
     if (i === 2) {
-      for (let e = 0; e < 3; e++) await j.lancar(pBruno, "temp_exclusaoDoisMinutos");
+      for (let e = 0; e < 3; e++) await j.lancar(pBruno, "exclusaoDoisMinutos");
       // Vermelho sem o campo: desqualificação sem relatório (não se infere o azul).
-      assert.equal((await j.lancar(pBruno, "temp_cartaoVermelho")).relatorioDisciplinar, false);
-      assert.equal((await j.lancar(pAna, "temp_cartaoVermelho", { relatorioDisciplinar: false })).relatorioDisciplinar, false);
-      assert.equal((await j.lancar(pAna, "temp_gol")).relatorioDisciplinar, null);
+      assert.equal((await j.lancar(pBruno, "cartaoVermelho")).relatorioDisciplinar, false);
+      assert.equal((await j.lancar(pAna, "cartaoVermelho", { relatorioDisciplinar: false })).relatorioDisciplinar, false);
+      assert.equal((await j.lancar(pAna, "gol")).relatorioDisciplinar, null);
       // Relatório só existe no vermelho.
-      await recusa(j.lancamento(pAna, "temp_gol", { relatorioDisciplinar: true }), 400);
-      await recusa(j.lancamento(pBruno, "temp_exclusaoDoisMinutos", { relatorioDisciplinar: false }), 400);
-      await recusa(j.lancamento(pBruno, "temp_cartaoVermelho", { relatorioDisciplinar: "sim" }), 400);
+      await recusa(j.lancamento(pAna, "gol", { relatorioDisciplinar: true }), 400);
+      await recusa(j.lancamento(pBruno, "exclusaoDoisMinutos", { relatorioDisciplinar: false }), 400);
+      await recusa(j.lancamento(pBruno, "cartaoVermelho", { relatorioDisciplinar: "sim" }), 400);
     }
     await j.encerrar();
   }
@@ -203,10 +203,10 @@ test("vermelho com relatório gera uma suspensão de um jogo; o jogo de origem n
   const [pAna, pBruno] = [await origem.credenciar(ana), await origem.credenciar(bruno)];
   await origem.iniciar();
   // Terceira exclusão seguida de vermelho e azul: a mesma desqualificação, registrada duas vezes por engano.
-  for (let e = 0; e < 3; e++) await origem.lancar(pAna, "temp_exclusaoDoisMinutos");
-  assert.equal((await origem.lancar(pAna, "temp_cartaoVermelho", { relatorioDisciplinar: true })).relatorioDisciplinar, true);
-  await origem.lancar(pAna, "temp_cartaoVermelho", { relatorioDisciplinar: true });
-  await origem.lancar(pBruno, "temp_cartaoVermelho");
+  for (let e = 0; e < 3; e++) await origem.lancar(pAna, "exclusaoDoisMinutos");
+  assert.equal((await origem.lancar(pAna, "cartaoVermelho", { relatorioDisciplinar: true })).relatorioDisciplinar, true);
+  await origem.lancar(pAna, "cartaoVermelho", { relatorioDisciplinar: true });
+  await origem.lancar(pBruno, "cartaoVermelho");
   assert.deepEqual(await listar(), [], "nada é gerado antes do encerramento");
   await origem.encerrar();
   assert.equal((await origem.encerrar()).alterado, false);
@@ -243,15 +243,15 @@ test("correção do presidente recalcula: libera só o saldo restante, gera nova
   const [pAna, pCarla] = [await origem.credenciar(ana), await origem.credenciar(carla)];
   await origem.credenciar(bruno);
   await origem.iniciar();
-  const vermelho = await origem.lancar(pAna, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  const vermelho = await origem.lancar(pAna, "cartaoVermelho", { relatorioDisciplinar: true });
   await origem.encerrar();
   const [primeira] = await listar();
 
   // Sem relatório: anula a automática, sem apagar o histórico.
   const operacaoId = randomUUID();
-  const semRelatorio = await corrigir(origem.id, vermelho.id, { operacaoId, tipo: "temp_cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: false });
+  const semRelatorio = await corrigir(origem.id, vermelho.id, { operacaoId, tipo: "cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: false });
   assert.deepEqual([semRelatorio.alterado, semRelatorio.lancamento.relatorioDisciplinar, semRelatorio.suspensoesAutomaticas], [true, false, { criadas: [], anuladas: [primeira.id] }]);
-  const reenvio = await corrigir(origem.id, vermelho.id, { operacaoId, tipo: "temp_cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: false });
+  const reenvio = await corrigir(origem.id, vermelho.id, { operacaoId, tipo: "cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: false });
   assert.deepEqual([reenvio.alterado, reenvio.suspensoesAutomaticas], [false, { criadas: [], anuladas: [] }]);
   const anulada = (await listar()).find(s => s.id === primeira.id)!;
   assert.deepEqual([anulada.situacao, anulada.jogosCumpridos, anulada.jogosRestantes, anulada.revogadaEm], ["anulada", 0, 0, null]);
@@ -263,10 +263,10 @@ test("correção do presidente recalcula: libera só o saldo restante, gera nova
   await segundo.credenciar(ana);
 
   // O relatório volta, agora atribuído à Carla: Carla recebe nova suspensão; Ana segue sem.
-  const paraCarla = await corrigir(origem.id, semRelatorio.lancamento.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pCarla, relatorioDisciplinar: true });
+  const paraCarla = await corrigir(origem.id, semRelatorio.lancamento.id, { operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pCarla, relatorioDisciplinar: true });
   assert.equal(paraCarla.suspensoesAutomaticas.criadas.length, 1);
   // E volta também para Ana (vermelho próprio, com relatório): nova suspensão a partir de agora.
-  const outroVermelho = await corrigir(origem.id, paraCarla.lancamento.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: true });
+  const outroVermelho = await corrigir(origem.id, paraCarla.lancamento.id, { operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: true });
   assert.deepEqual(outroVermelho.suspensoesAutomaticas.anuladas, paraCarla.suspensoesAutomaticas.criadas);
   const [nova] = outroVermelho.suspensoesAutomaticas.criadas;
   assert.ok(nova && nova !== primeira.id);
@@ -293,7 +293,7 @@ test("paralelismo com a manual, revogação e término do saldo com o campeonato
   const origem = await jogo();
   const pBruno = await origem.credenciar(bruno);
   await origem.iniciar();
-  const vermelho = await origem.lancar(pBruno, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  const vermelho = await origem.lancar(pBruno, "cartaoVermelho", { relatorioDisciplinar: true });
   await origem.encerrar();
   const automatica = (await listar()).find(s => s.origem === "automatica")!;
   assert.deepEqual(automatica.atleta.id, bruno);
@@ -301,9 +301,9 @@ test("paralelismo com a manual, revogação e término do saldo com o campeonato
 
   // Revogada pelo presidente: a correção posterior não a altera nem gera outra.
   assert.equal((await request("POST", `/campeonatos/${campeonato}/suspensoes/${automatica.id}/revogar`, presidente.cookie, { justificativa: "Recurso deferido" })).status, 200);
-  const semRelatorio = await corrigir(origem.id, vermelho.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pBruno, relatorioDisciplinar: false });
+  const semRelatorio = await corrigir(origem.id, vermelho.id, { operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pBruno, relatorioDisciplinar: false });
   assert.deepEqual(semRelatorio.suspensoesAutomaticas, { criadas: [], anuladas: [] });
-  const comRelatorio = await corrigir(origem.id, semRelatorio.lancamento.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pBruno, relatorioDisciplinar: true });
+  const comRelatorio = await corrigir(origem.id, semRelatorio.lancamento.id, { operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pBruno, relatorioDisciplinar: true });
   assert.deepEqual(comRelatorio.suspensoesAutomaticas, { criadas: [], anuladas: [] });
   assert.equal((await listar()).find(s => s.id === automatica.id)!.situacao, "revogada");
 
@@ -311,7 +311,7 @@ test("paralelismo com a manual, revogação e término do saldo com o campeonato
   const segundo = await jogo();
   const pBrunoSegundo = await segundo.credenciar(bruno);
   await segundo.iniciar();
-  await segundo.lancar(pBrunoSegundo, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  await segundo.lancar(pBrunoSegundo, "cartaoVermelho", { relatorioDisciplinar: true });
   await segundo.encerrar();
   const terceiro = await jogoSemOcorrencias();
   const finais = await listar();
@@ -324,14 +324,14 @@ test("paralelismo com a manual, revogação e término do saldo com o campeonato
   const quarto = await jogo();
   const pBrunoQuarto = await quarto.credenciar(bruno);
   await quarto.iniciar();
-  const ultimo = await quarto.lancar(pBrunoQuarto, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  const ultimo = await quarto.lancar(pBrunoQuarto, "cartaoVermelho", { relatorioDisciplinar: true });
   await quarto.encerrar();
   assert.equal((await request("POST", `/campeonatos/${campeonato}/encerrar`, presidente.cookie)).status, 200);
   const encerrada = (await listar()).find(s => s.jogoOrigemId === quarto.id)!;
   assert.deepEqual([encerrada.situacao, encerrada.jogosCumpridos], ["saldo_encerrado", 0]);
-  const tardia = await corrigir(quarto.id, ultimo.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pBrunoQuarto, relatorioDisciplinar: false });
+  const tardia = await corrigir(quarto.id, ultimo.id, { operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pBrunoQuarto, relatorioDisciplinar: false });
   assert.deepEqual(tardia.suspensoesAutomaticas, { criadas: [], anuladas: [] });
-  const restaurada = await corrigir(quarto.id, tardia.lancamento.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pBrunoQuarto, relatorioDisciplinar: true });
+  const restaurada = await corrigir(quarto.id, tardia.lancamento.id, { operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pBrunoQuarto, relatorioDisciplinar: true });
   assert.deepEqual(restaurada.suspensoesAutomaticas, { criadas: [], anuladas: [] });
   assert.equal((await listar()).filter(s => s.jogoOrigemId === quarto.id).length, 1);
 });
@@ -342,14 +342,14 @@ test("restrições do banco: relatório só no vermelho e imutável, origem cons
   const pAna = await origem.credenciar(ana);
   await origem.credenciar(bruno);
   await origem.iniciar();
-  const vermelho = await origem.lancar(pAna, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  const vermelho = await origem.lancar(pAna, "cartaoVermelho", { relatorioDisciplinar: true });
   const rejeita = (promessa: Promise<unknown>) => assert.rejects(promessa);
   await rejeita(prisma.$executeRaw`
     INSERT INTO "LancamentoJogo" (id, "operacaoId", "jogoId", "participacaoId", tipo, "relatorioDisciplinar", valor, "registradoEm")
-    VALUES (gen_random_uuid(), gen_random_uuid(), ${origem.id}::uuid, ${pAna}::uuid, 'temp_gol', true, 1, now())`);
+    VALUES (gen_random_uuid(), gen_random_uuid(), ${origem.id}::uuid, ${pAna}::uuid, 'gol', true, 1, now())`);
   await rejeita(prisma.$executeRaw`
     INSERT INTO "LancamentoJogo" (id, "operacaoId", "jogoId", "participacaoId", tipo, valor, "registradoEm")
-    VALUES (gen_random_uuid(), gen_random_uuid(), ${origem.id}::uuid, ${pAna}::uuid, 'temp_cartaoVermelho', 1, now())`);
+    VALUES (gen_random_uuid(), gen_random_uuid(), ${origem.id}::uuid, ${pAna}::uuid, 'cartaoVermelho', 1, now())`);
   await rejeita(prisma.$executeRaw`UPDATE "LancamentoJogo" SET "relatorioDisciplinar" = false WHERE id = ${vermelho.id}::uuid`);
   await rejeita(prisma.$executeRaw`
     UPDATE "LancamentoJogo" SET "relatorioDisciplinar" = false, "anuladoEm" = now(), "anulacaoOperacaoId" = gen_random_uuid() WHERE id = ${vermelho.id}::uuid`);
@@ -412,7 +412,7 @@ test("encerramentos de jogos distintos com vermelho e atletas dos mesmos clubes 
   for (const j of jogos) {
     const participacaoId = await j.credenciar(ana);
     await j.iniciar();
-    await j.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+    await j.lancar(participacaoId, "cartaoVermelho", { relatorioDisciplinar: true });
   }
   const manual = await ok<Suspensao>(request("POST", `/campeonatos/${campeonato}/suspensoes`, presidente.cookie, {
     atletaId: carla, quantidadeJogos: 3, motivo: "Suspensão para sincronizar os encerramentos",
@@ -432,12 +432,12 @@ test("correção que transfere o relatório e encerramento do campeonato respeit
   const pAna = await origem.credenciar(ana);
   const pBruno = await origem.credenciar(bruno);
   await origem.iniciar();
-  const vermelho = await origem.lancar(pAna, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  const vermelho = await origem.lancar(pAna, "cartaoVermelho", { relatorioDisciplinar: true });
   await origem.encerrar();
   const [automatica] = await listar();
   await concorrerComSuspensaoBloqueada(automatica.id, [
     tx => corrigirPeloPresidente(tx, origem.id, vermelho.id, {
-      operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pBruno, relatorioDisciplinar: true,
+      operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pBruno, relatorioDisciplinar: true,
     }),
     tx => transicionarCampeonato(tx, campeonato, "encerrar"),
   ]);
@@ -462,14 +462,16 @@ test("migração preserva vermelhos legados válidos e anulados e restaura a pro
     const ids = [randomUUID(), randomUUID()];
     await client.query(`INSERT INTO "LancamentoJogo"
       (id, "operacaoId", "jogoId", "participacaoId", tipo, valor, "registradoEm", "anuladoEm", "anulacaoOperacaoId")
-      VALUES ($1, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'temp_cartaoVermelho', 1, now(), NULL, NULL),
-        ($2, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'temp_cartaoVermelho', 1, now(), now(), gen_random_uuid())`, ids);
+      VALUES ($1, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'cartaoVermelho', 1, now(), NULL, NULL),
+        ($2, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 'cartaoVermelho', 1, now(), now(), gen_random_uuid())`, ids);
     const anteriores = (await client.query('SELECT * FROM "LancamentoJogo" ORDER BY id')).rows;
     const funcao = (await client.query("SELECT pg_get_functiondef('public.validar_lancamento()'::regprocedure) AS ddl")).rows[0].ddl as string;
     await client.query(funcao.replace('public.validar_lancamento()', `"${schema}".validar_lancamento()`));
     await client.query(`CREATE TRIGGER "LancamentoJogo_validar" BEFORE INSERT OR UPDATE OR DELETE ON "LancamentoJogo"
       FOR EACH ROW EXECUTE FUNCTION validar_lancamento()`);
-    await client.query(await readFile(new URL("../prisma/migrations/20261109100000_suspensao_automatica/migration.sql", import.meta.url), "utf8"));
+    // A migração histórica usa os rótulos temp_ vigentes na época; o enum atual já foi renomeado (MAR-85).
+    const migracao = await readFile(new URL("../prisma/migrations/20261109100000_suspensao_automatica/migration.sql", import.meta.url), "utf8");
+    await client.query(migracao.replaceAll("'temp_", "'"));
     const posteriores = (await client.query('SELECT * FROM "LancamentoJogo" ORDER BY id')).rows;
     assert.deepEqual(posteriores.map(({ relatorioDisciplinar, ...dados }) => {
       assert.equal(relatorioDisciplinar, false);
@@ -507,7 +509,7 @@ test("árbitros designados que jogam pelos clubes do outro encerramento não dis
     for (const [indice, j] of jogos.entries()) {
       const participacaoId = await j.credenciar(indice === 0 ? a.ana : b.ana);
       await j.iniciar();
-      if (comRelatorio) await j.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+      if (comRelatorio) await j.lancar(participacaoId, "cartaoVermelho", { relatorioDisciplinar: true });
     }
     let chegaram = 0;
     let liberar!: () => void;
@@ -561,7 +563,7 @@ test("geração automática e credenciamento concorrentes usam o bloqueio consul
     const proximo = await jogo();
     const participacaoId = await origem.credenciar(ana);
     await origem.iniciar();
-    await origem.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+    await origem.lancar(participacaoId, "cartaoVermelho", { relatorioDisciplinar: true });
     const gerar = (tx: Parameters<typeof encerrarJogo>[0]) => encerrarJogo(tx, origem.id, origem.token, { resultado: "normal", vencedorInscricaoId: null });
     const credenciamento = (tx: Parameters<typeof encerrarJogo>[0]) => credenciar(tx, proximo.id, proximo.token, { atletaId: ana, numeroCamisa: 7 });
     const resultado = await disputarGate(credenciarPrimeiro ? credenciamento : gerar, credenciarPrimeiro ? gerar : credenciamento);
@@ -586,7 +588,7 @@ test("encerramento concorrente vê a automática aplicada antes de seu horário 
   const participacaoId = await origem.credenciar(ana);
   await origem.iniciar();
   await proximo.iniciar();
-  await origem.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  await origem.lancar(participacaoId, "cartaoVermelho", { relatorioDisciplinar: true });
   const resultado = await disputarGate(
     tx => encerrarJogo(tx, origem.id, origem.token, { resultado: "normal", vencedorInscricaoId: null }),
     tx => encerrarJogo(tx, proximo.id, proximo.token, { resultado: "normal", vencedorInscricaoId: null }),
@@ -602,7 +604,7 @@ test("INSERT direto de credenciamento aguarda a geração pelo trigger e recusa 
   const proximo = await jogo();
   const participacaoId = await origem.credenciar(ana);
   await origem.iniciar();
-  await origem.lancar(participacaoId, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  await origem.lancar(participacaoId, "cartaoVermelho", { relatorioDisciplinar: true });
   const vinculo = await prisma.vinculoClube.findFirstOrThrow({ where: { atletaId: ana, fim: null }, select: { id: true } });
   const carteirinha = await prisma.carteirinha.findUniqueOrThrow({ where: { atletaId: ana }, select: { id: true } });
   const { inscricaoClubeAId } = await prisma.jogo.findUniqueOrThrow({ where: { id: proximo.id }, select: { inscricaoClubeAId: true } });
@@ -623,7 +625,7 @@ test("redução da automática: recálculo não aumenta, anulação preserva a d
   const [pAna, pCarla] = [await origem.credenciar(ana), await origem.credenciar(carla)];
   await origem.credenciar(bruno);
   await origem.iniciar();
-  const vermelho = await origem.lancar(pAna, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  const vermelho = await origem.lancar(pAna, "cartaoVermelho", { relatorioDisciplinar: true });
   await origem.encerrar();
   const [automatica] = await listar();
   type Decisao = { suspensao: Suspensao; alterado: boolean };
@@ -640,19 +642,19 @@ test("redução da automática: recálculo não aumenta, anulação preserva a d
   assert.equal((await listar()).find(s => s.id === automatica.id)!.quantidadeAtual, 0);
 
   // Retirar a ocorrência anula a automática, preservando a punição original e a decisão.
-  const semRelatorio = await corrigir(origem.id, vermelho.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: false });
+  const semRelatorio = await corrigir(origem.id, vermelho.id, { operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: false });
   assert.deepEqual(semRelatorio.suspensoesAutomaticas, { criadas: [], anuladas: [automatica.id] });
   const anulada = (await listar()).find(s => s.id === automatica.id)!;
   assert.deepEqual([anulada.situacao, anulada.quantidadeJogos, anulada.quantidadeAtual, anulada.reducoes.map(r => r.id)], ["anulada", 1, 0, [decisao.id]]);
 
   // Ocorrência atribuída à Carla: suspensão integral, pois a decisão era sobre a Ana.
-  const paraCarla = await corrigir(origem.id, semRelatorio.lancamento.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pCarla, relatorioDisciplinar: true });
+  const paraCarla = await corrigir(origem.id, semRelatorio.lancamento.id, { operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pCarla, relatorioDisciplinar: true });
   const [daCarla] = paraCarla.suspensoesAutomaticas.criadas;
   const carlaSuspensa = (await listar()).find(s => s.id === daCarla)!;
   assert.deepEqual([carlaSuspensa.quantidadeAtual, carlaSuspensa.situacao, carlaSuspensa.reducoes], [1, "vigente", []]);
 
   // De volta à Ana: a nova automática herda o total reduzido, sem presidente nem justificativa próprios.
-  const paraAna = await corrigir(origem.id, paraCarla.lancamento.id, { operacaoId: randomUUID(), tipo: "temp_cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: true });
+  const paraAna = await corrigir(origem.id, paraCarla.lancamento.id, { operacaoId: randomUUID(), tipo: "cartaoVermelho", participacaoId: pAna, relatorioDisciplinar: true });
   assert.deepEqual(paraAna.suspensoesAutomaticas.anuladas, [daCarla]);
   const [nova] = paraAna.suspensoesAutomaticas.criadas;
   const herdeira = (await listar()).find(s => s.id === nova)!;
@@ -666,7 +668,7 @@ test("redução da automática: recálculo não aumenta, anulação preserva a d
   const outro = await jogo();
   const pBruno = await outro.credenciar(bruno);
   await outro.iniciar();
-  await outro.lancar(pBruno, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  await outro.lancar(pBruno, "cartaoVermelho", { relatorioDisciplinar: true });
   await outro.encerrar();
   const doBruno = (await listar()).find(s => s.atleta.id === bruno && s.situacao === "vigente")!;
   const manual = await ok<Suspensao>(request("POST", `/campeonatos/${campeonato}/suspensoes`, presidente.cookie,

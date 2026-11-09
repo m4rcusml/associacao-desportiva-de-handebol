@@ -12,7 +12,7 @@ const indisponivel = {
   "403": resposta("Fora do dia do jogo no fuso do local, jogo sem data, finalizado ou cancelado, vínculo impeditivo da arbitragem designada ou origem não autorizada"),
 };
 const negado = { "401": resposta("Sessão ou cadastro indisponível"), "403": resposta("Perfil sem permissão ou origem não autorizada") };
-const placar = "placar { clubeA {inscricaoId, clube}, temp_placarClubeA, clubeB {inscricaoId, clube}, temp_placarClubeB }";
+const placar = "placar { clubeA {inscricaoId, clube}, placarClubeA, clubeB {inscricaoId, clube}, placarClubeB }";
 const detalhado = "jogo no formato de GET /jogos/{jogoId}";
 const corpo = (schema: z.ZodType) => ({ required: true, ...json(z.toJSONSchema(schema, { io: "input" })) });
 const resultadoCompleto = "{ jogo {id, status, iniciadoEm, encerradoEm, resultado, vencedor {inscricaoId, clube} ou null}, placar, invalidacao {invalidadoEm, motivo, presidente} ou null, interrupcoes [{interrompidoEm, retomadoEm}], alteracoes [{id, tipo, resultadoAnterior, inscricaoVencedorAnteriorId, resultadoNovo, inscricaoVencedorNovoId, motivo, registradaEm, presidente}] }";

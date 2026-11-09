@@ -95,11 +95,11 @@ type Lancamento = {
   id: string; operacaoId: string; tipo: string; valor: number; registradoEm: string; participacaoId: string; inscricaoId: string; atleta: Pessoa; numeroCamisa: number;
   substituiLancamentoId: string | null; anuladoEm: string | null; substituidoPorId: string | null;
 };
-type Placar = { temp_placarClubeA: number; temp_placarClubeB: number };
+type Placar = { placarClubeA: number; placarClubeB: number };
 type Registro = { lancamento: Lancamento; alterado: boolean; placar: Placar };
 type Correcao = Registro & { anulado: Lancamento };
 type Conflito = { message: string; lancamento: Lancamento; substituto: Lancamento | null };
-type Desempenho = { atleta: Pessoa; temp_gols: number; temp_cartoesAmarelos: number; temp_exclusoesDoisMinutos: number; temp_cartoesVermelhos: number };
+type Desempenho = { atleta: Pessoa; gols: number; cartoesAmarelos: number; exclusoesDoisMinutos: number; cartoesVermelhos: number };
 type Registros = { jogo: { id: string; status: string }; placar: Placar | null; desempenho: Desempenho[]; lancamentos: Lancamento[] };
 
 async function ok<T = Registro>(response: Promise<Response>): Promise<T> {
@@ -120,17 +120,17 @@ const credenciar = async (jogo: string, cookie: string, atletaId: string, numero
   (await ok<{ participacao: { participacaoId: string } }>(request("POST", `/arbitragem/jogos/${jogo}/credenciamentos`, cookie, { atletaId, numeroCamisa }))).participacao.participacaoId;
 const iniciar = (jogo: string, cookie: string) => ok(request("POST", `/arbitragem/jogos/${jogo}/inicio`, cookie));
 const encerrar = (jogo: string, cookie: string) => ok(request("POST", `/arbitragem/jogos/${jogo}/encerramento`, cookie, { resultado: "normal", vencedorInscricaoId: null }));
-const lancamento = (participacaoId: string, tipo = "temp_gol", operacaoId: string = randomUUID()) => ({ operacaoId, tipo, participacaoId });
-const lancar = async (jogo: string, cookie: string, participacaoId: string, tipo = "temp_gol") =>
+const lancamento = (participacaoId: string, tipo = "gol", operacaoId: string = randomUUID()) => ({ operacaoId, tipo, participacaoId });
+const lancar = async (jogo: string, cookie: string, participacaoId: string, tipo = "gol") =>
   (await ok(request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, cookie, lancamento(participacaoId, tipo)))).lancamento;
 const corrigir = (jogo: string, cookie: string, id: string, body: unknown, rota = ARBITRAGEM) => request("POST", `${rota}/${jogo}/lancamentos/${id}/correcao`, cookie, body);
 const anular = (jogo: string, cookie: string, id: string, operacaoId: string = randomUUID(), rota = ARBITRAGEM) => request("POST", `${rota}/${jogo}/lancamentos/${id}/anulacao`, cookie, { operacaoId });
 const registros = (jogo: string, cookie: string, rota = ARBITRAGEM) => ok<Registros>(request("GET", `${rota}/${jogo}/lancamentos`, cookie));
 const resumo = (r: Pick<Registros, "placar" | "desempenho">) => ({
-  placar: r.placar && [r.placar.temp_placarClubeA, r.placar.temp_placarClubeB],
-  desempenho: Object.fromEntries(r.desempenho.map(d => [d.atleta.nomeCompleto, [d.temp_gols, d.temp_cartoesAmarelos, d.temp_exclusoesDoisMinutos, d.temp_cartoesVermelhos]])),
+  placar: r.placar && [r.placar.placarClubeA, r.placar.placarClubeB],
+  desempenho: Object.fromEntries(r.desempenho.map(d => [d.atleta.nomeCompleto, [d.gols, d.cartoesAmarelos, d.exclusoesDoisMinutos, d.cartoesVermelhos]])),
 });
-const placarDe = (r: { placar: Placar | null }) => [r.placar?.temp_placarClubeA, r.placar?.temp_placarClubeB];
+const placarDe = (r: { placar: Placar | null }) => [r.placar?.placarClubeA, r.placar?.placarClubeB];
 
 /** Dois clubes inscritos, Ana (A) e Bruno (B) credenciados, Carla (A) sem credenciamento, arbitragem por senha. */
 async function cenario({ iniciado = true } = {}) {
@@ -173,20 +173,20 @@ after(async () => {
 test("arbitragem corrige atleta e tipo, encadeia correções e anula durante o jogo, preservando o histórico", async () => {
   const { jogo, arbitro, pAna, pBruno } = await cenario();
   const golAna = await lancar(jogo, arbitro, pAna);
-  const amareloBruno = await lancar(jogo, arbitro, pBruno, "temp_cartaoAmarelo");
+  const amareloBruno = await lancar(jogo, arbitro, pBruno, "cartaoAmarelo");
   const golBruno = await lancar(jogo, arbitro, pBruno);
 
   // O gol era do Bruno: anula o original e cria o substituto na mesma operação.
   const c1 = await ok<Correcao>(corrigir(jogo.toUpperCase(), arbitro, golAna.id.toUpperCase(), lancamento(pBruno.toUpperCase())));
   assert.equal(c1.alterado, true);
-  assert.deepEqual([c1.lancamento.tipo, c1.lancamento.atleta.nomeCompleto, c1.lancamento.valor, c1.lancamento.substituiLancamentoId, c1.lancamento.anuladoEm], ["temp_gol", "Bruno", 1, golAna.id, null]);
-  assert.deepEqual([c1.anulado.id, c1.anulado.tipo, c1.anulado.atleta.nomeCompleto, c1.anulado.substituidoPorId], [golAna.id, "temp_gol", "Ana", c1.lancamento.id], "original preservado");
+  assert.deepEqual([c1.lancamento.tipo, c1.lancamento.atleta.nomeCompleto, c1.lancamento.valor, c1.lancamento.substituiLancamentoId, c1.lancamento.anuladoEm], ["gol", "Bruno", 1, golAna.id, null]);
+  assert.deepEqual([c1.anulado.id, c1.anulado.tipo, c1.anulado.atleta.nomeCompleto, c1.anulado.substituidoPorId], [golAna.id, "gol", "Ana", c1.lancamento.id], "original preservado");
   assert.ok(c1.anulado.anuladoEm);
   assert.deepEqual(placarDe(c1), [0, 2]);
 
   // Tipo corrigido: o amarelo era exclusão de dois minutos.
-  const c2 = await ok<Correcao>(corrigir(jogo, arbitro, amareloBruno.id, lancamento(pBruno, "temp_exclusaoDoisMinutos")));
-  assert.deepEqual([c2.lancamento.tipo, c2.anulado.tipo], ["temp_exclusaoDoisMinutos", "temp_cartaoAmarelo"]);
+  const c2 = await ok<Correcao>(corrigir(jogo, arbitro, amareloBruno.id, lancamento(pBruno, "exclusaoDoisMinutos")));
+  assert.deepEqual([c2.lancamento.tipo, c2.anulado.tipo], ["exclusaoDoisMinutos", "cartaoAmarelo"]);
 
   // Cadeia: o substituto vigente também pode ser corrigido; o gol volta para Ana.
   const c3 = await ok<Correcao>(corrigir(jogo, arbitro, c1.lancamento.id, lancamento(pAna)));
@@ -203,19 +203,19 @@ test("arbitragem corrige atleta e tipo, encadeia correções e anula durante o j
   assert.deepEqual(new Set(atual.lancamentos.filter(l => l.anuladoEm).map(l => l.id)), new Set([golAna.id, amareloBruno.id, c1.lancamento.id, golBruno.id]));
   assert.deepEqual(atual.lancamentos.find(l => l.id === c1.lancamento.id), { ...c1.lancamento, anuladoEm: atual.lancamentos.find(l => l.id === c1.lancamento.id)!.anuladoEm, substituidoPorId: c3.lancamento.id }, "consulta preserva o contrato");
   const original = atual.lancamentos.find(l => l.id === golAna.id)!;
-  assert.deepEqual([original.operacaoId, original.tipo, original.participacaoId, original.registradoEm], [golAna.operacaoId, "temp_gol", pAna, golAna.registradoEm]);
+  assert.deepEqual([original.operacaoId, original.tipo, original.participacaoId, original.registradoEm], [golAna.operacaoId, "gol", pAna, golAna.registradoEm]);
 
   // Correção sem mudança, lançamento de outro jogo ou inexistente e participação inexistente.
   await recusa(corrigir(jogo, arbitro, c3.lancamento.id, lancamento(pAna)), 400, /alterar o tipo, o atleta ou o relatório disciplinar/);
-  await recusa(corrigir(jogo, arbitro, randomUUID(), lancamento(pAna, "temp_cartaoAmarelo")), 404, /Lançamento não encontrado/);
+  await recusa(corrigir(jogo, arbitro, randomUUID(), lancamento(pAna, "cartaoAmarelo")), 404, /Lançamento não encontrado/);
   await recusa(anular(jogo, arbitro, randomUUID()), 404, /Lançamento não encontrado/);
   await recusa(corrigir(jogo, arbitro, c3.lancamento.id, lancamento(randomUUID())), 404, /Participação não encontrada/);
-  for (const body of [{}, { ...lancamento(pBruno), valor: 2 }, { ...lancamento(pBruno), tipo: "gol" }]) await recusa(corrigir(jogo, arbitro, c3.lancamento.id, body), 400);
+  for (const body of [{}, { ...lancamento(pBruno), valor: 2 }, { ...lancamento(pBruno), tipo: "temp_gol" }]) await recusa(corrigir(jogo, arbitro, c3.lancamento.id, body), 400);
   for (const body of [{}, { operacaoId: "x" }, { operacaoId: randomUUID(), motivo: "erro" }]) await recusa(request("POST", `${ARBITRAGEM}/${jogo}/lancamentos/${c3.lancamento.id}/anulacao`, arbitro, body), 400);
   await recusa(corrigir(jogo, arbitro, "nao-uuid", lancamento(pAna)), 400);
 
   // Lançamento já corrigido ou anulado: conflito com o registro atualizado, sem sobrescrever.
-  const conflito = await recusa(corrigir(jogo, arbitro, golAna.id, lancamento(pAna, "temp_cartaoVermelho")), 409, /já foi corrigido ou anulado/) as Conflito;
+  const conflito = await recusa(corrigir(jogo, arbitro, golAna.id, lancamento(pAna, "cartaoVermelho")), 409, /já foi corrigido ou anulado/) as Conflito;
   assert.deepEqual([conflito.lancamento.id, conflito.lancamento.substituidoPorId, conflito.substituto?.id], [golAna.id, c1.lancamento.id, c1.lancamento.id]);
   const anulado = await recusa(anular(jogo, arbitro, golBruno.id), 409, /já foi corrigido ou anulado/) as Conflito;
   assert.deepEqual([anulado.lancamento.id, anulado.substituto], [golBruno.id, null]);
@@ -229,13 +229,13 @@ test("banco repete as regras: só anula uma vez, não apaga, substituto exige an
   const anulado = (await ok(anular(jogo, arbitro, outro.id))).lancamento;
   const atualizar = (id: string, data: Record<string, unknown>) => prisma.lancamentoJogo.update({ where: { id }, data });
 
-  await assert.rejects(atualizar(gol.id, { tipo: "temp_cartaoAmarelo" }), "dados não mudam");
+  await assert.rejects(atualizar(gol.id, { tipo: "cartaoAmarelo" }), "dados não mudam");
   await assert.rejects(atualizar(gol.id, { anuladoEm: new Date() }), "anulação exige a operação");
   await assert.rejects(atualizar(gol.id, { anuladoEm: new Date(), anulacaoOperacaoId: randomUUID(), participacaoId: pBruno }), "anulação não muda dados");
   await assert.rejects(atualizar(anulado.id, { anuladoEm: new Date(), anulacaoOperacaoId: randomUUID() }), "anula uma vez");
   await assert.rejects(prisma.lancamentoJogo.delete({ where: { id: anulado.id } }), "não apaga");
 
-  const criar = (data: Record<string, unknown>) => prisma.lancamentoJogo.create({ data: { operacaoId: randomUUID(), jogoId: jogo, participacaoId: pBruno, tipo: "temp_gol", registradoEm: new Date(), ...data } });
+  const criar = (data: Record<string, unknown>) => prisma.lancamentoJogo.create({ data: { operacaoId: randomUUID(), jogoId: jogo, participacaoId: pBruno, tipo: "gol", registradoEm: new Date(), ...data } });
   await assert.rejects(criar({ anuladoEm: new Date(), anulacaoOperacaoId: randomUUID() }), "não nasce anulado");
   await assert.rejects(criar({ substituiLancamentoId: gol.id }), "substitui só lançamento anulado");
   await assert.rejects(criar({ substituiLancamentoId: anulado.id }), "anulado por outra operação (anulação simples)");
@@ -253,10 +253,10 @@ test("correções e anulações simultâneas do mesmo lançamento: a primeira pr
   const gol = await lancar(jogo, arbitro, pAna);
   const respostas = await Promise.all([
     corrigir(jogo, arbitro, gol.id, lancamento(pBruno)),
-    corrigir(jogo, outroDispositivo, gol.id, lancamento(pAna, "temp_cartaoAmarelo")),
+    corrigir(jogo, outroDispositivo, gol.id, lancamento(pAna, "cartaoAmarelo")),
     anular(jogo, arbitro, gol.id),
     anular(jogo, outroDispositivo, gol.id),
-    corrigir(jogo, outroDispositivo, gol.id, lancamento(pBruno, "temp_cartaoVermelho")),
+    corrigir(jogo, outroDispositivo, gol.id, lancamento(pBruno, "cartaoVermelho")),
   ]);
   assert.deepEqual(respostas.map(r => r.status).sort(), [200, 409, 409, 409, 409]);
   for (const r of respostas.filter(r => r.status === 409)) {
@@ -268,7 +268,7 @@ test("correções e anulações simultâneas do mesmo lançamento: a primeira pr
   const estado = await registros(jogo, arbitro);
   const vigentes = estado.lancamentos.filter(l => !l.anuladoEm);
   assert.ok(vigentes.length <= 1);
-  assert.deepEqual(resumo(estado).placar, [vigentes.filter(l => l.tipo === "temp_gol" && l.participacaoId === pAna).length, vigentes.filter(l => l.tipo === "temp_gol" && l.participacaoId === pBruno).length]);
+  assert.deepEqual(resumo(estado).placar, [vigentes.filter(l => l.tipo === "gol" && l.participacaoId === pAna).length, vigentes.filter(l => l.tipo === "gol" && l.participacaoId === pBruno).length]);
 
   // A mesma correção e a mesma anulação enviadas em paralelo gravam uma vez.
   const golParalelo = await lancar(jogo, arbitro, pAna);
@@ -292,13 +292,13 @@ test("reenvio da mesma correção ou anulação não duplica; identificador de o
   const gol = await lancar(jogo, arbitro, pAna);
   const outroGol = await lancar(jogo, arbitro, pAna);
   const operacaoId = randomUUID();
-  const primeira = await ok<Correcao>(corrigir(jogo, arbitro, gol.id, lancamento(pAna, "temp_cartaoAmarelo", operacaoId)));
-  const reenvio = await ok<Correcao>(corrigir(jogo, arbitro, gol.id, lancamento(pAna, "temp_cartaoAmarelo", operacaoId.toUpperCase())));
+  const primeira = await ok<Correcao>(corrigir(jogo, arbitro, gol.id, lancamento(pAna, "cartaoAmarelo", operacaoId)));
+  const reenvio = await ok<Correcao>(corrigir(jogo, arbitro, gol.id, lancamento(pAna, "cartaoAmarelo", operacaoId.toUpperCase())));
   assert.deepEqual([reenvio.alterado, reenvio.lancamento.id, reenvio.anulado.id, reenvio.anulado.anuladoEm], [false, primeira.lancamento.id, gol.id, primeira.anulado.anuladoEm]);
-  await recusa(corrigir(jogo, arbitro, gol.id, lancamento(pBruno, "temp_cartaoAmarelo", operacaoId)), 409, /operacaoId já usado/);
-  await recusa(corrigir(jogo, arbitro, outroGol.id, lancamento(pAna, "temp_cartaoAmarelo", operacaoId)), 409, /operacaoId já usado/);
+  await recusa(corrigir(jogo, arbitro, gol.id, lancamento(pBruno, "cartaoAmarelo", operacaoId)), 409, /operacaoId já usado/);
+  await recusa(corrigir(jogo, arbitro, outroGol.id, lancamento(pAna, "cartaoAmarelo", operacaoId)), 409, /operacaoId já usado/);
   await recusa(anular(jogo, arbitro, outroGol.id, operacaoId), 409, /operacaoId já usado/);
-  await recusa(request("POST", `${ARBITRAGEM}/${jogo}/lancamentos`, arbitro, lancamento(pAna, "temp_cartaoAmarelo", operacaoId)), 409, /operacaoId já usado/);
+  await recusa(request("POST", `${ARBITRAGEM}/${jogo}/lancamentos`, arbitro, lancamento(pAna, "cartaoAmarelo", operacaoId)), 409, /operacaoId já usado/);
 
   const anulacao = randomUUID();
   const anulado = await ok(anular(jogo, arbitro, outroGol.id, anulacao));
@@ -306,8 +306,8 @@ test("reenvio da mesma correção ou anulação não duplica; identificador de o
   assert.deepEqual([anulado.alterado, repetida.alterado, repetida.lancamento.anuladoEm], [true, false, anulado.lancamento.anuladoEm]);
   const terceiro = await lancar(jogo, arbitro, pBruno);
   await recusa(anular(jogo, arbitro, terceiro.id, anulacao), 409, /operacaoId já usado/);
-  await recusa(corrigir(jogo, arbitro, terceiro.id, lancamento(pAna, "temp_gol", anulacao)), 409, /operacaoId já usado/);
-  await recusa(request("POST", `${ARBITRAGEM}/${jogo}/lancamentos`, arbitro, lancamento(pAna, "temp_gol", anulacao)), 409, /operacaoId já usado/);
+  await recusa(corrigir(jogo, arbitro, terceiro.id, lancamento(pAna, "gol", anulacao)), 409, /operacaoId já usado/);
+  await recusa(request("POST", `${ARBITRAGEM}/${jogo}/lancamentos`, arbitro, lancamento(pAna, "gol", anulacao)), 409, /operacaoId já usado/);
   await recusa(anular(jogo, arbitro, terceiro.id, gol.operacaoId), 409, /operacaoId já usado/);
   assert.deepEqual(resumo(await registros(jogo, arbitro)).placar, [0, 1]);
 });
@@ -326,7 +326,7 @@ test("registro e anulação em jogos distintos disputam o mesmo operacaoId, sem 
     const conectada = new Promise<number>(resolve => { conectou = resolve; });
     const operacoes = {
       registro: (tx: Parameters<typeof registrarLancamento>[0]) => registrarLancamento(tx, registro.jogo, decodeURIComponent(registro.arbitro.split("=")[1]), {
-        operacaoId, tipo: "temp_gol", participacaoId: registro.pAna,
+        operacaoId, tipo: "gol", participacaoId: registro.pAna,
       }),
       anulacao: (tx: Parameters<typeof anularPelaArbitragem>[0]) => anularPelaArbitragem(tx, anulacao.jogo, decodeURIComponent(anulacao.arbitro.split("=")[1]), gol.id, { operacaoId }),
     };
@@ -372,7 +372,7 @@ test("falha na transação desfaz a correção e a anulação por inteiro", asyn
   const token = decodeURIComponent(arbitro.split("=")[1]);
   const operacaoId = randomUUID();
   await assert.rejects(prisma.$transaction(async tx => {
-    const resultado = await corrigirPelaArbitragem(tx, jogo, token, gol.id, { operacaoId, tipo: "temp_gol", participacaoId: pBruno });
+    const resultado = await corrigirPelaArbitragem(tx, jogo, token, gol.id, { operacaoId, tipo: "gol", participacaoId: pBruno });
     assert.deepEqual(placarDe(resultado), [0, 1], "dentro da transação o placar já reflete a correção");
     throw new Error("falha depois de gravar");
   }), /falha depois de gravar/);
@@ -384,7 +384,7 @@ test("falha na transação desfaz a correção e a anulação por inteiro", asyn
   assert.deepEqual([registro.anuladoEm, registro.anulacaoOperacaoId, await prisma.lancamentoJogo.count({ where: { operacaoId } })], [null, null, 0]);
   assert.deepEqual(resumo(await registros(jogo, arbitro)).placar, [1, 0]);
   // A mesma correção pode ser reenviada depois da falha.
-  assert.equal((await ok<Correcao>(corrigir(jogo, arbitro, gol.id, lancamento(pBruno, "temp_gol", operacaoId)))).alterado, true);
+  assert.equal((await ok<Correcao>(corrigir(jogo, arbitro, gol.id, lancamento(pBruno, "gol", operacaoId)))).alterado, true);
 });
 
 test("após o encerramento somente o presidente corrige ou anula, sem reabrir a arbitragem nem repetir o cumprimento", async () => {
@@ -392,7 +392,7 @@ test("após o encerramento somente o presidente corrige ou anula, sem reabrir a 
   const suspensao = await suspender(campeonato, carla.id, 2);
   const gol1 = await lancar(jogo, arbitro, pAna);
   const gol2 = await lancar(jogo, arbitro, pAna);
-  const amarelo = await lancar(jogo, arbitro, pBruno, "temp_cartaoAmarelo");
+  const amarelo = await lancar(jogo, arbitro, pBruno, "cartaoAmarelo");
 
   // Durante o jogo, quem corrige é a arbitragem.
   await recusa(corrigir(jogo, presidente.cookie, gol1.id, lancamento(pBruno), PRESIDENCIA), 409, /somente após o encerramento/);
@@ -421,7 +421,7 @@ test("após o encerramento somente o presidente corrige ou anula, sem reabrir a 
 
   // Presidente não inclui lançamento novo; o banco também recusa a inclusão no jogo finalizado.
   await recusa(request("POST", `${PRESIDENCIA}/${jogo}/lancamentos`, presidente.cookie, lancamento(pAna)), 404);
-  await assert.rejects(prisma.lancamentoJogo.create({ data: { operacaoId: randomUUID(), jogoId: jogo, participacaoId: pAna, tipo: "temp_gol", registradoEm: new Date() } }));
+  await assert.rejects(prisma.lancamentoJogo.create({ data: { operacaoId: randomUUID(), jogoId: jogo, participacaoId: pAna, tipo: "gol", registradoEm: new Date() } }));
 
   // Correções simultâneas do presidente: a primeira prevalece.
   const paralelas = await Promise.all([corrigir(jogo, presidente.cookie, gol2.id, lancamento(pBruno), PRESIDENCIA), anular(jogo, presidente.cookie, gol2.id, randomUUID(), PRESIDENCIA)]);
@@ -430,7 +430,7 @@ test("após o encerramento somente o presidente corrige ou anula, sem reabrir a 
   // Somente presidente; jogo e lançamento precisam existir e corresponder.
   for (const [cookie, status] of [["", 401], [ana.cookie, 403]] as const) {
     await recusa(request("GET", `${PRESIDENCIA}/${jogo}/lancamentos`, cookie), status);
-    await recusa(corrigir(jogo, cookie, gol1.id, lancamento(pAna, "temp_cartaoAmarelo"), PRESIDENCIA), status);
+    await recusa(corrigir(jogo, cookie, gol1.id, lancamento(pAna, "cartaoAmarelo"), PRESIDENCIA), status);
     await recusa(anular(jogo, cookie, gol1.id, randomUUID(), PRESIDENCIA), status);
   }
   await recusa(request("GET", `${PRESIDENCIA}/${randomUUID()}/lancamentos`, presidente.cookie), 404);

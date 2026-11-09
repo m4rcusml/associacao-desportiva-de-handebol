@@ -146,7 +146,7 @@ async function retirado(c: Cliente, motivo: string) {
   assert.equal(c.registros.at(-1)?.tipo, "encerrado", "nenhum evento depois do encerramento");
 }
 const lancar = (jogo: string, cookie: string, participacaoId: string) =>
-  ok<{ lancamento: { id: string } }>(request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, cookie, { operacaoId: randomUUID(), tipo: "temp_gol", participacaoId }));
+  ok<{ lancamento: { id: string } }>(request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, cookie, { operacaoId: randomUUID(), tipo: "gol", participacaoId }));
 const iniciar = (jogo: string, cookie: string) => ok(request("POST", `/arbitragem/jogos/${jogo}/inicio`, cookie));
 
 before(async () => {
@@ -205,7 +205,7 @@ test("dois dispositivos recebem o aviso mínimo depois do commit; rollback e ope
     throw new Error("rollback de teste");
   }), /rollback de teste/);
   // Operação recusada pela API (participação inexistente) também não grava evento.
-  assert.equal((await request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, porSenha, { operacaoId: randomUUID(), tipo: "temp_gol", participacaoId: randomUUID() })).status, 404);
+  assert.equal((await request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, porSenha, { operacaoId: randomUUID(), tipo: "gol", participacaoId: randomUUID() })).status, 404);
 
   const { lancamento } = await lancar(jogo, porDesignacao, pAna);
   await ate(() => linha.eventos("lancamento_registrado").length === 1 && banco.eventos("lancamento_registrado").length === 1, "lancamento_registrado nos dois");
