@@ -426,6 +426,8 @@ Para começar, os campos já modelados e essenciais aos fluxos serão usados pro
 sem exigir dados adicionais até confirmação do cliente. E-mail e credencial pertencem à
 autenticação; atleta informa clube inicial e técnico pode ficar sem clube. Fotos usam Supabase
 Storage na franquia gratuita. Formatos, tamanho e permissões definidos nos requisitos, seção 11.
+`Atleta.fotoChave` guarda somente a chave privada do objeto atual (`atletas/<atletaId>/<uuid>.<ext>`), nunca URL;
+cada envio cria chave nova, trocada com a linha do atleta bloqueada (MAR-75, sem migração).
 
 ## Complemento técnico de autenticação — PEN-030
 
