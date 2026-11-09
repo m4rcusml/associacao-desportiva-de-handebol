@@ -21,8 +21,8 @@ PostgreSQL/Prisma validada com testes de falha e concorrência do cadastro e rep
 após logout. Desde a MAR-57, presidente consulta, aprova ou rejeita solicitações; a aprovação do
 atleta emite a carteirinha na mesma transação. Desde a MAR-58, o atleta consulta a própria
 carteirinha com o QR vigente e o presidente a consulta, invalida, reativa e substitui o QR, com
-histórico; a leitura do QR devolve identificação mínima, por ora só ao presidente (a arbitragem entra
-com o credenciamento, MAR-67). Desde a MAR-59, cada conta altera o próprio nome sem nova aprovação;
+histórico; a leitura do QR devolve identificação mínima ao presidente e, no jogo, à arbitragem autorizada
+(MAR-67). Desde a MAR-59, cada conta altera o próprio nome sem nova aprovação;
 e-mail e senha continuam sem edição. Desde a MAR-62, o presidente agenda jogos (hora local e fuso
 IANA do local) e designa a arbitragem.
 Desde a MAR-63, o presidente transfere atletas entre clubes e consulta o histórico de vínculos.
@@ -30,11 +30,11 @@ Desde a MAR-64, o técnico aprovado atual escala atletas do próprio clube até 
 escalação é preliminar e credenciamento e entrada em quadra continuam na MAR-67.
 Desde a MAR-65, a arbitragem entra no dia do jogo (fuso do local) pela conta designada ou por nome e
 senha do jogo, com sessão temporária própria; presidente e contas designadas consultam e trocam a senha.
-As operações esportivas da arbitragem (credenciamento, lançamentos, início/encerramento) continuam nas
-MAR-67 a MAR-69.
+As demais operações esportivas da arbitragem (lançamentos, início/encerramento) continuam nas MAR-68 e MAR-69.
 Desde a MAR-66, o presidente aplica, consulta e revoga suspensões manuais; encerrar/cancelar o campeonato
-encerra os saldos. O cumprimento no encerramento do jogo e o bloqueio no credenciamento estão prontos para
-a MAR-69 e a MAR-67.
+encerra os saldos. O cumprimento no encerramento do jogo está pronto para a MAR-69.
+Desde a MAR-67, a arbitragem autorizada credencia por confirmação manual ou QR, com a camisa do jogo e as
+mesmas regras de elegibilidade, e registra uma vez a entrada em quadra com o jogo em andamento.
 Detalhes aprovados por Marcus (MAR-65): a primeira senha é gerada na primeira consulta pelo presidente
 ou por conta designada; antes disso não há entrada por senha. Ela ignora maiúsculas, espaços e hífens.
 Cada entrada por senha gera um registro próprio com o nome informado, sem presumir identidade. A sessão
@@ -376,7 +376,7 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   A escolha exige atleta aprovado, com vínculo atual no clube, conta ativa e carteirinha ativa.
   Suspensão vigente não impede a escolha, porque o saldo pode ser cumprido antes do jogo: a escalação
   só a sinaliza e o credenciamento barra (decisão de Marcus, MAR-66). Atleta com conta desativada também não pode ser credenciado
-  nem entrar em quadra, o que a MAR-67 deve aplicar. Escolha já feita não é apagada se o atleta
+  nem entrar em quadra, o que a MAR-67 aplica. Escolha já feita não é apagada se o atleta
   ficar inapto depois: o credenciamento o barra. Retirar a escolha de atleta já credenciado retira
   só a escolha; o credenciamento continua independente, inclusive de atleta não escolhido.
   A consulta da escalação lista os atletas que podem ser escolhidos.
@@ -431,7 +431,11 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   fica em registros próprios, e o responsável/data do status atual são os do último registro. QR
   substituído não é guardado nem identificado como tal: responde como QR não reconhecido. Substituir
   não reativa carteirinha invalidada. A substituição informa a versão do QR a invalidar, para que
-  reenvio ou pedido simultâneo não gere outro QR. Até o credenciamento (MAR-67), só o presidente lê o QR.
+  reenvio ou pedido simultâneo não gere outro QR. Leem o QR o presidente e a arbitragem autorizada do jogo (MAR-67).
+  Detalhes da implementação (MAR-67): credenciamento e entrada são definitivos até a MAR-71 (correção de
+  camisa e estorno); repetir o credenciamento com a mesma camisa não tem efeito e com outra camisa é recusado.
+  A entrada em quadra exige o jogo em andamento e a conta do atleta ativa; suspensão, invalidação da
+  carteirinha ou transferência posteriores não a impedem, porque o credenciamento anterior é preservado.
 - Foto do atleta é opcional, JPEG/PNG/WebP, até 5 MB por arquivo. Atleta e presidente podem
   enviar/substituir. Consulta somente pelo próprio atleta, presidentes, técnico atual do clube
   e arbitragem autorizada do jogo em que esteja escalado ou credenciado. QR sozinho não expõe foto.

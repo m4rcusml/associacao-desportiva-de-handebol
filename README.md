@@ -164,7 +164,7 @@ finalizado/cancelado, a escalação responde 409. Repetir devolve `alterado: fal
 mostra ao técnico o próprio clube e ao presidente os dois: escolhidos (com o técnico que escolheu e
 `vinculoAtual`), histórico de inclusões/retiradas e atletas que podem ser escolhidos. O novo técnico vê e
 altera a lista do anterior; confirmar atleta já escolhido mantém a autoria original. Presidente não
-escala; clube sem técnico apto fica sem escalação, e a arbitragem credenciará diretamente (MAR-67).
+escala; clube sem técnico apto fica sem escalação, e a arbitragem credencia diretamente (MAR-67).
 Escalar não credencia nem confirma entrada em quadra. Depois de uma transferência, a escolha antiga
 aparece com `vinculoAtual: false` e não serve para credenciar pelo clube anterior.
 
@@ -197,6 +197,20 @@ campeonato encerra o saldo restante, sem transportá-lo. O cumprimento é regist
 cada suspensão vigente, mesmo sem escalação, exceto o jogo em que o atleta já estava credenciado antes da
 aplicação. A escalação sinaliza `suspensaoPendente` sem impedir a escolha; o credenciamento (MAR-67) barra.
 Somente o presidente consulta suspensões nesta etapa.
+
+#### Credenciamento e entrada em quadra (MAR-67)
+
+Com o cookie temporário do jogo, a arbitragem consulta em `GET /api/arbitragem/jogos/{jogoId}/atletas`, por
+clube, os atletas aprovados com vínculo atual e os já credenciados, com a escolha do técnico, o
+credenciamento e o impedimento atual (`nao_aprovado`, `sem_vinculo_com_clubes_do_jogo`, `conta_desativada`,
+`carteirinha_invalidada` ou `suspensao`). `POST .../leitura-qr` (`tokenQr` no corpo) identifica o atleta sem
+credenciar. `POST .../credenciamentos` credencia por confirmação manual (`atletaId`) ou QR (`tokenQr`), sempre
+com `numeroCamisa` (inteiro não negativo, único no clube e jogo): as duas formas aplicam as mesmas regras, e o
+QR válido confirma automaticamente. Vale antes do início e durante a partida, para escalados ou não. Repetir com
+a mesma camisa (QR repetido, reenvio) devolve `alterado: false`; com outra camisa, 409 (correção na MAR-71). QR
+substituído responde 404, e o QR sozinho não autoriza nada. `POST .../credenciamentos/{atletaId}/entrada`
+registra uma vez a entrada em quadra, somente com o jogo em andamento e a conta do atleta ativa. Suspensão,
+invalidação ou transferência posteriores preservam o credenciamento e não impedem a entrada.
 
 Para alterar o esquema: `npm run db:migrate -- --name descricao`, revisar o SQL produzido e
 executar `npm run db:generate`. Restrições SQL complementares estão nas migrações seguintes.
@@ -489,6 +503,17 @@ reproduziram as falhas antes da correção e passaram depois: revogação aguard
 retorna 409 e mantém a suspensão cumprida; aplicação de 101 jogos é aceita pela API e pelo banco.
 Revogação consulta o saldo depois de obter o bloqueio. A migração adicional remove o teto de 100 jogos
 sem modificar a migração já aplicada; permanece o intervalo técnico do `INTEGER` do PostgreSQL.
+
+Validação local da MAR-67 em 08/11/2026: lint, tipos/build e **115 testes de integração aprovados**,
+incluindo seis novos: credenciamento manual de escalado e não escalado, camisa única no clube (repetida em
+outro clube aceita), repetição sem efeito e outra camisa recusada; mesmas regras no manual e no QR (pendente,
+clube fora do jogo, conta desativada, carteirinha invalidada, suspensão) e recusa direta no banco; QR
+repetido, substituído e sem sessão (QR não autoriza); atrasado credenciado com o jogo em andamento, entrada
+única só depois do início, suspensão e invalidação posteriores preservando o credenciamento; concorrência
+(camisa disputada, mesmo QR em paralelo, suspensão, invalidação, transferência, desativação e substituição de
+QR em curso); acessos cruzados (cookie de outro jogo, saída, designado que vira técnico de um clube, jogo de
+amanhã, sem origem). Uma migração nova; nenhuma dependência nova. Não validado: início real do jogo (MAR-69,
+os testes alteram o status no banco), correção/estorno (MAR-71) e notificação Socket.IO (MAR-73).
 
 ## Caminho feliz
 

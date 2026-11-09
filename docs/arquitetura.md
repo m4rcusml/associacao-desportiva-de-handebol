@@ -42,7 +42,7 @@ server/
       usuarios/
       clubes/
       competicoes/
-      participacoes/     # Escalação (MAR-64); credenciamento na MAR-67
+      participacoes/     # Escalação (MAR-64) e credenciamento/entrada em quadra (MAR-67)
       arbitragem/        # Acesso temporário e senha do jogo (MAR-65)
       suspensoes/        # Suspensões manuais e cumprimento (MAR-66)
       resultados/
@@ -262,6 +262,15 @@ paralelo. `atletasComSuspensaoVigente` é a consulta de impedimento: o credencia
 depois de bloquear a conta do atleta (`FOR SHARE`), para ver aplicações concorrentes. Ordem geral:
 campeonato → jogo → conta → suspensão, sem ciclo com escalação e transferências. Triggers repetem no banco
 as regras de aplicação, término do saldo e cumprimento.
+Credenciamento (MAR-67): `participacoes/credenciamento.ts` expõe à sessão temporária da arbitragem a lista de
+atletas do jogo, a leitura do QR, o credenciamento (manual ou QR) e a entrada em quadra. Cada operação chama
+`revalidarArbitragem` na própria transação e depois bloqueia a conta do atleta (`FOR SHARE`: desativação,
+transferência e aplicação de suspensão aguardam ou são vistas) e a carteirinha (`FOR SHARE`: invalidação e
+substituição do QR aguardam ou são vistas; o QR é conferido de novo com o bloqueio), na ordem jogo →
+arbitragem → sessão → conta → carteirinha → vínculo, a mesma da escalação. A elegibilidade usa
+`atletasComSuspensaoVigente`. A gravação é condicional (`UPDATE ... WHERE credenciadoEm IS NULL` ou
+`INSERT ... ON CONFLICT DO NOTHING`): o mesmo atleta em paralelo termina com `alterado: false`, e a camisa
+disputada fica com o primeiro, o segundo recebendo 409. O trigger repete as regras no banco.
 
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,
