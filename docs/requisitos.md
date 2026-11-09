@@ -36,9 +36,9 @@ Desde a MAR-69, a arbitragem autorizada inicia o jogo no dia marcado e um único
 registra o cumprimento das suspensões e revoga senha e sessões na mesma transação. O presidente adia (nova senha,
 sessões dos dois métodos revogadas) ou cancela (acessos revogados, sem cumprimento). Repetir início, encerramento
 ou cancelamento devolve o estado com `alterado: false`; o reenvio do encerramento não reabre o acesso.
-Comportamento adotado na MAR-69, a confirmar por Marcus na PR: somente jogo agendado é adiado ou cancelado (jogo em
-andamento segue para encerramento ou para os casos excepcionais da MAR-72); o adiamento aceita jogo sem nova data
-e recusa data local já passada.
+Detalhes aprovados por Marcus (MAR-69, 09/11/2026): somente jogo agendado é adiado ou cancelado (jogo em andamento
+segue para encerramento ou para os casos excepcionais da MAR-72); o adiamento aceita jogo sem nova data e recusa data
+local já passada; o banco admite agendado → finalizado apenas para o W.O. sem início (MAR-72), sem uso pela API atual.
 Desde a MAR-67, a arbitragem autorizada credencia por confirmação manual ou QR, com a camisa do jogo e as
 mesmas regras de elegibilidade, e registra uma vez a entrada em quadra com o jogo em andamento.
 Desde a MAR-68, a arbitragem autorizada registra gols e penalidades `temp_` do atleta credenciado com o jogo em
