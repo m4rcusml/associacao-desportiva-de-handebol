@@ -276,7 +276,9 @@ jogo → arbitragem → sessão (`revalidarArbitragem`) → participação (`FOR
 → inserção. O identificador de operação é `LancamentoJogo.operacaoId` (UNIQUE): `INSERT ... ON CONFLICT DO NOTHING`
 grava a operação uma vez, e o reenvio compara jogo, tipo e participação antes de devolver o registro existente.
 Operações diferentes não disputam bloqueio exclusivo, então lançamentos simultâneos são todos preservados.
-Placar e desempenho são views SQL lidas na mesma transação, sem totais armazenados (RNF-006). O trigger
+Placar e desempenho são views SQL, sem totais armazenados (RNF-006). A consulta reúne as duas projeções e a
+lista de lançamentos em uma única instrução SQL, compartilhando o mesmo snapshot mesmo com gols concorrentes;
+a revalidação mantém seus bloqueios e o isolamento READ COMMITTED. O trigger
 repete no banco jogo em andamento e participação credenciada do mesmo jogo, e torna o lançamento somente de
 inclusão até a MAR-70. O encerramento (MAR-69) altera a linha do jogo e por isso aguarda lançamentos em curso.
 

@@ -8,7 +8,7 @@ import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
 import { transferirAtleta } from "../dist/modules/atletas/transferencias.js";
-import { registrarLancamento } from "../dist/modules/resultados/lancamentos.js";
+import { consultarLancamentos, registrarLancamento } from "../dist/modules/resultados/lancamentos.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
@@ -111,7 +111,7 @@ const credenciar = async (jogo: string, cookie: string, atletaId: string, numero
 const lancar = (jogo: string, cookie: string, body: unknown) => request("POST", `/arbitragem/jogos/${jogo}/lancamentos`, cookie, body);
 const lancamento = (participacaoId: string, tipo = "temp_gol", operacaoId: string = randomUUID()) => ({ operacaoId, tipo, participacaoId });
 const registros = (jogo: string, cookie: string) => ok<Registros>(request("GET", `/arbitragem/jogos/${jogo}/lancamentos`, cookie));
-const resumo = (r: Registros) => ({
+const resumo = (r: Pick<Registros, "placar" | "desempenho">) => ({
   placar: r.placar && [r.placar.temp_placarClubeA, r.placar.temp_placarClubeB],
   desempenho: Object.fromEntries(r.desempenho.map(d => [d.atleta.nomeCompleto, [d.temp_gols, d.temp_cartoesAmarelos, d.temp_exclusoesDoisMinutos, d.temp_cartoesVermelhos]])),
 });
@@ -182,6 +182,7 @@ test("gol identifica o atleta credenciado e soma ao clube da participação; pen
   const atual = await registros(jogo, arbitro);
   assert.deepEqual(resumo(atual), { placar: [2, 1], desempenho: { Ana: [2, 1, 0, 0], Bruno: [1, 0, 2, 1] } });
   assert.equal(atual.lancamentos.length, 7);
+  assert.deepEqual(atual.lancamentos[0], gol.lancamento, "consulta preserva o contrato do lançamento, inclusive a data ISO");
   assert.deepEqual(atual.lancamentos.map(l => l.atleta.nomeCompleto), ["Ana", "Ana", "Bruno", "Ana", "Bruno", "Bruno", "Bruno"], "ordem de registro");
 
   // Atleta não credenciado (escalado ou não), participação de outro jogo ou inexistente.
@@ -288,6 +289,36 @@ test("falha na transação desfaz o lançamento sem deixar totais parciais", asy
   assert.deepEqual(resumo(await registros(jogo, arbitro)), { placar: [0, 0], desempenho: { Ana: [0, 0, 0, 0], Bruno: [0, 0, 0, 0] } });
   // A mesma operação pode ser reenviada depois da falha.
   assert.equal((await ok(lancar(jogo, arbitro, lancamento(pAna, "temp_gol", operacaoId)))).alterado, true);
+});
+
+test("consulta mantém placar, desempenho e lançamentos no mesmo estado durante gol concorrente", async () => {
+  const { jogo, arbitro, pAna } = await cenario();
+  await iniciarJogo(jogo);
+  let gravou = false;
+  const consulta = await prisma.$transaction(async tx => {
+    const interceptado = new Proxy(tx, {
+      get(target, propriedade) {
+        if (propriedade === "$queryRaw") return async (...args: unknown[]) => {
+          const resultado = await Reflect.apply(target.$queryRaw, target, args);
+          // Confirma outro gol depois da leitura dos dados, antes de a consulta montar sua resposta.
+          if (!gravou && String(args[0]).includes("DesempenhoDoAtleta")) {
+            gravou = true;
+            await ok(lancar(jogo, arbitro, lancamento(pAna)));
+          }
+          return resultado;
+        };
+        const valor = Reflect.get(target, propriedade);
+        return typeof valor === "function" ? valor.bind(target) : valor;
+      },
+    });
+    return consultarLancamentos(interceptado, jogo, decodeURIComponent(arbitro.split("=")[1]));
+  });
+  assert.equal(gravou, true, "o gol confirma enquanto a consulta ainda está em curso");
+  assert.deepEqual(resumo(consulta), { placar: [0, 0], desempenho: { Ana: [0, 0, 0, 0], Bruno: [0, 0, 0, 0] } });
+  assert.equal(consulta.lancamentos.length, 0);
+  const depois = await registros(jogo, arbitro);
+  assert.deepEqual(resumo(depois), { placar: [1, 0], desempenho: { Ana: [1, 0, 0, 0], Bruno: [0, 0, 0, 0] } });
+  assert.equal(depois.lancamentos.length, 1);
 });
 
 test("somente a arbitragem autorizada do jogo lança; encerramento concorrente impede a gravação", async () => {

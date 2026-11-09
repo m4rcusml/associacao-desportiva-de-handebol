@@ -102,23 +102,46 @@ export async function registrarLancamento(tx: Tx, jogoId: string, token: string 
  */
 export async function consultarLancamentos(tx: Tx, jogoId: string, token: string | undefined) {
   const { status } = await revalidarArbitragem(tx, jogoId, token);
-  const desempenho = await tx.$queryRaw<{
-    participacaoId: string; inscricaoId: string; atletaId: string; nomeCompleto: string; numeroCamisa: number;
-    temp_gols: number; temp_cartoesAmarelos: number; temp_exclusoesDoisMinutos: number; temp_cartoesVermelhos: number;
+  // Uma instrução compartilha o snapshot entre lista e projeções, sem mudar o isolamento da autorização.
+  const [registros] = await tx.$queryRaw<{
+    placar: Awaited<ReturnType<typeof placar>>;
+    desempenho: {
+      participacaoId: string; inscricaoId: string; atleta: { id: string; nomeCompleto: string }; numeroCamisa: number;
+      temp_gols: number; temp_cartoesAmarelos: number; temp_exclusoesDoisMinutos: number; temp_cartoesVermelhos: number;
+    }[];
+    lancamentos: (Omit<ReturnType<typeof apresentar>, "registradoEm"> & { registradoEm: string })[];
   }[]>`
-    SELECT d."participacaoId", p."inscricaoClubeId" AS "inscricaoId", u.id AS "atletaId", u."nomeCompleto", p."numeroCamisa",
-      d."temp_gols", d."temp_cartoesAmarelos", d."temp_exclusoesDoisMinutos", d."temp_cartoesVermelhos"
-    FROM "DesempenhoDoAtleta" d
-    JOIN "Participacao" p ON p.id = d."participacaoId"
-    JOIN "Usuario" u ON u.id = p."atletaId"
-    WHERE p."jogoId" = ${jogoId}::uuid
-    ORDER BY p."inscricaoClubeId", p."numeroCamisa"`;
-  const lancamentos = await tx.lancamentoJogo.findMany({ where: { jogoId }, select: selecaoLancamento, orderBy: [{ registradoEm: "asc" }, { id: "asc" }] });
+    SELECT
+      (SELECT jsonb_build_object(
+        'clubeA', jsonb_build_object('inscricaoId', a.id, 'clube', jsonb_build_object('id', ca.id, 'nome', ca.nome)),
+        'temp_placarClubeA', e."temp_placarClubeA",
+        'clubeB', jsonb_build_object('inscricaoId', b.id, 'clube', jsonb_build_object('id', cb.id, 'nome', cb.nome)),
+        'temp_placarClubeB', e."temp_placarClubeB")
+       FROM "EstatisticasDoJogo" e
+       JOIN "Jogo" j ON j.id = e."jogoId"
+       JOIN "InscricaoClube" a ON a.id = j."inscricaoClubeAId" JOIN "Clube" ca ON ca.id = a."clubeId"
+       JOIN "InscricaoClube" b ON b.id = j."inscricaoClubeBId" JOIN "Clube" cb ON cb.id = b."clubeId"
+       WHERE e."jogoId" = ${jogoId}::uuid) AS placar,
+      (SELECT COALESCE(jsonb_agg(d ORDER BY d."inscricaoId", d."numeroCamisa"), '[]'::jsonb) FROM (
+        SELECT d.*, p."inscricaoClubeId" AS "inscricaoId", p."numeroCamisa",
+          jsonb_build_object('id', u.id, 'nomeCompleto', u."nomeCompleto") AS atleta
+        FROM "DesempenhoDoAtleta" d
+        JOIN "Participacao" p ON p.id = d."participacaoId" JOIN "Usuario" u ON u.id = p."atletaId"
+        WHERE p."jogoId" = ${jogoId}::uuid
+      ) d) AS desempenho,
+      (SELECT COALESCE(jsonb_agg(l ORDER BY l."registradoEm", l.id), '[]'::jsonb) FROM (
+        SELECT l.id, l."operacaoId", l.tipo, l.valor, l."registradoEm", l."participacaoId",
+          p."inscricaoClubeId" AS "inscricaoId", p."numeroCamisa",
+          CASE WHEN u.id IS NOT NULL THEN jsonb_build_object('id', u.id, 'nomeCompleto', u."nomeCompleto") END AS atleta
+        FROM "LancamentoJogo" l
+        LEFT JOIN "Participacao" p ON p.id = l."participacaoId" LEFT JOIN "Usuario" u ON u.id = p."atletaId"
+        WHERE l."jogoId" = ${jogoId}::uuid
+      ) l) AS lancamentos`;
   return {
     jogo: { id: jogoId, status },
-    placar: await placar(tx, jogoId),
-    desempenho: desempenho.map(({ atletaId, nomeCompleto, ...d }) => ({ ...d, atleta: { id: atletaId, nomeCompleto } })),
-    lancamentos: lancamentos.map(apresentar),
+    placar: registros.placar,
+    desempenho: registros.desempenho,
+    lancamentos: registros.lancamentos.map(l => ({ ...l, registradoEm: new Date(l.registradoEm) })),
   };
 }
 
