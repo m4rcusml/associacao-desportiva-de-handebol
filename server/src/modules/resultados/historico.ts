@@ -118,8 +118,8 @@ export type JogoDoHistorico = Situacao & {
  * aprovado do clube atual do atleta, incluindo os jogos por clubes anteriores (decisão de Marcus na MAR-74).
  */
 export async function consultarHistoricoDoAtleta(tx: Tx, ator: Ator, atletaId: string) {
-  // Bloqueio compartilhado da conta (convenção da autorização): a transferência concorrente aguarda ou já é vista.
-  await tx.$queryRaw`SELECT 1 FROM "Usuario" WHERE id = ${atletaId}::uuid FOR SHARE`;
+  // Só bloqueia conta de atleta: protege contra transferências sem disputar a substituição de técnicos.
+  await tx.$queryRaw`SELECT 1 FROM "Usuario" WHERE id = ${atletaId}::uuid AND perfil = 'atleta' FOR SHARE`;
   const atleta = await tx.atleta.findUnique({ where: { usuarioId: atletaId }, select: {
     usuario: { select: { id: true, nomeCompleto: true } },
     vinculos: { where: { fim: null }, select: { clube: { select: { id: true, nome: true } } }, take: 1 },

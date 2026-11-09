@@ -363,7 +363,7 @@ A consulta do resultado, após revalidar o presidente, bloqueia o jogo em `FOR N
 do jogo, histórico e placar. Esse bloqueio também conflita com o `FOR SHARE` das correções de lançamentos, evitando
 misturar estados de transações diferentes na resposta sem alterar o isolamento da autorização.
 Resultados e histórico (MAR-74): `resultados/historico.ts` só lê. O ator é revalidado na transação (`FOR SHARE` da
-própria conta); o histórico também bloqueia em `FOR SHARE` a conta do atleta antes de ler o vínculo atual, de modo que a
+própria conta); o histórico também bloqueia em `FOR SHARE` a conta alvo somente se for de atleta, antes de ler o vínculo atual, de modo que a
 transferência concorrente (`FOR UPDATE` da mesma linha) termina antes ou depois da autorização do técnico. A permissão é
 conferida antes da existência, como nas fotos, para não revelar identificadores a quem não pode consultar. Os dados vêm
 de uma única instrução SQL sobre as views `EstatisticasDoJogo` e `DesempenhoDoAtleta`, compartilhando o snapshot entre

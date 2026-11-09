@@ -3,9 +3,12 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { randomInt, randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
+import { ForbiddenException } from "@nestjs/common";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
+import { AutorizacaoService } from "../dist/modules/autorizacao/autorizacao.service.js";
+import { consultarHistoricoDoAtleta } from "../dist/modules/resultados/historico.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
 const origin = process.env.CLIENT_ORIGIN!;
@@ -292,6 +295,24 @@ test("histórico preserva o clube de cada jogo após transferência, soma jogos 
   // Atleta sem jogos: histórico vazio com totais zerados.
   const vazio = await ok<Historico>(historico(pendente.id, presidente.cookie));
   assert.deepEqual([vazio.jogos, vazio.totais.temp_gols, vazio.totais.participacoes.credenciadas], [[], 0, 0]);
+});
+
+test("histórico com ID de técnico é recusado sem disputar o bloqueio de uma substituição concorrente", async () => {
+  const clubeId = await criarClube("Clube do bloqueio do histórico");
+  const atual = await tecnicoDe(clubeId, "Técnico atual");
+  const novo = await cadastrar("tecnico", { nome: "Técnico substituto" });
+
+  await prisma.$transaction(async substituicao => {
+    // A substituição bloqueia as contas dos técnicos; a consulta inválida não deve tentar bloqueá-las.
+    await substituicao.$queryRaw`SELECT 1 FROM "Usuario" WHERE id = ${novo.id}::uuid FOR UPDATE`;
+    await assert.rejects(prisma.$transaction(async tx => {
+      await tx.$executeRaw`SET LOCAL lock_timeout = '200ms'`;
+      const ator = await app.get(AutorizacaoService).revalidar(tx, { usuarioId: atual.id }, { aprovado: true });
+      return consultarHistoricoDoAtleta(tx, ator, novo.id);
+    }), ForbiddenException);
+  });
+  await status(historico(novo.id, atual.cookie), 403);
+  await status(historico(novo.id, presidente.cookie), 404);
 });
 
 test("contrato OpenAPI inclui as consultas de resultados e histórico", async () => {
