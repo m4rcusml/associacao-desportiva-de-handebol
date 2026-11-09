@@ -487,7 +487,7 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
   em 08/11/2026). O credenciamento continua permitido antes do início. A conta do atleta deve estar ativa;
   suspensão, invalidação da carteirinha ou transferência posteriores ao credenciamento não impedem
   a entrada, porque o credenciamento anterior é preservado.
-- Foto do atleta é opcional, JPEG/PNG/WebP, até 5 MB por arquivo. Atleta e presidente podem
+- Foto do atleta é opcional, JPEG/PNG/WebP, até 4 MB por arquivo (decisão de Marcus em 09/11/2026, MAR-76: o encaminhamento pela Vercel recusa corpos acima de ~4,5 MB). Atleta e presidente podem
   enviar/substituir. Consulta somente pelo próprio atleta, presidentes, técnico atual do clube
   e arbitragem autorizada do jogo em que esteja escalado ou credenciado. QR sozinho não expõe foto.
 

@@ -219,7 +219,7 @@ test("presidente envia foto de atleta pendente; técnico e outros atletas não e
   assert.equal(await prisma.atleta.count({ where: { usuarioId: { in: [tecnico.id] } } }), 0);
 });
 
-test("conteúdo real, tipo declarado e limite de 5 MB são conferidos; recusas preservam a foto atual", async () => {
+test("conteúdo real, tipo declarado e limite de 4 MB são conferidos; recusas preservam a foto atual", async () => {
   const clube = await criarClube("Clube da validação");
   const bia = await cadastrar("atleta", { clubeId: clube, nome: "Bia" });
   await status(enviarFoto(bia.id, bia.cookie, png), 200);
@@ -252,12 +252,12 @@ test("conteúdo real, tipo declarado e limite de 5 MB são conferidos; recusas p
   }
   await status(enviarFoto(bia.id, bia.cookie, png, "image/jpeg"), 415, /diferente do Content-Type/);
   await status(enviarFoto(bia.id, bia.cookie, Buffer.alloc(0)), 400, /Envie o arquivo/);
-  await status(enviarFoto(bia.id, bia.cookie, pngComTamanho(LIMITE_FOTO_BYTES + 1)), 413, /5 MB/);
+  await status(enviarFoto(bia.id, bia.cookie, pngComTamanho(LIMITE_FOTO_BYTES + 1)), 413, /4 MB/);
   assert.equal(await chaveAtual(bia.id), chave);
   assert.deepEqual(await arquivos(bia.id), [nomeDaChave(chave)]);
 
   const noLimite = pngComTamanho(LIMITE_FOTO_BYTES);
-  assert.equal(JSON.parse(await status(enviarFoto(bia.id, bia.cookie, noLimite), 200)).foto.tamanho, 5 * 1024 * 1024);
+  assert.equal(JSON.parse(await status(enviarFoto(bia.id, bia.cookie, noLimite), 200)).foto.tamanho, 4 * 1024 * 1024);
   assert.equal((await foto(lerFoto(bia.id, presidente.cookie))).conteudo.length, LIMITE_FOTO_BYTES);
 });
 

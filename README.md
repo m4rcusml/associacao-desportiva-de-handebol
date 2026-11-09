@@ -298,7 +298,7 @@ real com outra camisa e corrija-a depois do estorno de quem a usava.
 
 O próprio atleta (inclusive pendente de aprovação) ou um presidente envia ou substitui a foto em
 `PUT /api/atletas/{atletaId}/foto`, com o arquivo como corpo binário e `Content-Type` `image/jpeg`, `image/png` ou
-`image/webp`. Até 5 MB (5 × 1024 × 1024 bytes): acima, 413; conteúdo que não é imagem desses formatos ou diverge do
+`image/webp`. Até 4 MB (4 × 1024 × 1024 bytes; 5 MB até a MAR-76): acima, 413; conteúdo que não é imagem desses formatos ou diverge do
 `Content-Type`, 415. A troca não exige nem altera a aprovação, e a resposta não traz chave nem URL.
 `GET /api/atletas/{atletaId}/foto` entrega o arquivo ao próprio atleta, aos presidentes e ao técnico atual, aprovado,
 do clube atual do atleta; após uma transferência, o técnico anterior perde o acesso. A arbitragem lê, com o cookie
@@ -861,7 +861,7 @@ conferido e a data.
    SMOKE_URL_PUBLICA=https://<projeto>.vercel.app SMOKE_URL_API_DIRETA=https://<serviço>.onrender.com SMOKE_EMAIL=<conta fictícia> SMOKE_SENHA=<senha> SMOKE_SUPABASE_URL=https://<ref>.supabase.co SMOKE_FOTOS_BUCKET=fotos-atletas npm run smoke:hospedado
    ```
 
-   Ele confere liveness/readiness, recusa do acesso direto sem segredo, origem estranha, corpo de 5 MB atravessando
+   Ele confere liveness/readiness, recusa do acesso direto sem segredo, origem estranha, corpo no limite das fotos (4 MB) atravessando
    a Vercel, cookies seguros, sessão isolada e logout, limite de login com IPs forjados, long-polling do Socket.IO por
    um ciclo de ping de 25 s, autorização do handshake só pelo domínio e pela origem, e bucket não público. Com
    `SMOKE_ATLETA_ID` e credenciais de presidente, também envia e lê uma foto. Para não deixar a senha no histórico

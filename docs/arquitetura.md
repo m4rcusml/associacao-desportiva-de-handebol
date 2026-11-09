@@ -396,7 +396,7 @@ Não há Redis nem serviço de e-mail nesta entrega.
 - Fotos ficam no Supabase Storage, usando a franquia gratuita nesta etapa; o banco mantém
   a referência. Conferir limites vigentes antes de provisionar; não contratar plano pago automaticamente.
 
-Fotos opcionais JPEG/PNG/WebP de até 5 MB; validar conteúdo e tamanho no backend.
+Fotos opcionais JPEG/PNG/WebP de até 4 MB (reduzido de 5 MB na MAR-76: a função da Vercel que encaminha `/api` recusa corpos acima de ~4,5 MB); validar conteúdo e tamanho no backend.
 Armazenamento privado, com consulta autorizada pelo backend ou URL assinada de curta duração.
 Permissões em [requisitos, seção 11](requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026);
 QR não dá acesso público.
@@ -407,7 +407,7 @@ Implementação da MAR-75 (09/11/2026), validada localmente:
   do Supabase por `fetch`, sem SDK adicional. Não há URL pública nem assinada; toda leitura passa pela
   API, que revalida a permissão. Sem as variáveis do Supabase, um diretório local (`FOTOS_DIRETORIO`)
   serve ao desenvolvimento e aos testes, nunca em produção; sem nenhuma configuração, as rotas de fotos respondem 503.
-- Envio como corpo binário com `Content-Type` da imagem; 5 MB contados como 5 × 1024 × 1024 bytes. O formato é
+- Envio como corpo binário com `Content-Type` da imagem; 4 MB contados como 4 × 1024 × 1024 bytes. O formato é
   conferido pelo decoder Sharp 0.35.5 e deve coincidir com o `Content-Type`. Depois de identificar JPEG/PNG/WebP,
   o backend decodifica todos os pixels (incluindo quadros de WebP animado) com `failOn: "warning"`, antes de enviar
   ao Storage. Só ler metadados não valida os pixels; `stats()` percorre os pixels sem criar um buffer JavaScript

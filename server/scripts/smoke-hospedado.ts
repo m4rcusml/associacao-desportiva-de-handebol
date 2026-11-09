@@ -78,8 +78,8 @@ await verificar("escrita com origem estranha é recusada", async () => {
   exigir(resposta.status === 403, `esperado 403, veio ${await status(resposta)}`);
 });
 
-await verificar("corpo de 5 MB atravessa o encaminhamento (resposta do backend, não da Vercel)", async () => {
-  const resposta = await pedir(publica, `/atletas/${randomUUID()}/foto`, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: new Uint8Array(5 * 1024 * 1024 - 1) });
+await verificar("corpo no limite das fotos (4 MB) atravessa o encaminhamento (resposta do backend, não da Vercel)", async () => {
+  const resposta = await pedir(publica, `/atletas/${randomUUID()}/foto`, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: new Uint8Array(4 * 1024 * 1024) });
   exigir(!resposta.headers.get("x-vercel-error"), `Vercel recusou: ${resposta.headers.get("x-vercel-error")} (${resposta.status})`);
   exigir(resposta.status === 401, `esperado 401 sem sessão, veio ${await status(resposta)}`);
 });
