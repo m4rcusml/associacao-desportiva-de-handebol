@@ -21,7 +21,7 @@ const producao = () => process.env.NODE_ENV === "production";
  */
 export const cookieArbitragem = (jogoId: string) => `${producao() ? "__Host-" : ""}handebol.arbitragem.${jogoId.toLowerCase()}`;
 
-function lerCookie(request: Request, nome: string): string | undefined {
+export function lerCookie(request: Request, nome: string): string | undefined {
   for (const parte of (request.headers.cookie ?? "").split(";")) {
     const separador = parte.indexOf("=");
     if (separador > 0 && parte.slice(0, separador).trim() === nome) return decodeURIComponent(parte.slice(separador + 1).trim());

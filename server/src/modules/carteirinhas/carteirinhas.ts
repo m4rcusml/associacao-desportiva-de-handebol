@@ -44,7 +44,7 @@ export async function consultarPropria(db: Leitor, atletaId: string) {
 /**
  * Identificação mínima a partir do QR (RF-005, RNF-004/012): somente carteirinha, código, status e nome.
  * Não autentica ninguém, não expõe e-mail, foto, clube ou outros dados, e QR substituído não é reconhecido.
- * A decisão de elegibilidade fica no credenciamento (MAR-67).
+ * A decisão de elegibilidade fica no credenciamento (`participacoes/credenciamento.ts`).
  */
 export async function identificarPorQr(db: Leitor, tokenQr: string) {
   const carteirinha = await db.carteirinha.findUnique({ where: { tokenQr }, select: {

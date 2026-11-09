@@ -352,8 +352,9 @@ model Arbitragem {
 /// Participação do atleta no jogo (RF-016 a RF-023, RN-014/019/020): escolha preliminar do técnico,
 /// credenciamento e entrada em quadra são etapas separadas no mesmo registro, sem criar equipe.
 /// Aponta para o vínculo e a inscrição da época: transferência posterior não reescreve o registro.
-/// MAR-64 grava somente a escolha (`escolhidaPorTecnicoId`/`escolhidaEm`, autoria da escolha vigente);
-/// credenciamento, camisa e entrada vêm na MAR-67, já com as restrições da migração `escalacao`.
+/// MAR-64 grava a escolha (`escolhidaPorTecnicoId`/`escolhidaEm`, autoria da escolha vigente); a MAR-67, o
+/// credenciamento pela arbitragem (carteirinha, data e camisa juntos, definitivos até a MAR-71) e a entrada em quadra
+/// (uma vez, com o jogo em andamento). Triggers das migrações `escalacao` e `credenciamento` repetem as regras.
 model Participacao {
   id                    String         @id @default(uuid()) @db.Uuid
   jogoId                String         @db.Uuid
