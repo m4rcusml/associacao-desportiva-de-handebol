@@ -228,8 +228,9 @@ atual − 1 e `justificativa` de 1 a 500 caracteres) reduz suspensão manual ou 
 `quantidadeJogos` continua sendo a punição original; `quantidadeAtual` é o total vigente e `reducoes` lista cada
 decisão (total anterior e novo, presidente, justificativa e data). O saldo é `quantidadeAtual` menos os jogos já
 cumpridos, nunca negativo: cinco jogos com dois cumpridos reduzidos para três deixam um; para um ou dois, nenhum,
-sem apagar cumprimentos nem compensar ausências. Repetir o total vigente devolve `alterado: false`; total igual ou
-maior que o atual, ou suspensão cumprida, revogada, anulada ou com saldo encerrado, responde 409. O recálculo
+sem apagar cumprimentos nem compensar ausências. Informar o total atual já definido por redução (inclusive herdada)
+devolve `alterado: false`; sem redução, informar o total original responde 409, como qualquer total igual ou maior
+que o atual, ou suspensão cumprida, revogada, anulada ou com saldo encerrado. O recálculo
 automático não altera o total reduzido, e a automática recriada para o mesmo atleta/jogo/regra depois de uma
 anulação herda o menor total já decidido (redução herdada, sem presidente nem justificativa próprios, apontando para
 a decisão original em `herdadaDeReducaoId`). Anular a ocorrência de origem segue anulando a automática reduzida, com

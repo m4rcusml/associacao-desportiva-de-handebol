@@ -661,8 +661,19 @@ test("redução da automática: recálculo não aumenta, anulação preserva a d
     [[1, 0, null, null, decisao.id]]);
   await (await jogo()).credenciar(ana);
 
-  // A herança exige automática anterior anulada do mesmo atleta/jogo/regra também no banco.
-  await assert.rejects(prisma.reducaoSuspensao.create({ data: {
-    id: randomUUID(), suspensaoId: daCarla, quantidadeAnterior: 1, novaQuantidade: 0, herdadaDeReducaoId: decisao.id, reduzidaEm: new Date(),
-  } }));
+  // A herança exige automática anterior anulada do mesmo atleta/jogo/regra também no banco: recusada em automática
+  // vigente de outro atleta e em manual vigente da própria Ana.
+  const outro = await jogo();
+  const pBruno = await outro.credenciar(bruno);
+  await outro.iniciar();
+  await outro.lancar(pBruno, "temp_cartaoVermelho", { relatorioDisciplinar: true });
+  await outro.encerrar();
+  const doBruno = (await listar()).find(s => s.atleta.id === bruno && s.situacao === "vigente")!;
+  const manual = await ok<Suspensao>(request("POST", `/campeonatos/${campeonato}/suspensoes`, presidente.cookie,
+    { atletaId: ana, quantidadeJogos: 2, motivo: "Conduta" }), 201);
+  for (const [suspensaoId, quantidadeAnterior] of [[doBruno.id, 1], [manual.id, 2]] as const) {
+    await assert.rejects(prisma.reducaoSuspensao.create({ data: {
+      id: randomUUID(), suspensaoId, quantidadeAnterior, novaQuantidade: 0, herdadaDeReducaoId: decisao.id, reduzidaEm: new Date(),
+    } }), /Redução herdada exige/);
+  }
 });

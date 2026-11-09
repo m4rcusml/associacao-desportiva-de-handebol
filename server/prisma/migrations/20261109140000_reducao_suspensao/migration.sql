@@ -96,6 +96,21 @@ $$;
 CREATE TRIGGER "ReducaoSuspensao_validacao" BEFORE INSERT OR UPDATE OR DELETE ON "ReducaoSuspensao"
   FOR EACH ROW EXECUTE FUNCTION validar_reducao_suspensao();
 
+-- Decisão sem efeito é recusada: no commit, a suspensão (se ainda existir) deve ter total atual no máximo igual ao
+-- novo total decidido, ou seja, `quantidadeReduzida` atualizada na mesma transação.
+CREATE FUNCTION exigir_reducao_aplicada() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF EXISTS(SELECT 1 FROM "Suspensao" WHERE id = NEW."suspensaoId"
+            AND COALESCE("quantidadeReduzida", "quantidadeJogos") > NEW."novaQuantidade") THEN
+    RAISE EXCEPTION 'Redução registrada exige o total da suspensão atualizado na mesma transação' USING ERRCODE = '23514';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER "ReducaoSuspensao_aplicada" AFTER INSERT ON "ReducaoSuspensao"
+  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION exigir_reducao_aplicada();
+
 -- Regras das migrações `suspensoes` e `suspensao_automatica`, acrescidas de: suspensão nasce sem redução e sem
 -- justificativa de revogação; o total reduzido só diminui, acompanhado do registro da decisão; revogar exige
 -- justificativa, e a revogação (com a justificativa) continua definitiva.

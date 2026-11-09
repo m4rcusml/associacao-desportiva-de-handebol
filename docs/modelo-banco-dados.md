@@ -172,7 +172,9 @@ anterior, `reduzidaEm`; CHECK: decisão do presidente com `reduzidaPorPresidente
 justificativa, que é definitiva com a revogação; `quantidadeReduzida` só diminui, em suspensão não revogada, anulada
 nem encerrada, acompanhada da decisão registrada a partir do total atual. A decisão bloqueia a suspensão
 (`FOR UPDATE`), exige saldo a cumprir e é imutável (exclusão só em cascata); a herdada exige automática anterior
-anulada do mesmo atleta/jogo/regra e repete o total da decisão de origem. Cumprimento e credenciamento passam a
+anulada do mesmo atleta/jogo/regra e repete o total da decisão de origem. Um constraint trigger diferido
+(`DEFERRABLE INITIALLY DEFERRED`, no commit) recusa a decisão cuja suspensão, se ainda existir, não tenha o total
+atual atualizado para no máximo o novo total, impedindo decisão sem efeito. Cumprimento e credenciamento passam a
 usar o total atual (`COALESCE(quantidadeReduzida, quantidadeJogos)`).
 A migração `lancamentos` (MAR-68) cria `LancamentoJogo` (`operacaoId` UUID único enviado pelo cliente, `jogoId`,
 `participacaoId`, `tipo` com os quatro valores `temp_`, `valor` e `registradoEm`) e as views `EstatisticasDoJogo`

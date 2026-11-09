@@ -25,7 +25,7 @@ export const openapiSuspensoes = {
   },
   "/campeonatos/{campeonatoId}/suspensoes/{suspensaoId}/reduzir": {
     post: { summary: "Presidente reduz suspensão manual ou automática vigente para um novo total (0 até o total atual − 1), com justificativa. Preserva a punição original, as reduções anteriores e os cumprimentos; o saldo é o novo total menos os jogos cumpridos, nunca negativo, sem compensar ausências. O recálculo automático posterior não aumenta o total reduzido", security, parameters: decisao, requestBody: { required: true, ...json(z.toJSONSchema(reducaoSuspensaoSchema, { io: "input" })) }, responses: {
-      "200": resposta(`{ suspensao, alterado }; alterado é false quando o total já era o informado. suspensao: ${suspensao}`), ...negado,
+      "200": resposta(`{ suspensao, alterado }; alterado é false quando o total atual já foi definido por redução (inclusive herdada) com o valor informado; sem redução, informar o total original responde 409, como qualquer total igual ou maior que o atual. suspensao: ${suspensao}`), ...negado,
       "404": resposta("Suspensão não encontrada neste campeonato"),
       "409": resposta("Novo total não menor que o atual, ou suspensão cumprida, revogada, anulada ou com saldo encerrado com o campeonato"),
     } },

@@ -437,7 +437,7 @@ test("redução define novo total, preserva original, histórico e cumprimentos;
   assert.deepEqual([decisao.quantidadeAnterior, decisao.novaQuantidade, decisao.justificativa, decisao.reduzidaPor?.id, decisao.herdadaDeReducaoId],
     [5, 3, "Recurso parcialmente deferido", presidente.id, null]);
   assert.ok(decisao.reduzidaEm);
-  // Repetir o mesmo total não registra nova decisão; aumentar ou manter o total atual é recusado.
+  // Repetir o total já definido por redução devolve alterado: false sem nova decisão; aumentar é recusado.
   const repeticao = await reduzida(campeonato, daAna.id, 3);
   assert.deepEqual([repeticao.alterado, repeticao.suspensao.reducoes.length], [false, 1]);
   assert.equal((await reduzir(campeonato, daAna.id, 4)).status, 409);
@@ -496,6 +496,19 @@ test("redução: validações, permissões, estados recusados e proteção no ba
   // Saldo encerrado com o campeonato não é reduzido.
   assert.equal((await request("POST", `/campeonatos/${campeonato}/encerrar`, presidente.cookie)).status, 200);
   assert.equal((await reduzir(campeonato, daAna.id, 1)).status, 409);
+});
+
+test("banco recusa no commit a decisão de redução sem o total da suspensão atualizado", async () => {
+  const { ana, campeonato } = await cenario();
+  const daAna = await suspender(campeonato, ana.id, 3);
+  await assert.rejects(prisma.$transaction(tx => tx.reducaoSuspensao.create({ data: {
+    id: randomUUID(), suspensaoId: daAna.id, quantidadeAnterior: 3, novaQuantidade: 1, justificativa: "Decisão órfã",
+    reduzidaPorPresidenteId: presidente.id, reduzidaEm: new Date(),
+  } })), /total da suspensão atualizado/);
+  const consultada = await (await request("GET", `/campeonatos/${campeonato}/suspensoes`, presidente.cookie)).json() as Suspensao[];
+  const semReducao = consultada.find(s => s.id === daAna.id)!;
+  assert.deepEqual([semReducao.quantidadeAtual, semReducao.reducoes, semReducao.situacao], [3, [], "vigente"]);
+  assert.equal(await prisma.reducaoSuspensao.count({ where: { suspensaoId: daAna.id } }), 0);
 });
 
 test("redução aguarda o cumprimento em andamento e o cumprimento aguarda a redução", async () => {
