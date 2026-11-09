@@ -46,10 +46,10 @@ andamento; o clube vem da participação, cada ocorrência vale 1, o reenvio da 
 desempenho são calculados dos lançamentos. Correção e anulação continuam na MAR-70.
 Detalhe aprovado por Marcus (MAR-68, 08/11/2026): o lançamento exige somente o credenciamento do atleta no jogo;
 não exige entrada em quadra registrada nem conta ativa, porque registra o que ocorreu na partida.
-Limitação temporária da MAR-67, aprovada por Marcus em 08/11/2026: credenciamento e entrada não podem
-ser alterados nesta entrega. Correção de camisa e estorno do credenciamento ficam para a MAR-71,
-preservadas as permissões finais descritas na seção 11. Repetir o credenciamento com a mesma camisa
-não tem efeito; com outra camisa, a operação é recusada.
+Repetir o credenciamento com a mesma camisa não tem efeito; com outra camisa, a operação é recusada e a
+mudança passa pela correção de camisa. Desde a MAR-71, a arbitragem corrige a camisa até o encerramento e
+desfaz o credenciamento sem entrada nem lançamentos; depois do encerramento, o presidente corrige a camisa
+(seção 11). A entrada em quadra continua sem alteração.
 Detalhes aprovados por Marcus (MAR-65): a primeira senha é gerada na primeira consulta pelo presidente
 ou por conta designada; antes disso não há entrada por senha. Ela ignora maiúsculas, espaços e hífens.
 Cada entrada por senha gera um registro próprio com o nome informado, sem presumir identidade. A sessão
@@ -445,6 +445,13 @@ correspondentes; descrevem comportamento aprovado, ainda não implementado.
 - Arbitragem pode desfazer credenciamento antes do encerramento somente sem entrada em quadra
   e sem gols/penalidades registrados. Casos com entrada/lançamentos são corrigidos pelo presidente,
   com histórico. O procedimento dessas correções complexas ainda precisa ser detalhado (PEN-019).
+  Detalhes aprovados por Marcus (MAR-71, 09/11/2026): a correção informa a camisa atual vista por quem corrige, e o estorno, a camisa do
+  credenciamento a desfazer; divergência é conflito com o registro atual, e repetir a operação já feita não tem
+  efeito. Lançamento anulado também impede o estorno, porque continua apontando a participação. O estorno mantém
+  a escolha do técnico e permite novo credenciamento pelas regras normais. Cada correção e estorno fica em
+  histórico próprio com a cópia do credenciamento, sem autoria (como na MAR-70). O presidente corrige somente
+  a camisa, após o encerramento, inclusive de atleta que entrou ou tem lançamentos; estorno pelo presidente
+  aguarda a PEN-019.
 - Presidente pode substituir o código QR da mesma carteirinha, invalidando o anterior e
   preservando credenciamentos existentes. Leitura automática não ganha conferência manual obrigatória.
   Detalhes aprovados por Marcus (MAR-58): o histórico de invalidações, reativações e substituições

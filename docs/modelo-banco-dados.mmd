@@ -154,6 +154,19 @@ classDiagram
         uuid tecnicoId
         datetime ocorridoEm
     }
+    class AlteracaoCredenciamento {
+        uuid id
+        uuid jogoId
+        uuid inscricaoClubeId
+        uuid vinculoClubeId
+        uuid atletaId
+        uuid carteirinhaId
+        datetime credenciadoEm
+        string tipo
+        int numeroCamisaAnterior
+        int numeroCamisaNova
+        datetime registradaEm
+    }
     class AcessoArbitragem {
         uuid jogoId
         string senhaHash
@@ -241,6 +254,7 @@ classDiagram
     Tecnico "0..1" -- "0..*" Participacao : escolhe atleta
     Jogo "1" -- "0..*" AlteracaoEscalacao : historico da escalacao
     Tecnico "1" -- "0..*" AlteracaoEscalacao : inclui ou retira
+    Jogo "1" -- "0..*" AlteracaoCredenciamento : historico de camisa e estorno
     Jogo "1" -- "0..1" AcessoArbitragem : configura acesso temporario
     Jogo "1" -- "0..*" Arbitragem : recebe arbitros
     Usuario "0..1" -- "0..*" Arbitragem : pode atuar como arbitro

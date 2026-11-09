@@ -247,9 +247,131 @@ export async function registrarEntrada(tx: Tx, jogoId: string, token: string | u
   if (status !== "em_andamento") throw new ConflictException("A entrada em quadra é registrada somente com o jogo em andamento.");
   const conta = await tx.usuario.findUniqueOrThrow({ where: { id: atletaId }, select: { ativo: true } });
   if (!conta.ativo) throw new ConflictException("Atleta com conta desativada não pode entrar em quadra.");
-  const { count } = await tx.participacao.updateMany({ where: { id: existente.id, entrouEmQuadraEm: null }, data: { entrouEmQuadraEm: new Date() } });
+  // Estorno concorrente (MAR-71) bloqueia a linha antes: a gravação condicional não acontece e a resposta é 409.
+  const { count } = await tx.participacao.updateMany({ where: { id: existente.id, credenciadoEm: { not: null }, entrouEmQuadraEm: null }, data: { entrouEmQuadraEm: new Date() } });
   const atual = await credenciamentoDoAtleta(tx, jogoId, atletaId);
-  return { participacao: apresentar(atual!), alterado: count > 0 };
+  if (!atual) throw new ConflictException("Somente atleta credenciado neste jogo pode entrar em quadra.");
+  return { participacao: apresentar(atual), alterado: count > 0 };
+}
+
+/** Correção de camisa (MAR-71): a camisa conhecida por quem corrige torna a disputa reconhecível (PEN-023). */
+export const correcaoCamisaSchema = z.strictObject({ numeroCamisaAtual: camisa, numeroCamisa: camisa })
+  .refine(d => d.numeroCamisaAtual !== d.numeroCamisa, "A correção deve alterar a camisa.");
+/** Estorno (MAR-71): a camisa do credenciamento a desfazer confirma qual credenciamento quem estorna viu. */
+export const estornoSchema = z.strictObject({ numeroCamisa: camisa });
+
+/** Quem altera o credenciamento: a arbitragem até o encerramento e o presidente depois (seção 11). */
+type Corretor = "arbitragem" | "presidente";
+
+const selecaoAlteracao = {
+  id: true, tipo: true, inscricaoClubeId: true, credenciadoEm: true, numeroCamisaAnterior: true, numeroCamisaNova: true, registradaEm: true,
+  atleta: { select: { usuario: { select: { id: true, nomeCompleto: true } } } },
+} satisfies Prisma.AlteracaoCredenciamentoSelect;
+
+function apresentarAlteracao(a: Prisma.AlteracaoCredenciamentoGetPayload<{ select: typeof selecaoAlteracao }>) {
+  return {
+    id: a.id, tipo: a.tipo, inscricaoId: a.inscricaoClubeId, atleta: a.atleta.usuario, credenciadoEm: a.credenciadoEm,
+    numeroCamisaAnterior: a.numeroCamisaAnterior, numeroCamisaNova: a.numeroCamisaNova, registradaEm: a.registradaEm,
+  };
+}
+
+/**
+ * Credenciamento do atleta no jogo com bloqueio exclusivo (FOR UPDATE): correções e estornos simultâneos se
+ * enfileiram, e lançamento ou entrada em curso (que bloqueiam ou alteram a mesma linha) terminam antes ou veem o resultado.
+ */
+async function bloquearCredenciamento(tx: Tx, jogoId: string, atletaId: string) {
+  const [linha] = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "Participacao" WHERE "jogoId" = ${jogoId}::uuid AND "atletaId" = ${atletaId}::uuid AND "credenciadoEm" IS NOT NULL FOR UPDATE`;
+  return linha ? tx.participacao.findUniqueOrThrow({ where: { id: linha.id }, select: selecaoParticipacao }) : null;
+}
+
+/** Credenciamento diferente do informado por quem corrige: recusado sem sobrescrever, com o registro atual (PEN-023). */
+function credenciamentoMudou(atual: LinhaParticipacao) {
+  return new ConflictException({
+    statusCode: 409, error: "Conflict",
+    message: `O credenciamento mudou: o atleta está com a camisa ${atual.numeroCamisa}. Consulte o registro atual e tente novamente.`,
+    participacao: apresentar(atual),
+  });
+}
+
+/** Grava no histórico a cópia do credenciamento vigente, na mesma transação da alteração (o trigger exige). */
+async function registrarAlteracao(tx: Tx, participacaoId: string, tipo: "correcao_camisa" | "estorno", numeroCamisaNova: number | null) {
+  const [{ id }] = await tx.$queryRaw<{ id: string }[]>`
+    INSERT INTO "AlteracaoCredenciamento" (id, "jogoId", "inscricaoClubeId", "vinculoClubeId", "atletaId", "carteirinhaId", "credenciadoEm", tipo, "numeroCamisaAnterior", "numeroCamisaNova", "registradaEm")
+    SELECT gen_random_uuid(), "jogoId", "inscricaoClubeId", "vinculoClubeId", "atletaId", "carteirinhaId", "credenciadoEm", ${tipo}::"TipoAlteracaoCredenciamento", "numeroCamisa", ${numeroCamisaNova}, now()
+    FROM "Participacao" WHERE id = ${participacaoId}::uuid
+    RETURNING id`;
+  return tx.alteracaoCredenciamento.findUniqueOrThrow({ where: { id }, select: selecaoAlteracao });
+}
+
+/**
+ * Correção da camisa (MAR-71; seção 11): pela arbitragem até o encerramento, inclusive após a entrada em quadra, e
+ * depois somente pelo presidente; preserva a camisa anterior no histórico. A camisa continua única no clube/jogo
+ * (RN-019); a disputa simultânea fica com a primeira e as demais recebem 409. Corrigir para a camisa que o atleta já
+ * tem devolve `alterado: false` (reenvio). Ordem dos bloqueios: jogo → participação (FOR UPDATE).
+ */
+async function corrigirCamisa(tx: Tx, corretor: Corretor, status: StatusJogo, jogoId: string, atletaId: string, dados: z.infer<typeof correcaoCamisaSchema>) {
+  if (corretor === "presidente" && status !== "finalizado") {
+    throw new ConflictException("O presidente corrige a camisa somente após o encerramento do jogo; antes, quem corrige é a arbitragem.");
+  }
+  const atual = await bloquearCredenciamento(tx, jogoId, atletaId);
+  if (!atual) throw new ConflictException("O atleta não está credenciado neste jogo.");
+  if (atual.numeroCamisa === dados.numeroCamisa) return { participacao: apresentar(atual), alterado: false };
+  if (atual.numeroCamisa !== dados.numeroCamisaAtual) throw credenciamentoMudou(atual);
+  const ocupada = await tx.participacao.findFirst({ where: { jogoId, inscricaoClubeId: atual.inscricaoClubeId, numeroCamisa: dados.numeroCamisa }, select: { id: true } });
+  if (ocupada) throw new ConflictException(`A camisa ${dados.numeroCamisa} já está em uso por outro atleta deste clube no jogo.`);
+
+  const alteracao = await registrarAlteracao(tx, atual.id, "correcao_camisa", dados.numeroCamisa);
+  await tx.participacao.update({ where: { id: atual.id }, data: { numeroCamisa: dados.numeroCamisa } });
+  const corrigida = await credenciamentoDoAtleta(tx, jogoId, atletaId);
+  return { participacao: apresentar(corrigida!), alteracao: apresentarAlteracao(alteracao), alterado: true };
+}
+
+export async function corrigirCamisaPelaArbitragem(tx: Tx, jogoId: string, token: string | undefined, atletaId: string, dados: z.infer<typeof correcaoCamisaSchema>) {
+  const { status } = await revalidarArbitragem(tx, jogoId, token);
+  return corrigirCamisa(tx, "arbitragem", status, jogoId, atletaId, dados);
+}
+
+/** Presidente corrige a camisa somente após o encerramento, sem reabrir a arbitragem; o jogo fica em FOR SHARE. */
+export async function corrigirCamisaPeloPresidente(tx: Tx, jogoId: string, atletaId: string, dados: z.infer<typeof correcaoCamisaSchema>) {
+  const [jogo] = await tx.$queryRaw<{ status: StatusJogo }[]>`SELECT status FROM "Jogo" WHERE id = ${jogoId}::uuid FOR SHARE`;
+  if (!jogo) throw new NotFoundException("Jogo não encontrado.");
+  return corrigirCamisa(tx, "presidente", jogo.status, jogoId, atletaId, dados);
+}
+
+/**
+ * Arbitragem desfaz o credenciamento antes do encerramento (MAR-71; seção 11), somente sem entrada em quadra e sem
+ * gols/penalidades registrados (inclusive anulados, que preservam a participação no histórico). Grava a cópia do
+ * credenciamento no histórico e retira carteirinha, data e camisa; a escolha do técnico, se houver, permanece, e sem
+ * ela a participação é excluída. O atleta pode ser credenciado de novo pelas regras normais. Casos com entrada ou
+ * lançamentos ficam com o presidente, cujo procedimento ainda está pendente (PEN-019 residual).
+ * Repetir o estorno já feito devolve `alterado: false`. Ordem: jogo → arbitragem → sessão → participação (FOR UPDATE).
+ */
+export async function estornarCredenciamento(tx: Tx, jogoId: string, token: string | undefined, atletaId: string, dados: z.infer<typeof estornoSchema>) {
+  await revalidarArbitragem(tx, jogoId, token);
+  const atual = await bloquearCredenciamento(tx, jogoId, atletaId);
+  if (!atual) {
+    const anterior = await tx.alteracaoCredenciamento.findFirst({
+      where: { jogoId, atletaId, tipo: "estorno" }, orderBy: [{ registradaEm: "desc" }, { id: "desc" }], select: selecaoAlteracao,
+    });
+    if (anterior?.numeroCamisaAnterior === dados.numeroCamisa) return { estorno: apresentarAlteracao(anterior), alterado: false };
+    throw new ConflictException("O atleta não está credenciado neste jogo.");
+  }
+  if (atual.numeroCamisa !== dados.numeroCamisa) throw credenciamentoMudou(atual);
+  if (atual.entrouEmQuadraEm) {
+    throw new ConflictException("Atleta que já entrou em quadra não tem o credenciamento desfeito pela arbitragem; a correção cabe ao presidente, com procedimento ainda pendente (PEN-019).");
+  }
+  if (await tx.lancamentoJogo.count({ where: { participacaoId: atual.id } }) > 0) {
+    throw new ConflictException("Atleta com gols ou penalidades registrados não tem o credenciamento desfeito pela arbitragem; a correção cabe ao presidente, com procedimento ainda pendente (PEN-019).");
+  }
+
+  const estorno = await registrarAlteracao(tx, atual.id, "estorno", null);
+  if (atual.escolhidaEm) {
+    await tx.participacao.update({ where: { id: atual.id }, data: { carteirinhaId: null, credenciadoEm: null, numeroCamisa: null } });
+  } else {
+    await tx.participacao.delete({ where: { id: atual.id } });
+  }
+  return { estorno: apresentarAlteracao(estorno), alterado: true };
 }
 
 /** Restrições do banco (camisa ou credenciamento simultâneos, estado alterado) chegam como 409. */

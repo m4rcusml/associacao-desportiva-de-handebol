@@ -207,10 +207,22 @@ credenciamento e o impedimento atual (`nao_aprovado`, `sem_vinculo_com_clubes_do
 credenciar. `POST .../credenciamentos` credencia por confirmação manual (`atletaId`) ou QR (`tokenQr`), sempre
 com `numeroCamisa` (inteiro não negativo, único no clube e jogo): as duas formas aplicam as mesmas regras, e o
 QR válido confirma automaticamente. Vale antes do início e durante a partida, para escalados ou não. Repetir com
-a mesma camisa (QR repetido, reenvio) devolve `alterado: false`; com outra camisa, 409 (correção na MAR-71). QR
+a mesma camisa (QR repetido, reenvio) devolve `alterado: false`; com outra camisa, 409 (use a correção abaixo). QR
 substituído responde 404, e o QR sozinho não autoriza nada. `POST .../credenciamentos/{atletaId}/entrada`
 registra uma vez a entrada em quadra, somente com o jogo em andamento e a conta do atleta ativa. Suspensão,
 invalidação ou transferência posteriores preservam o credenciamento e não impedem a entrada.
+
+#### Correção de camisa e estorno do credenciamento (MAR-71)
+
+Até o encerramento, a arbitragem corrige a camisa em `POST .../credenciamentos/{atletaId}/camisa`
+(`{ numeroCamisaAtual, numeroCamisa }`), inclusive após a entrada em quadra, mantendo a camisa única no clube e jogo.
+`POST .../credenciamentos/{atletaId}/estorno` (`{ numeroCamisa }`) desfaz o credenciamento somente sem entrada em
+quadra e sem gols/penalidades registrados (inclusive anulados); a escolha do técnico permanece e o atleta pode ser
+credenciado de novo. A camisa informada diferente da atual é 409 com a `participacao` atual; repetir a operação já
+feita devolve `alterado: false`. Cada correção e estorno grava em `AlteracaoCredenciamento` a cópia do credenciamento
+alterado. Depois do encerramento, somente o presidente corrige a camisa, em
+`POST /api/jogos/{jogoId}/credenciamentos/{atletaId}/camisa`, sem reabrir a arbitragem. Estorno ou outra correção
+de atleta que entrou ou tem lançamentos fica para o presidente quando a PEN-019 for detalhada.
 
 #### Gols e penalidades (MAR-68)
 
@@ -580,6 +592,17 @@ anulações simultâneas do mesmo lançamento com uma vencedora e conflitos com 
 e a mesma anulação em paralelo gravadas uma vez; reenvio e reuso de `operacaoId`; rollback da correção e da anulação;
 correção e anulação pelo presidente somente após o encerramento, sem reabrir sessões nem repetir o cumprimento.
 Uma migração nova; nenhuma dependência nova. Não validado: notificação Socket.IO (MAR-73) e vencedor (MAR-72).
+
+Validação local da MAR-71 em 09/11/2026: lint, tipos/build, schema Prisma sem diferença para o banco migrado e
+**144 testes de integração aprovados**, incluindo sete novos: correção de camisa antes e durante o jogo e após a
+entrada, com camisa única no clube (aceita em outro clube), reenvio sem efeito, camisa atual divergente recusada com o
+registro atual e histórico; estorno com e sem escolha do técnico, reenvio, novo credenciamento e camisa liberada;
+estorno recusado após entrada e após lançamento, inclusive anulado; regras repetidas no banco (alteração sem
+histórico, cópia divergente, data retroativa, histórico imutável, estorno com lançamento); camisa disputada, correção
+contra estorno e a mesma correção em paralelo; lançamento e entrada contra estorno nos dois sentidos e entrada após
+correção, com espera real no bloqueio; encerramento aguardando a correção e, depois, correção somente pelo presidente.
+Uma migração nova; nenhuma dependência nova. Não validado: notificação Socket.IO (MAR-73) e correções complexas do
+presidente (PEN-019 residual).
 
 ## Caminho feliz
 

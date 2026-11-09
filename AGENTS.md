@@ -31,6 +31,7 @@ Consulte os documentos conforme a tarefa, mantendo as definições detalhadas em
 
 - Faça a menor alteração que resolva o pedido e preserve mudanças existentes que não pertençam à tarefa.
 - Ao revisar uma PR, leia a descrição e todos os comentários existentes, incluindo comentários de revisão no código, para considerar esclarecimentos e decisões registrados na discussão.
+- Se a revisão identificar erros, lance um subagente para corrigi-los. Se alguma decisão ou comportamento precisar de validação do usuário, pergunte antes de prosseguir com essa parte. Após as correções, revise novamente e execute as verificações aplicáveis; se não houver problemas pendentes e as verificações passarem, faça o merge da PR sem pedir nova autorização.
 - Consulte os scripts e comandos no README e nos manifests. Execute as verificações adequadas à alteração e informe o que foi validado e o que permanece pendente.
 - A interface atual em `client/` é experimental e serve apenas para testar a integração; pode ser alterada ou descartada a qualquer momento. A UX final ainda não foi iniciada: não a infira da interface atual nem trate mudanças nesta como decisões de UX.
 - Ao finalizar uma funcionalidade no backend, priorize testes no próprio backend. Crie um frontend básico para testar a integração somente se necessário e após confirmar com o usuário essa necessidade e o escopo da interface.

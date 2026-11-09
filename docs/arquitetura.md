@@ -272,6 +272,14 @@ arbitragem → sessão → conta → carteirinha → vínculo, a mesma da escala
 `atletasComSuspensaoVigente`. A gravação é condicional (`UPDATE ... WHERE credenciadoEm IS NULL` ou
 `INSERT ... ON CONFLICT DO NOTHING`): o mesmo atleta em paralelo termina com `alterado: false`, e a camisa
 disputada fica com o primeiro, o segundo recebendo 409. O trigger repete as regras no banco.
+Correção de camisa e estorno (MAR-71): na mesma transação, jogo (`FOR SHARE`, pela revalidação da arbitragem ou
+pela leitura do presidente) → participação credenciada (`FOR UPDATE`) → histórico (`AlteracaoCredenciamento`) →
+alteração ou exclusão da participação. O `FOR UPDATE` enfileira correções e estornos do mesmo atleta e conflita com o
+`FOR SHARE` da participação feito pelo lançamento: um termina antes e o outro vê o resultado (estorno recusado por
+lançamento, ou lançamento recusado por participação já desfeita). A entrada em quadra grava com
+`WHERE credenciadoEm IS NOT NULL`, então aguarda o estorno e é recusada. Encerramento (`FOR NO KEY UPDATE` do jogo)
+aguarda a correção em curso. Camisa disputada por dois atletas cai no índice único e vira 409. O trigger exige o
+registro do histórico da mesma transação para aceitar a camisa nova ou a retirada do credenciamento.
 Lançamentos (MAR-68): `resultados/lancamentos.ts` registra gols e penalidades pela sessão temporária, na ordem
 jogo → arbitragem → sessão (`revalidarArbitragem`) → participação (`FOR SHARE`, para o estorno da MAR-71 aguardar)
 → inserção. O identificador de operação é `LancamentoJogo.operacaoId` (UNIQUE): `INSERT ... ON CONFLICT DO NOTHING`

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { credenciamentoSchema, leituraQrArbitragemSchema } from "./credenciamento.js";
+import { correcaoCamisaSchema, credenciamentoSchema, estornoSchema, leituraQrArbitragemSchema } from "./credenciamento.js";
 
 const json = (schema: object) => ({ content: { "application/json": { schema } } });
 const resposta = (description: string) => ({ description });
@@ -8,6 +8,7 @@ const uuidParam = (name: string) => ({ name, in: "path", required: true, schema:
 const jogo = [uuidParam("jogoId")];
 const impedimentos = "nao_aprovado, sem_vinculo_com_clubes_do_jogo, conta_desativada, carteirinha_invalidada ou suspensao";
 const participacao = "participacaoId, inscricaoId, atleta {id, nomeCompleto}, numeroCamisa, credenciadoEm, entrouEmQuadraEm (ou null) e escalado (escolha preliminar do técnico)";
+const alteracao = "id, tipo (correcao_camisa ou estorno), inscricaoId, atleta {id, nomeCompleto}, credenciadoEm, numeroCamisaAnterior, numeroCamisaNova (null no estorno) e registradaEm";
 const indisponivel = {
   "401": resposta("Sem cookie temporário, sessão revogada/expirada, designação retirada, conta designada desativada ou sessão de conta de origem encerrada"),
   "403": resposta("Fora do dia do jogo no fuso do local, jogo sem data, finalizado ou cancelado, vínculo impeditivo da arbitragem designada ou origem não autorizada"),
@@ -39,7 +40,28 @@ export const openapiCredenciamento = {
     post: { summary: "Arbitragem confirma uma vez que o atleta credenciado entrou em quadra, com o jogo em andamento; repetir não tem efeito. Sem corpo", security, parameters: [...jogo, uuidParam("atletaId")], responses: {
       "200": resposta(`{ participacao, alterado }; alterado é false quando a entrada já estava registrada. participacao: ${participacao}`),
       "400": resposta("UUID inválido ou corpo não vazio"), ...indisponivel, "404": resposta("Jogo ou atleta não encontrado"),
-      "409": resposta("Atleta não credenciado neste jogo, jogo ainda não iniciado ou conta do atleta desativada"),
+      "409": resposta("Atleta não credenciado neste jogo (inclusive estorno concorrente), jogo ainda não iniciado ou conta do atleta desativada"),
+    } },
+  },
+  "/arbitragem/jogos/{jogoId}/credenciamentos/{atletaId}/camisa": {
+    post: { summary: "Arbitragem corrige a camisa do atleta credenciado até o encerramento, inclusive após a entrada em quadra, mantendo a camisa única no clube/jogo e o histórico. numeroCamisaAtual é a camisa que quem corrige viu", security, parameters: [...jogo, uuidParam("atletaId")], requestBody: { required: true, ...json(z.toJSONSchema(correcaoCamisaSchema)) }, responses: {
+      "200": resposta(`{ participacao, alteracao, alterado }; alterado é false (sem alteracao) quando o atleta já está com a camisa pedida. participacao: ${participacao}. alteracao: ${alteracao}`),
+      "400": resposta("UUID ou corpo inválido, camisas iguais, negativas ou não inteiras, campos adicionais"), ...indisponivel, "404": resposta("Jogo não encontrado"),
+      "409": resposta(`Atleta não credenciado neste jogo, camisa em uso por outro atleta do clube ou credenciamento alterado por outra operação (corpo com a participacao atual)`),
+    } },
+  },
+  "/arbitragem/jogos/{jogoId}/credenciamentos/{atletaId}/estorno": {
+    post: { summary: "Arbitragem desfaz o credenciamento antes do encerramento, somente sem entrada em quadra e sem gols/penalidades registrados (inclusive anulados). Preserva o histórico e a escolha do técnico; o atleta pode ser credenciado de novo. numeroCamisa confirma o credenciamento a desfazer", security, parameters: [...jogo, uuidParam("atletaId")], requestBody: { required: true, ...json(z.toJSONSchema(estornoSchema)) }, responses: {
+      "200": resposta(`{ estorno, alterado }; alterado é false quando o mesmo estorno já foi feito (reenvio). estorno: ${alteracao}`),
+      "400": resposta("UUID ou corpo inválido, camisa negativa ou não inteira, campos adicionais"), ...indisponivel, "404": resposta("Jogo não encontrado"),
+      "409": resposta("Atleta não credenciado neste jogo, já entrou em quadra ou tem lançamentos (correção pelo presidente pendente, PEN-019), ou credenciamento alterado por outra operação (corpo com a participacao atual)"),
+    } },
+  },
+  "/jogos/{jogoId}/credenciamentos/{atletaId}/camisa": {
+    post: { summary: "Presidente corrige a camisa somente após o encerramento do jogo, sem reabrir a arbitragem, mantendo a camisa única no clube/jogo e o histórico", security: [{ sessionCookie: [] }], parameters: [...jogo, uuidParam("atletaId")], requestBody: { required: true, ...json(z.toJSONSchema(correcaoCamisaSchema)) }, responses: {
+      "200": resposta(`{ participacao, alteracao, alterado }, como na correção pela arbitragem`),
+      "400": resposta("UUID ou corpo inválido"), "401": resposta("Sem sessão"), "403": resposta("Conta não é presidente ativo"), "404": resposta("Jogo não encontrado"),
+      "409": resposta("Jogo não finalizado, atleta não credenciado, camisa em uso ou credenciamento alterado por outra operação"),
     } },
   },
 };

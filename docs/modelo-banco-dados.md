@@ -114,9 +114,18 @@ participações e histórico em cascata (somente fixtures; a aplicação não ex
 A migração `credenciamento` (MAR-67) substitui a função do trigger de `Participacao`: novo credenciamento
 exige também jogo agendado ou em andamento, atleta aprovado, conta ativa, a carteirinha ativa do próprio atleta
 (`FOR SHARE`) e nenhuma suspensão vigente no campeonato; carteirinha, data e camisa ficam imutáveis depois de
-gravadas (correções: MAR-71); `entrouEmQuadraEm` é gravado uma vez, com o jogo em andamento e a conta do atleta
+gravadas (exceções da MAR-71 abaixo); `entrouEmQuadraEm` é gravado uma vez, com o jogo em andamento e a conta do atleta
 ativa, e não muda. As condições valem só no momento da gravação: credenciamento anterior a invalidação,
 suspensão ou transferência continua válido.
+A migração `correcao_credenciamento` (MAR-71) cria `AlteracaoCredenciamento`, histórico somente de inclusão das
+correções de camisa e dos estornos: tipo (`correcao_camisa` ou `estorno`), cópia do credenciamento alterado (jogo,
+inscrição, vínculo, atleta, carteirinha, data e camisa anterior), `numeroCamisaNova` (só na correção, diferente da
+anterior) e `registradaEm`, sem autoria (RN-030, PEN-007). Não referencia a participação, que pode deixar de existir.
+O trigger do histórico exige a cópia exata do credenciamento vigente e `registradaEm` = data da transação, recusa
+alteração e só permite exclusão na cascata do jogo. O trigger de `Participacao` passa a aceitar: mudança só da
+camisa com o jogo agendado, em andamento ou finalizado; retirada de carteirinha, data e camisa (ou exclusão, quando
+não há escolha) com o jogo agendado ou em andamento, sem entrada e sem lançamentos, inclusive anulados. As duas
+exigem o registro correspondente no histórico na mesma transação; a unicidade da camisa continua no índice.
 A migração `sessoes_arbitragem` (MAR-65) acrescenta `Arbitragem.visualizacao` (linha/banco) e
 `acessouEm`, `AcessoArbitragem` (`senhaHash` scrypt, `senhaCifrada` AES-256-GCM com prefixo `v1.`,
 `geradaEm`, `revogadoEm`; PK/FK `jogoId`) e `SessaoArbitragem` (`metodoEntrada`, `tokenHash` SHA-256 único,
