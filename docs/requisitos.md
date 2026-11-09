@@ -30,9 +30,15 @@ Desde a MAR-64, o técnico aprovado atual escala atletas do próprio clube até 
 escalação é preliminar e credenciamento e entrada em quadra continuam na MAR-67.
 Desde a MAR-65, a arbitragem entra no dia do jogo (fuso do local) pela conta designada ou por nome e
 senha do jogo, com sessão temporária própria; presidente e contas designadas consultam e trocam a senha.
-Início e encerramento do jogo pela arbitragem continuam na MAR-69.
 Desde a MAR-66, o presidente aplica, consulta e revoga suspensões manuais; encerrar/cancelar o campeonato
-encerra os saldos. O cumprimento no encerramento do jogo está pronto para a MAR-69.
+encerra os saldos.
+Desde a MAR-69, a arbitragem autorizada inicia o jogo no dia marcado e um único árbitro o encerra; o encerramento
+registra o cumprimento das suspensões e revoga senha e sessões na mesma transação. O presidente adia (nova senha,
+sessões dos dois métodos revogadas) ou cancela (acessos revogados, sem cumprimento). Repetir início, encerramento
+ou cancelamento devolve o estado com `alterado: false`; o reenvio do encerramento não reabre o acesso.
+Comportamento adotado na MAR-69, a confirmar por Marcus na PR: somente jogo agendado é adiado ou cancelado (jogo em
+andamento segue para encerramento ou para os casos excepcionais da MAR-72); o adiamento aceita jogo sem nova data
+e recusa data local já passada.
 Desde a MAR-67, a arbitragem autorizada credencia por confirmação manual ou QR, com a camisa do jogo e as
 mesmas regras de elegibilidade, e registra uma vez a entrada em quadra com o jogo em andamento.
 Desde a MAR-68, a arbitragem autorizada registra gols e penalidades `temp_` do atleta credenciado com o jogo em

@@ -32,8 +32,8 @@ function apresentar(l: LinhaLancamento) {
   };
 }
 
-/** Placar do jogo pela projeção `EstatisticasDoJogo`; null antes do início (RN-033). */
-async function placar(tx: Tx, jogoId: string) {
+/** Placar do jogo pela projeção `EstatisticasDoJogo`; null antes do início (RN-033). Também usado no encerramento (MAR-69). */
+export async function placar(tx: Tx, jogoId: string) {
   const jogo = await tx.jogo.findUniqueOrThrow({ where: { id: jogoId }, select: {
     inscricaoClubeA: { select: { id: true, clube: { select: { id: true, nome: true } } } },
     inscricaoClubeB: { select: { id: true, clube: { select: { id: true, nome: true } } } },

@@ -305,7 +305,8 @@ model InscricaoClube {
 /// Jogo agendado pelo presidente (MAR-62) entre inscrições distintas do próprio campeonato (RN-022).
 /// `inicioPrevistoEm` é o instante (UTC) e `fusoHorario` o nome IANA do local, validado pelo trigger da
 /// migração `jogos_arbitragem`; o dia do jogo é calculado nesse fuso, nunca no do navegador.
-/// Agendar não inicia o jogo: `iniciadoEm`/`encerradoEm`, adiamento e resultados vêm nas tarefas seguintes.
+/// Agendar não inicia o jogo. Ciclo (MAR-69): a arbitragem grava `iniciadoEm` (em andamento) e `encerradoEm`
+/// (finalizado); o presidente adia (nova data, mesmo status) ou cancela. Transições validadas pelo trigger da migração `ciclo_jogo`.
 model Jogo {
   id                    String         @id @default(uuid()) @db.Uuid
   campeonatoId          String         @db.Uuid

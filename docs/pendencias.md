@@ -131,7 +131,7 @@ não opções ainda em avaliação. Situação atualizada das decisões técnica
   HTTP validados. Client não usa SSR de sessão; será preciso validar seu repasse de cookies/cache
   quando introduzido. Arbitragem temporária (MAR-65) validada localmente: cookie separado por jogo,
   revalidação transacional e revogação concorrente com troca de senha, retirada e desativação. Escritas
-  esportivas reais (MAR-67 a 69) e revogação Socket.IO continuam fora da entrega, assim como TLS/proxy/cookies hospedados. Recuperação e prova
+  esportivas reais e o ciclo do jogo foram validados localmente (MAR-67 a 69); revogação Socket.IO continua fora da entrega, assim como TLS/proxy/cookies hospedados. Recuperação e prova
   de reset seguem adiadas. A escolha está encerrada; a PEN-030 **não está totalmente encerrada**.
   Regras atuais da arbitragem substituem as pendências
   históricas da conclusão: PEN-022 e PEN-021 resolvidas.

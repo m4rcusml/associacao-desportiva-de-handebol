@@ -43,6 +43,7 @@ server/
       clubes/
       competicoes/
       participacoes/     # Escalação (MAR-64) e credenciamento/entrada em quadra (MAR-67)
+      jogos/             # Agendamento e designação (MAR-62); ciclo do jogo (MAR-69)
       arbitragem/        # Acesso temporário e senha do jogo (MAR-65)
       suspensoes/        # Suspensões manuais e cumprimento (MAR-66)
       resultados/        # Lançamentos de gols e penalidades (MAR-68)
@@ -243,8 +244,8 @@ senha (acesso `FOR UPDATE`, depois sessões), retirada da designação (exclusã
 (conta `FOR UPDATE`) e logout aguardam a transação autorizada ou são vistos por ela, sem ciclo de bloqueios.
 `revalidarArbitragemOuEncerramento` reconhece o reenvio de quem teve a sessão revogada pelo próprio
 encerramento (`jogo_encerrado`) sem autorizar outra operação. `encerrarAcessoArbitragem` (encerramento e
-cancelamento) e `renovarSenha` (troca e adiamento) ficam prontos para a MAR-69; o cancelamento do campeonato
-já revoga, na mesma transação, os acessos dos jogos que cancela.
+cancelamento) e `renovarSenha` (troca e adiamento) são usados pelo ciclo do jogo (MAR-69); o cancelamento do
+campeonato revoga, na mesma transação, os acessos dos jogos que cancela.
 Conta própria (MAR-59): `PATCH /api/conta` altera somente o nome da conta da sessão. A transação
 bloqueia a linha `Usuario` com `FOR UPDATE`, recusa conta já desativada (401) e grava
 `Usuario.nomeCompleto` e `AuthUser.name` juntos; falha em qualquer gravação desfaz as duas. As rotas
@@ -281,6 +282,15 @@ lista de lançamentos em uma única instrução SQL, compartilhando o mesmo snap
 a revalidação mantém seus bloqueios e o isolamento READ COMMITTED. O trigger
 repete no banco jogo em andamento e participação credenciada do mesmo jogo, e torna o lançamento somente de
 inclusão até a MAR-70. O encerramento (MAR-69) altera a linha do jogo e por isso aguarda lançamentos em curso.
+Ciclo do jogo (MAR-69): `jogos/ciclo.ts` inicia e encerra pela sessão temporária e adia ou cancela pelo
+presidente. Toda operação bloqueia campeonato (`FOR SHARE`) → jogo (`FOR NO KEY UPDATE`), a mesma ordem do
+cancelamento do campeonato (campeonato `FOR UPDATE` → jogos), e só então revalida a arbitragem. O bloqueio do
+jogo conflita com o `FOR SHARE` de entrada, credenciamento, lançamentos e gestão da senha: essas operações
+terminam antes ou veem o novo status e a sessão revogada. Início e encerramento simultâneos ocorrem em
+sequência; o segundo devolve `alterado: false`. O encerramento grava status, chama `registrarCumprimentos` e
+`encerrarAcessoArbitragem` na mesma transação; o reenvio pela sessão revogada com `jogo_encerrado` recebe só a
+confirmação (jogo e placar). O adiamento chama `renovarSenha` (se a senha já foi emitida) e revoga as sessões
+restantes com `jogo_adiado`. Um trigger repete no banco as transições permitidas do jogo.
 
 Onze testes de integração passaram: privilégios, restrições SQL, falhas/repetições, cookies
 locais e Secure na configuração de produção, origem/CORS, expiração, múltiplos dispositivos,
