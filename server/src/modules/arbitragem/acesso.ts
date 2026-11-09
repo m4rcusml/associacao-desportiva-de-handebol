@@ -170,6 +170,13 @@ const acessoIndisponivel = () => new UnauthorizedException("Acesso de arbitragem
 async function revalidar(tx: Tx, jogoId: string, token: string | undefined, reconhecerEncerramento: boolean): Promise<ArbitragemAutorizada | { situacao: "jogo_encerrado"; jogoId: string }> {
   if (!token) throw acessoIndisponivel();
   const jogo = await bloquearJogo(tx, jogoId);
+  // A retirada exclui Arbitragem antes das sessões por cascata. Use a mesma ordem;
+  // KEY SHARE impede a exclusão sem bloquear alterações de visualização.
+  const [arbitragem] = await tx.$queryRaw<{ id: string }[]>`
+    SELECT a.id FROM "Arbitragem" a JOIN "SessaoArbitragem" s ON s."arbitragemId" = a.id
+    WHERE s."tokenHash" = ${hashToken(token)} AND a."jogoId" = ${jogoId}::uuid
+    FOR KEY SHARE OF a`;
+  if (!arbitragem) throw acessoIndisponivel();
   const [sessao] = await tx.$queryRaw<SessaoLida[]>`
     SELECT s.id, s."arbitragemId", s."metodoEntrada", s."authSessionId", s."revogadaEm", s."motivoRevogacao", s."expiraEm" <= now() AS expirada,
       a."usuarioId", a."nomeCompleto"
@@ -200,8 +207,9 @@ async function revalidar(tx: Tx, jogoId: string, token: string | undefined, reco
 
 /**
  * Autorização da arbitragem para operações esportivas (RNF-003), a chamar dentro da transação de escrita,
- * antes de gravar. Bloqueia em modo compartilhado, nesta ordem: jogo → sessão temporária → conta designada →
- * sessão de conta de origem. Encerramento, adiamento, cancelamento, troca de senha, retirada da designação,
+ * antes de gravar. Bloqueia nesta ordem: jogo (SHARE) → arbitragem (KEY SHARE) → sessão temporária (SHARE) →
+ * conta designada (SHARE) → sessão de conta de origem (SHARE).
+ * Encerramento, adiamento, cancelamento, troca de senha, retirada da designação,
  * desativação e logout alteram ou removem essas linhas; por isso aguardam esta transação ou já são vistos
  * por ela, e uma autorização anterior não permite gravação posterior à revogação. A operação chamadora
  * ainda confere o status exigido (ex.: lançamentos só com o jogo em andamento).

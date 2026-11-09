@@ -7,7 +7,8 @@ import { hashPassword } from "better-auth/crypto";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
 import { createApp } from "../dist/app.js";
 import { PrismaService } from "../dist/infrastructure/prisma.service.js";
-import { encerrarAcessoArbitragem, revalidarArbitragem, revalidarArbitragemOuEncerramento } from "../dist/modules/arbitragem/acesso.js";
+import type { Prisma } from "../dist/generated/prisma/client.js";
+import { alterarVisualizacao, encerrarAcessoArbitragem, revalidarArbitragem, revalidarArbitragemOuEncerramento } from "../dist/modules/arbitragem/acesso.js";
 import { CofreSenhaArbitragem } from "../dist/modules/arbitragem/senha.js";
 
 assert.equal(process.env.INTEGRATION_TEST_RUNNER, "1", "Use npm run test:integration para preparar e bloquear o banco");
@@ -437,7 +438,7 @@ test("encerramento e cancelamento revogam tudo; reenvio do encerramento é recon
 });
 
 /** Mantém aberta uma transação que já revalidou a sessão, como faria uma escrita esportiva. */
-function autorizacaoEmCurso(jogoId: string, cookie: string) {
+function autorizacaoEmCurso(jogoId: string, cookie: string, gravar?: (tx: Prisma.TransactionClient) => Promise<void>) {
   let liberar!: () => void;
   const segurando = new Promise<void>(resolve => { liberar = resolve; });
   let autorizou!: () => void;
@@ -446,6 +447,7 @@ function autorizacaoEmCurso(jogoId: string, cookie: string) {
     await revalidarArbitragem(tx, jogoId, tokenDe(cookie));
     autorizou();
     await segurando;
+    await gravar?.(tx);
     return "gravou";
   }, { timeout: 15_000 });
   return { autorizada, liberar, transacao };
@@ -478,9 +480,16 @@ test("revogação concorrente aguarda a autorização em curso e vale para a ope
 
   assert.equal((await request("POST", `/contas/${tecnico.id}/reativacao`, presidente.cookie, {})).status, 200);
   const reativado = await entrarDesignado(id, { cookie: await login(tecnico.email) });
-  const retirada = await aguardaAutorizacao(() => request("DELETE", `/jogos/${id}/arbitragens/${arbitragemId}`, presidente.cookie), autorizacaoEmCurso(id, reativado));
+  // A retirada já está aguardando quando a operação autorizada atualiza Arbitragem.
+  // Sem bloquear a arbitragem antes da sessão, a exclusão em cascata fecha um deadlock.
+  const visualizacaoEmCurso = autorizacaoEmCurso(id, reativado, async tx => {
+    const resultado = await alterarVisualizacao(tx, id, tokenDe(reativado), "banco");
+    assert.equal(resultado.arbitragem.visualizacao, "banco");
+  });
+  const retirada = await aguardaAutorizacao(() => request("DELETE", `/jogos/${id}/arbitragens/${arbitragemId}`, presidente.cookie), visualizacaoEmCurso);
   assert.equal(retirada.status, 200);
   await assert.rejects(prisma.$transaction(tx => revalidarArbitragem(tx, id, tokenDe(reativado))), (e: unknown) => status(e) === 401);
+  assert.equal((await request("PUT", `/arbitragem/jogos/${id}/visualizacao`, reativado, { visualizacao: "linha" })).status, 401);
 });
 
 test("emissões e trocas simultâneas não deixam senha divergente entre hash e cópia cifrada", async () => {

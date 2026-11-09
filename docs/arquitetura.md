@@ -235,8 +235,9 @@ verificada por scrypt (`better-auth/crypto`) e guardada também cifrada com AES-
 `ARBITRAGEM_SENHA_CHAVE` (32 bytes hex, obrigatória na inicialização) e o `jogoId` como dado autenticado.
 A senha só aparece na resposta da consulta/troca; `Cache-Control: no-store` vale para toda a API.
 O dia do jogo é comparado no banco: `now()` e `inicioPrevistoEm` convertidos ao `fusoHorario` do jogo.
-`revalidarArbitragem(tx, jogoId, token)` é a autorização para as escritas esportivas: bloqueia, em
-`FOR SHARE` e nesta ordem, jogo → sessão temporária → conta designada → sessão de conta de origem, e confere
+`revalidarArbitragem(tx, jogoId, token)` é a autorização para as escritas esportivas: bloqueia, nesta
+ordem, jogo (`FOR SHARE`) → arbitragem (`FOR KEY SHARE`) → sessão temporária → conta designada → sessão de
+conta de origem (as três últimas em `FOR SHARE`), e confere
 revogação, expiração, status/dia, conta ativa e aprovada, impedimento de clube e sessão de origem. Troca de
 senha (acesso `FOR UPDATE`, depois sessões), retirada da designação (exclusão em cascata), desativação
 (conta `FOR UPDATE`) e logout aguardam a transação autorizada ou são vistos por ela, sem ciclo de bloqueios.
