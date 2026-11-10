@@ -2,8 +2,9 @@
 
 Projeto de uma aplicação para organizar clubes, atletas, campeonatos e jogos de handebol. A proposta
 reúne aprovação de cadastros, carteirinhas, credenciamento, arbitragem e histórico esportivo,
-apoiando o trabalho cotidiano da associação. Persistência e o fluxo mínimo de contas estão
-implementados localmente. Os fluxos esportivos descritos no caminho feliz continuam planejados.
+apoiando o trabalho cotidiano da associação. O backend implementa os fluxos de contas, clubes,
+competições, participação, arbitragem, disciplina e histórico descritos abaixo. A interface atual
+é experimental; a UX final permanece fora desta entrega.
 
 ## Documentação
 
@@ -458,7 +459,8 @@ origem/CSRF. Com `NODE_ENV=production`, API e cliente exigem URLs HTTPS na confi
 As páginas são cascas estáticas; os dados autenticados são consultados no navegador com
 `credentials: include` e `cache: no-store`. Não há SSR de sessão nesta entrega. Se for introduzido,
 será necessário repassar cookies ao Nest e testar isolamento por requisição e cache. HTTPS,
-encaminhamento do domínio público e cookies hospedados ainda precisam de prova online.
+encaminhamento do domínio público e cookies hospedados foram validados na MAR-76 e novamente
+na MAR-77, conforme as evidências e os limites registrados abaixo.
 
 ### Testes de integração
 
@@ -905,6 +907,45 @@ e pelo endpoint autenticado retornou HTTP 400 por falta de autorização. A leit
 Assim, Storage privado e envio/leitura hospedados foram validados sem extrair a chave secreta. WebSocket permanece
 fora do teste por decisão.
 
+## Validação integrada do backend (MAR-77)
+
+A jornada de [`server/test/jornada.integrada.integration.ts`](server/test/jornada.integrada.integration.ts)
+é descoberta pelo mesmo `npm run test:integration` e pelo check `Backend checks`. Usa o PostgreSQL dedicado,
+API HTTP em porta livre e dois dispositivos Socket.IO por long-polling, sem frontend. Somente o presidente
+inicial é preparado diretamente no banco; o procedimento restrito de criação tem sua prova em
+`presidentes.integration.ts`. Clubes, cadastros, aprovações e operações esportivas da jornada passam pela API.
+
+| Critério | Prova automatizada |
+| --- | --- |
+| Presidente → clubes/aprovações → campeonato/jogo → escalação → credenciamento → gols/penalidades → encerramento → histórico | Jornada integrada, com consultas HTTP e conferência dos registros persistidos. Escalação, credenciamento e entrada em quadra são verificados separadamente. |
+| Rejeição/reapresentação, troca de técnico, transferência bloqueada e QR substituído | Jornada integrada; permissões e concorrência detalhadas em `verificacoes`, `clubes`, `escalacao`, `transferencias`, `carteirinhas` e `credenciamento.integration.ts`. |
+| Disciplina paralela e jogos excepcionais | Jornada: vermelho com relatório gera uma automática; manual e automática de um jogo são cumpridas juntas pelo W.O. seguinte, sem duplicar no reenvio. `suspensoes`, `suspensao-automatica` e `jogos-excepcionais.integration.ts` cobrem redução, recálculo, interrupção/retomada, abandono, invalidação e demais exceções. |
+| Meia-noite no fuso do jogo | `arbitragem.integration.ts`: dia passado sem início recusa acesso; iniciado permite continuar após a virada. Datas são preparadas para esses estados, sem aguardar a meia-noite real. |
+| Revogação de dispositivos | Jornada: os dois dispositivos conectados são retirados ao encerrar e a escrita seguinte é recusada. `notificacoes.integration.ts` também cobre troca de senha, retirada de designação, logout, desativação, adiamento, cancelamento, reconexão e varredura. |
+| Reenvios, conflitos e rollback | Jornada: trigger diferido provoca falha no commit HTTP depois de gravar lançamento/outbox; nenhum dos dois persiste, o placar permanece zero e os dispositivos só recebem eventos confirmados. Reenvios simultâneos gravam um gol; conteúdo divergente com o mesmo `operacaoId` responde 409. Correções concorrentes são cobertas em `correcao-lancamentos.integration.ts`. |
+
+Não há novas rotas, alteração de contrato OpenAPI, dependências ou migrações na MAR-77. O trigger de falha existe
+somente durante o teste e é removido em `finally`; o lock do runner impede outra suíte no mesmo banco.
+As regras automáticas aprovadas na seção 12 dos requisitos foram implementadas na MAR-79, com redução e
+recálculo administrativo na MAR-84; esta validação não amplia essas regras.
+
+Smoke hospedado repetido em **09/11/2026** pelo domínio canônico
+`https://associacao-de-handebol.vercel.app` → Render: as dez verificações executadas passaram, incluindo
+saúde/readiness, recusa direta e de origem estranha, corpo de 4 MB, cookies seguros, isolamento de sessão/logout,
+envio/leitura real de foto com conta fictícia, limite de login com IPs forjados, long-polling com ping após 25,1 s e
+recusa do handshake sem autorização. A consulta REST opcional dos metadados do bucket não foi executada, por
+ausência das variáveis secretas no smoke; a prova de configuração privada da MAR-76 está registrada acima.
+Esse smoke verifica a infraestrutura hospedada; a jornada esportiva completa usa o banco local dedicado.
+
+Continuam fora desta prova: UX/navegadores/câmera, WebSocket hospedado (o teste usa polling por decisão), recuperação
+de senha/e-mail, produção, auditoria completa, backup/restauração e metas numéricas de desempenho/disponibilidade.
+As pendências PEN-007, PEN-017, PEN-025/PEN-026 e PEN-030/PEN-031 continuam em
+[`docs/pendencias.md`](docs/pendencias.md); vale o bloqueio de transferência já aprovado, sem presumir exceção
+para clube eliminado. Executar os fluxos não comprova aceitação integral de todos os RNFs.
+
+Para concluir a tarefa: evidências e limites na PR, check `Backend checks` aprovado no commit revisado,
+revisão por outro agente e merge. O implementador não revisa nem faz o merge da própria PR; Done somente após merge.
+
 ## Caminho feliz
 
 1. **Preparação pelo presidente:** o presidente pré-cadastrado cria os clubes. Atletas e
@@ -935,7 +976,8 @@ fora do teste por decisão.
 
 As decisões posteriores sobre exceções, fotos, fuso local, consulta da senha e ciclo de contas/
 competições estão em [requisitos, seção 11](docs/requisitos.md#11-esclarecimentos-para-o-planejamento-do-backend--07112026).
-São decisões para desenvolvimento, ainda sem implementação dos respectivos fluxos.
+Os respectivos fluxos foram implementados nas tarefas do backend; evidências e limites da
+validação integrada estão na seção da MAR-77.
 
 As métricas desta versão foram confirmadas na MAR-82 ([requisitos, seção 15](docs/requisitos.md#15-ficha-carteirinha-e-métricas--mar-82--09112026));
 os identificadores perderam o prefixo `temp_` na MAR-85. As exceções e decisões em aberto
