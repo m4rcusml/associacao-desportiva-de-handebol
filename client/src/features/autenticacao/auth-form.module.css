@@ -1,0 +1,64 @@
+.cabecalho {
+  position: relative;
+  overflow: hidden;
+  background: var(--quadra);
+  color: #ffffff;
+}
+
+.cabecalhoConteudo,
+.principal {
+  position: relative;
+  max-width: 30rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.cabecalhoConteudo {
+  padding-block: 1.5rem 1.75rem;
+}
+
+.marca {
+  margin: 0;
+  max-width: none;
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.titulo {
+  margin: 0.35rem 0 0;
+  font-family: var(--display);
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  font-weight: 700;
+  font-stretch: condensed;
+  line-height: 1.05;
+}
+
+.principal {
+  padding-block: 1.5rem 3rem;
+}
+
+.subtitulo {
+  margin: 0 0 0.5rem;
+  font-family: var(--display);
+  font-size: 1.5rem;
+}
+
+.texto {
+  margin: 0 0 1rem;
+  max-width: none;
+  line-height: 1.5;
+}
+
+.formulario {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 1.5rem;
+}
+
+.link {
+  color: var(--quadra);
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+}

@@ -1,0 +1,35 @@
+/*
+ * Tokens visuais da interface (azul de quadra e súmula). Aplicar `.tema` na raiz de cada área.
+ *
+ * `app/globals.css` estiliza elementos diretamente (main, h1, p, label, input, select, button, button:hover,
+ * button:disabled, form, :focus-visible). Os módulos da interface dão classe própria a cada elemento e
+ * redefinem :hover/:disabled dos botões, porque `button:hover` (0,1,1) venceria uma classe sozinha (0,1,0).
+ */
+.tema {
+  --quadra: #1b4d89;
+  --quadra-escura: #123764;
+  --tinta: #172238;
+  --suave: #4a576b;
+  --fundo: #eef2f6;
+  --superficie: #ffffff;
+  --divisa: #cad3de;
+  --sinal: #f4b63f;
+  --aprovado: #1d7046;
+  --aprovado-fundo: #e2f2e8;
+  --rejeitado: #ae2a22;
+  --rejeitado-fundo: #fbe7e5;
+  --pendente: #7a4f00;
+  --pendente-fundo: #fff0cc;
+  --display: Bahnschrift, "DIN Alternate", "DIN Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --texto: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  min-height: 100dvh;
+  background: var(--fundo);
+  color: var(--tinta);
+  font-family: var(--texto);
+}
+
+.tema :focus-visible {
+  outline: 3px solid var(--quadra);
+  outline-offset: 2px;
+}

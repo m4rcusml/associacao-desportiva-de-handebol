@@ -1,0 +1,141 @@
+.cabecalho {
+  position: relative;
+  overflow: hidden;
+  background: var(--quadra);
+  color: #ffffff;
+}
+
+.barra,
+.secoes {
+  position: relative;
+  max-width: 64rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding-block: 0.9rem 0.5rem;
+}
+
+.marca {
+  margin: 0;
+  max-width: none;
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.conta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.usuario {
+  opacity: 0.9;
+}
+
+.sair {
+  min-height: 2.5rem;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 0.3rem;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sair:hover:not(:disabled) {
+  background: #ffffff;
+  color: var(--quadra);
+}
+
+.sair:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.cabecalho .sair:focus-visible,
+.cabecalho .secao:focus-visible {
+  outline-color: var(--sinal);
+}
+
+.secoes {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+}
+
+/* Abas como marcação de quadra: a ativa ganha a linha branca embaixo. */
+.secao {
+  display: inline-block;
+  padding: 0.75rem 0 0.6rem;
+  border-bottom: 4px solid transparent;
+  color: #ffffff;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-decoration: none;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.secao:hover {
+  opacity: 1;
+}
+
+.secao[aria-current="page"] {
+  border-bottom-color: #ffffff;
+  opacity: 1;
+}
+
+.principal {
+  max-width: 64rem;
+  margin-inline: auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.situacao {
+  margin: 0;
+  color: var(--suave);
+}
+
+.repetir {
+  margin-top: 1rem;
+}
+
+.titulo {
+  margin: 0 0 0.75rem;
+  font-family: var(--display);
+  font-size: clamp(1.75rem, 6vw, 2.4rem);
+  font-weight: 700;
+  font-stretch: condensed;
+  line-height: 1.1;
+}
+
+.texto {
+  margin: 0;
+  max-width: 60ch;
+  line-height: 1.6;
+}
+
+@media (min-width: 48rem) {
+  .barra,
+  .secoes,
+  .principal {
+    padding-inline: 1.5rem;
+  }
+
+  .barra {
+    padding-top: 1.25rem;
+  }
+}

@@ -192,6 +192,19 @@ Client usa fetch com cookies e sem cache; as páginas são cascas estáticas, se
 Ao introduzir SSR autenticado, repassar cookies e provar isolamento/cache antes de utilizá-lo.
 O contrato mínimo é servido em `/api/openapi.json`, com schema de cadastro derivado da validação.
 
+A interface do presidente fica em `/presidente`, com consultas e operações reais pela API REST.
+O layout consulta a sessão para orientar a navegação; a autorização e a validação de cada operação
+continuam no backend. Atletas, técnicos e arbitragem ainda não têm suas interfaces completas.
+As consultas do presidente não assinam Socket.IO, reservado às sessões temporárias da arbitragem.
+O QR da carteirinha é renderizado localmente em SVG com `qrcode.react` **4.2.0**, compatível com
+o React instalado, sem enviar o token a um serviço externo ([documentação da biblioteca](https://github.com/zpao/qrcode.react)).
+
+A lista administrativa de atletas e técnicos agrega as consultas dos três estados de verificação;
+não há endpoint genérico de usuários. Conforme decisão de Marcus em 10/11/2026, a interface não
+amplia o backend para listar presidentes: gerencia os criados pela interface ou um ID informado.
+Os nomes e IDs lembrados no navegador ajudam a localizar essas contas; não comprovam sua situação
+atual e não incluem senhas. As operações seguem autorizadas e persistidas pelo backend.
+
 Autorização de domínio (MAR-54): `SessionGuard` resolve o ator (`carregarAtor`) a partir da sessão
 persistida — conta ativa, perfil, status de verificação e clube atual (vínculo aberto do atleta ou
 clube do técnico) — e o anexa à requisição (`@AtorAtual()`). Requisitos são declarados por

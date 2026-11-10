@@ -405,6 +405,49 @@ npm run start:dev
 A interface responde em `http://localhost:3000`; a API oferece `GET http://localhost:3001/api/health`.
 O endpoint de saúde confirma apenas que o processo HTTP está ativo; ainda não consulta o banco.
 
+#### Área do presidente (interface)
+
+`http://localhost:3000` leva a `/presidente`, que exige sessão de presidente: sem sessão, a interface envia
+para `/login`; atleta ou técnico autenticado vê apenas um aviso de acesso restrito e pode sair. A antiga
+`/amostra` redireciona para `/presidente`. Todas as áreas consomem a API REST real (`credentials: include`,
+`cache: no-store`); a área do presidente não usa Socket.IO e não se atualiza sozinha: cada tela relê os
+dados ao abrir, após cada operação confirmada ou quando o presidente pede atualização.
+
+| Área | Rotas | O que cobre |
+| --- | --- | --- |
+| Cadastros | `/presidente` | Solicitações de verificação por status, filtros e busca; aprovar ou rejeitar com confirmação. |
+| Pessoas | `/presidente/pessoas`, `/presidente/pessoas/{usuarioId}` | Atletas e técnicos conhecidos pelas verificações; ficha com desativação e reativação da conta, carteirinha (invalidar, reativar, substituir QR), foto, vínculos e transferência, e histórico esportivo. |
+| Clubes | `/presidente/clubes`, `/presidente/clubes/{clubeId}` | Criação e edição de clube; atribuir, substituir e desvincular técnico; elenco atual. |
+| Campeonatos | `/presidente/campeonatos`, `/presidente/campeonatos/{id}` | Criação, inscrições, transições de status, jogos e suspensões. |
+| Jogos | `/presidente/campeonatos/{id}/jogos/{jogoId}` | Administração do jogo e da arbitragem (incluindo a senha), consulta de escalações, credenciamentos, registros e resultado, e correções do presidente. |
+| Conta | `/presidente/conta` | Própria identificação, edição do nome (`PATCH /api/conta`), saída, criação de outro presidente (`POST /api/presidentes`) e desativação ou reativação de presidentes. |
+
+Sem alteração de e-mail, senha ou perfil e sem recuperação de senha, que continuam pendentes.
+A API não oferece listagem de presidentes nem consulta da situação de uma conta, e por decisão do usuário
+nenhum endpoint foi criado para isso. Por isso a área Conta gerencia apenas os presidentes criados naquela
+interface, guardados por presidente autenticado no `localStorage` do navegador (somente ID e nome, como
+referência local, sem senha e sem situação da conta), ou uma conta informada pelo ID. A confirmação mostra o
+ID completo e avisa que a operação vale para a conta correspondente: `POST /api/contas/{id}/desativacao|reativacao`
+não confere o perfil antes, e o perfil e a situação exibidos depois vêm da resposta do servidor. A interface
+recusa a própria conta e os IDs de atletas e técnicos conhecidos pelas verificações, que são geridos em Pessoas.
+
+Atletas, técnicos e arbitragem ainda não têm suas áreas operacionais completas: a área do presidente mostra o que eles fazem
+(escalação, credenciamento, entrada em quadra, lançamentos e encerramento) somente quando esses dados
+existem no banco. Para desenvolver localmente, `server/scripts/seed-frontend.ts` prepara essa massa
+simulando os demais atores pela própria API local. Em `server/`, com build feito e a API local iniciada:
+
+```sh
+node --env-file-if-exists=.env scripts/seed-frontend.ts
+```
+
+O script recusa `NODE_ENV=production` e exige banco, API e origem locais; não apaga dados nem reinicia o banco,
+e pode ser executado de novo para completar etapas faltantes. Sem `FRONTEND_SENHA`, gera uma senha aleatória
+na primeira execução; e-mail, senha e IDs ficam somente em `output/playwright/acesso-local.json`, ignorado
+pelo Git. A senha nunca é versionada nem trocada em contas existentes.
+
+Para testar o envio e a leitura de fotos sem Supabase, defina `FOTOS_DIRETORIO=.fotos-local`
+em `server/.env` antes de iniciar a API. O diretório de arquivos e o `.env` são ignorados pelo Git.
+
 | Operação | Em `client/` | Em `server/` |
 | --- | --- | --- |
 | Lint | `npm run lint` | `npm run lint` |
@@ -433,7 +476,8 @@ geradas pelo build. `build` gera o cliente Prisma antes de compilar. Um único `
    invalida ou reativa (`POST .../invalidacao` ou `.../reativacao`, corpo vazio) e substitui o QR
    (`POST .../substituicao-qr` com `versaoQr`, a versão a invalidar). `POST /api/carteirinhas/leitura`
    (`tokenQr` no corpo) devolve só carteirinha, código, status e nome; QR substituído responde 404.
-3. Entre em `/login`. A página inicial consulta `/api/sessao` e permite verificar `/api/protegida`.
+3. Entre em `/login`. A área `/presidente` consulta `/api/sessao` e apresenta os controles do presidente
+   autenticado; atletas e técnicos veem o aviso de área restrita enquanto suas interfaces não estão prontas.
 4. Recarregue para confirmar a sessão persistida. “Sair da conta” revoga somente a sessão atual
    no PostgreSQL e remove o cookie; outros dispositivos continuam autenticados.
 

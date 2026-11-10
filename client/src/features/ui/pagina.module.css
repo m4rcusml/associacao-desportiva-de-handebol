@@ -1,0 +1,442 @@
+/*
+ * Padrões de página das áreas do presidente (azul de quadra e súmula). Use junto de `controles.module.css`
+ * e dentro de `.tema` (`tema.module.css`). Os nomes das classes são contrato com as outras áreas: acrescente
+ * classes novas, mas não renomeie nem remova as existentes.
+ */
+
+/* Cabeçalho da página */
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.titulo {
+  margin: 0 0 0.35rem;
+  font-family: var(--display);
+  font-size: clamp(1.75rem, 6vw, 2.4rem);
+  font-weight: 700;
+  font-stretch: condensed;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.texto {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--suave);
+  line-height: 1.5;
+}
+
+/* Link de retorno à lista, acima do título de uma página de detalhe. */
+.voltar {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.6rem;
+  margin-bottom: 0.25rem;
+  color: var(--quadra);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.voltar:hover {
+  color: var(--quadra-escura);
+}
+
+/* Busca e filtros */
+
+.controles {
+  display: grid;
+  gap: 1rem;
+}
+
+.filtros {
+  display: grid;
+  gap: 0.6rem;
+}
+
+/* Mensagem de sucesso anunciada; mantém a altura para a lista não saltar. */
+.aviso {
+  margin: 1rem 0 0;
+  max-width: none;
+  min-height: 1.5rem;
+  color: var(--aprovado);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Afasta um bloco do conteúdo anterior quando não há `.aviso` entre eles. */
+.bloco {
+  margin-top: 1.25rem;
+}
+
+.carregando {
+  margin: 0.5rem 0;
+  color: var(--suave);
+}
+
+.resultado {
+  margin: 0.5rem 0 0.6rem;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--suave);
+}
+
+/* Lista em linhas, à maneira de uma súmula */
+
+.lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 2px solid var(--tinta);
+  background: var(--superficie);
+}
+
+.lista li {
+  border-bottom: 1px solid var(--divisa);
+}
+
+/* Linha clicável (botão ou link). Para linha sem ação, some `linhaEstatica`. */
+.linha {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "nome status"
+    "meta meta"
+    "data data";
+  gap: 0.15rem 0.75rem;
+  width: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0.85rem 1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--tinta);
+  font: inherit;
+  font-weight: 400;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.linha:hover {
+  background: #f3f6fa;
+}
+
+.linha:focus-visible {
+  outline-offset: -3px;
+}
+
+.linhaEstatica,
+.linhaEstatica:hover {
+  background: transparent;
+  cursor: default;
+}
+
+.linhaNome {
+  grid-area: nome;
+  font-size: 1.02rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.linhaMeta {
+  grid-area: meta;
+  color: var(--suave);
+  font-size: 0.92rem;
+}
+
+.linhaData {
+  grid-area: data;
+  color: var(--suave);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.linhaStatus {
+  grid-area: status;
+  align-self: start;
+}
+
+.vazio {
+  padding: 1.5rem 1rem;
+  border-top: 2px solid var(--tinta);
+  background: var(--superficie);
+}
+
+.vazioTexto {
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.acaoVazio {
+  margin-top: 1rem;
+}
+
+/* Detalhe em diálogo */
+
+.detalhe {
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.detalheTopo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fechar {
+  min-height: 2.6rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--divisa);
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--tinta);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.fechar:hover:not(:disabled) {
+  background: #e4eaf1;
+}
+
+.fechar:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.detalheNome {
+  margin: 0.9rem 0 0.75rem;
+  font-family: var(--display);
+  font-size: 1.7rem;
+  font-weight: 700;
+  font-stretch: condensed;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+/* Ficha de dados (dl): rótulo à esquerda, valor em destaque. */
+.ficha {
+  display: grid;
+  margin: 0 0 1.25rem;
+  border-top: 1px solid var(--divisa);
+}
+
+.ficha div {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--divisa);
+}
+
+.ficha dt {
+  color: var(--suave);
+  font-size: 0.9rem;
+}
+
+.ficha dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.erroDecisao {
+  margin-bottom: 1rem;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.acoes > button {
+  flex: 1 1 9rem;
+}
+
+/* Botões ao fim de um diálogo ou formulário, afastados do conteúdo acima. */
+.acoesFinais {
+  margin-top: 1.25rem;
+}
+
+.confirmacao {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.confirmacaoTexto {
+  margin: 0;
+  max-width: none;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Seções de uma página de detalhe: blocos de súmula com linha forte no topo. */
+
+.secoes {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.secao {
+  padding: 1rem 1rem 1.25rem;
+  border-top: 2px solid var(--tinta);
+  background: var(--superficie);
+}
+
+.secaoTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.secaoTitulo {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-stretch: condensed;
+  line-height: 1.2;
+}
+
+.secaoTexto {
+  margin: 0 0 0.75rem;
+  max-width: 60ch;
+  color: var(--suave);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* Formulários */
+
+.formulario {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 32rem;
+  margin: 0;
+}
+
+.camposLinha {
+  display: grid;
+  gap: 0.9rem;
+}
+
+/* Grade responsiva de campos (sem cartões): uma coluna no celular, quantas couberem em telas largas. */
+.campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.9rem 1rem;
+  align-items: end;
+}
+
+/* Subtítulo de bloco dentro da página ou de uma seção. */
+.subtitulo {
+  margin: 1.25rem 0 0.6rem;
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* Linha de lista com conteúdo e botões próprios (inscrições, jogos, presidentes): não é clicável inteira. */
+.linhaAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  padding: 0.85rem 1rem;
+}
+
+.linhaAcoes > :first-child {
+  display: grid;
+  flex: 1 1 14rem;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.linhaAcoes > :last-child:not(:first-child) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Números da súmula: valor grande sobre rótulo curto. */
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 1px;
+  margin: 0 0 1rem;
+  border: 1px solid var(--divisa);
+  background: var(--divisa);
+}
+
+.metricas div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--superficie);
+}
+
+.metricas dt {
+  color: var(--suave);
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.metricas dd {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+@media (min-width: 48rem) {
+  .filtros {
+    grid-template-columns: auto auto;
+    justify-content: start;
+    column-gap: 2rem;
+  }
+
+  .linha {
+    grid-template-columns: 1fr 12rem 7rem;
+    grid-template-areas:
+      "nome data status"
+      "meta data status";
+    align-items: center;
+    padding-inline: 1.25rem;
+  }
+
+  .linhaStatus {
+    align-self: center;
+    justify-self: end;
+  }
+
+  .secao,
+  .linhaAcoes {
+    padding-inline: 1.25rem;
+  }
+
+  .camposLinha {
+    grid-template-columns: 1fr 1fr;
+  }
+}
