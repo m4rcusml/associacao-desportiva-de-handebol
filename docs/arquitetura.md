@@ -566,6 +566,10 @@ Implantação de teste provisionada na MAR-76 (passo a passo e evidências do sm
   `/api/health/ready` (readiness com consulta ao banco, health check do Render).
 - As rewrites da Vercel não fazem upgrade para WebSocket. No teste, o Socket.IO usa long-polling pelo domínio
   público (decisão de Marcus em 09/11/2026). WebSocket exigiria domínio próprio compartilhado entre client e API.
+  Para o GET de polling que o navegador envia sem `Origin`, o proxy só recupera a própria origem quando
+  `Sec-Fetch-Site` é `same-origin` e o `Referer` tem a mesma origem do request. Origem explícita não é
+  substituída; nenhuma outra rota ou escrita recebe essa normalização. A validação estrita de origem,
+  segredo do proxy e sessão temporária do jogo continua no backend.
 - Render free sem pre-deploy: migrações versionadas aplicadas no fim do build; uma instância.
 - Banco pelo Session Pooler do Supabase (IPv4 e modo sessão, exigido pelo `LISTEN`), com TLS sem verificação do
   certificado (`sslmode=require&uselibpqcompat=true`) no teste; verificação com a CA do Supabase fica para produção.

@@ -14,6 +14,15 @@ export function proxy(request: NextRequest) {
   if (!origem || !segredo) return NextResponse.next();
   const ip = request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
   const headers = new Headers(request.headers);
+  // XHR GET no mesmo domínio omite Origin. Só o polling com metadados e Referer da própria página o recupera.
+  if (request.method === "GET" && /^\/api\/socket\.io\/?$/.test(request.nextUrl.pathname)
+      && !headers.has("origin") && headers.get("sec-fetch-site") === "same-origin") {
+    try {
+      if (new URL(headers.get("referer") ?? "").origin === request.nextUrl.origin) {
+        headers.set("origin", request.nextUrl.origin);
+      }
+    } catch { /* Referer ausente ou inválido conserva a recusa do backend. */ }
+  }
   headers.set("x-proxy-segredo", segredo);
   headers.set("x-cliente-ip", ip);
   const destino = new URL(`${request.nextUrl.pathname}${request.nextUrl.search}`, origem);

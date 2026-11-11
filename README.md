@@ -577,6 +577,12 @@ worker e não repetem automaticamente escritas. Sem `HANDEBOL_QA_ACESSO`, os gru
 ficam explicitamente não executados; isso não equivale ao aceite completo. A validação de clube
 no cadastro ainda precisa da API. A massa local recusa hospedagem e produção.
 
+Com o build de produção e a mesma API local iniciada, `npm run test:proxy` inicia um Next separado
+com encaminhamento para essa API e segredo fictício. Os três testes usam requisições reais do
+navegador pelo mesmo domínio, incluindo o GET de polling sem `Origin` nativo, recusas de origem
+e a exigência de sessão temporária no handshake. Não dependem da massa local nem de segredos hospedados;
+também são executados no CI, além da suíte integrada existente.
+
 Os cenários de teste criam registros fictícios isolados e preservam os existentes. Cadastros reais
 consomem o limite de cinco solicitações por 15 minutos; não repetir a suíte indiscriminadamente.
 Os resultados e limites da entrega ficam em [docs/frontend.md](docs/frontend.md), separados das
@@ -1002,6 +1008,10 @@ com 403 requisições e handshakes Socket.IO sem o segredo, exceto `/api/health`
 no domínio do client (`__Secure-`, `HttpOnly`, `SameSite=Lax`, sem `Domain`) e o acesso direto ao `onrender.com` não
 contorna os limites. As rewrites da Vercel não fazem upgrade para WebSocket: no teste, o Socket.IO funciona por
 **long-polling** (decisão de Marcus em 09/11/2026); um cliente Socket.IO deve usar `transports: ["polling"]`.
+O GET de polling do navegador no mesmo domínio pode omitir `Origin`. Somente nesse caminho e método,
+o proxy preenche o cabeçalho quando `Sec-Fetch-Site: same-origin` e um `Referer` com a mesma origem do
+request comprovam a navegação. Origem explícita, inclusive `null`, é preservada; outros caminhos,
+escritas e requisições sem essas duas evidências mantêm a validação anterior do backend.
 
 **Antes de criar recursos**, confira nas páginas oficiais os limites vigentes dos planos gratuitos: banco, Storage
 e pausa por inatividade no Supabase; suspensão por inatividade e horas mensais no Render free (a primeira requisição

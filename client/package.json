@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node src/features/tecnico/contratos.test.mjs && node src/features/arbitragem/teste.mjs",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "test:proxy": "playwright test --config playwright.proxy.config.ts"
   },
   "dependencies": {
     "jsqr": "1.4.0",
