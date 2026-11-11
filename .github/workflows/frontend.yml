@@ -79,6 +79,9 @@ jobs:
         run: |
           export HANDEBOL_QA_ACESSO="$GITHUB_WORKSPACE/output/playwright/acesso-local.json"
           npm run test:ui
+      - name: Same-origin polling through the real proxy
+        working-directory: client
+        run: npm run test:proxy
       - name: Sanitized visual evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v5

@@ -181,6 +181,13 @@ Limites: não houve teste com cliente, câmera física, ginásio ou dois aparelh
 
 O smoke pré-publicação da origem estável passou em saúde, proxy, origem, cookies, sessão/logout, foto e polling com ping de 25 s. A consulta de metadados privados do bucket não foi executada por ausência das variáveis opcionais; isso fica distinto da leitura autorizada de foto e da recusa sem sessão. Após merge, é obrigatório acompanhar os deploys correspondentes e repetir o smoke. O resultado de merge/publicação deve ser conferido na PR e no deploy; o aceite do cliente exige retorno real.
 
+A validação posterior com contas fictícias hospedadas encontrou uma lacuna desse smoke: o cliente Node
+enviava `Origin`, enquanto o GET de polling do navegador no mesmo domínio o omite. A regressão
+`npm run test:proxy` usa navegador → Next de produção → API real local e verifica esse caminho, as
+recusas sem evidências de mesma origem e a exigência de sessão de jogo. O proxy recupera a origem só
+nesse GET de Socket.IO com `Sec-Fetch-Site: same-origin` e `Referer` correspondente; regras do backend
+e demais requisições permanecem preservadas. O resultado hospedado da correção exige nova prova no deploy.
+
 ### Pronto para integrar
 
 Todos os perfis e capacidades mapeados; lint, tipos, build e testes aplicáveis aprovados; fluxos integrados e capturas revisados; sem regressões materiais ou mocks em produção; documentos atualizados; revisão independente concluída. Desvios e verificações não executadas ficam explícitos. A aceitação do cliente ainda pode estar pendente.
