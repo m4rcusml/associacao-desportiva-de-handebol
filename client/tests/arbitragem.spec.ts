@@ -243,42 +243,56 @@ test.describe("Arbitragem com API real", () => {
   test("dois dispositivos releem, reconectam e não restauram dados com GET atrasado após revogação", async ({ browser }) => {
     const mesa = await browser.newContext();
     const linha = await browser.newContext();
+    let liberar = () => {};
     try {
-      const jogo = await preparar(mesa);
+      const jogo = await test.step("Preparar jogo e os dois acessos", () => preparar(mesa));
       await pedir(linha.request, `${jogo.base}/entrada/senha`, { nomeCompleto: "Linha de QA frontend", senha: jogo.senha, visualizacao: "linha" });
       const paginaMesa = await mesa.newPage();
       const paginaLinha = await linha.newPage();
-      await Promise.all([abrir(paginaMesa, jogo), abrir(paginaLinha, jogo)]);
-      await paginaMesa.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
-      await expect(paginaLinha.getByLabel(/^Placar oficial\./)).toContainText("1");
-      await linha.setOffline(true);
-      await expect(paginaLinha.getByRole("button", { name: /^Gol, camisa 7,/ })).toBeDisabled();
-      await paginaMesa.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
-      await linha.setOffline(false);
-      await expect(paginaLinha.getByRole("button", { name: /^Gol, camisa 7,/ })).toBeEnabled();
-      await expect(paginaLinha.getByLabel(/^Placar oficial\./)).toContainText("2");
-      let liberar!: () => void;
+      await test.step("Releitura entre dispositivos e reconexão recuperam o placar", async () => {
+        await Promise.all([abrir(paginaMesa, jogo), abrir(paginaLinha, jogo)]);
+        await paginaMesa.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
+        await expect(paginaLinha.getByLabel(/^Placar oficial\./)).toContainText("1");
+        await linha.setOffline(true);
+        await expect(paginaLinha.getByRole("button", { name: /^Gol, camisa 7,/ })).toBeDisabled();
+        await paginaMesa.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
+        await linha.setOffline(false);
+        await expect(paginaLinha.getByRole("button", { name: /^Gol, camisa 7,/ })).toBeEnabled();
+        await expect(paginaLinha.getByLabel(/^Placar oficial\./)).toContainText("2");
+      });
       const aguardar = new Promise<void>(resolve => { liberar = resolve; });
-      let interceptou!: () => void;
-      const interceptada = new Promise<void>(resolve => { interceptou = resolve; });
+      let interceptada = false;
       let adiar = true;
       await paginaLinha.route(`**/api${jogo.base}/sessao`, async route => {
         if (!adiar) { await route.continue(); return; }
         adiar = false;
-        const resposta = await route.fetch();
-        interceptou();
+        const resposta = await transporteQA(`GET ${jogo.base}/sessao anterior à revogação`, () => route.fetch({ timeout: 15_000 }));
+        expect(resposta.status()).toBe(200);
+        interceptada = true;
         await aguardar;
         await route.fulfill({ response: resposta });
       });
-      await paginaLinha.getByRole("navigation", { name: "Áreas da arbitragem" }).getByRole("button", { name: "Opções", exact: true }).click();
-      await paginaLinha.getByRole("button", { name: "Atualizar dados do jogo" }).click();
-      await interceptada;
-      await pedir(presidente, `/jogos/${jogo.id}/arbitragem/senha/troca`, {});
-      await expect(paginaLinha.getByRole("heading", { name: "Seu acesso terminou" })).toBeVisible();
-      liberar();
-      await expect(paginaLinha.getByRole("button", { name: /^Gol, camisa 7,/ })).toHaveCount(0);
-      await expect(paginaLinha.getByLabel(/^Placar oficial\./)).toHaveCount(0);
-      await expect(paginaMesa.getByRole("heading", { name: "Seu acesso terminou" })).toBeVisible();
-    } finally { await Promise.all([mesa.close(), linha.close()]); }
+      await test.step("Evento confirmado inicia a consulta que será atrasada", async () => {
+        // A Linha pode já estar relendo por reconexão; um clique nela aguardaria o próprio GET retido.
+        await paginaMesa.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
+        await expect(paginaMesa.getByLabel(/^Placar oficial\./)).toContainText("3");
+        await expect.poll(() => interceptada, { timeout: 15_000, message: "GET autorizado da Linha retido antes da revogação" }).toBe(true);
+      });
+      await test.step("Troca da senha revoga ambos os dispositivos antes da resposta antiga", async () => {
+        await pedir(presidente, `/jogos/${jogo.id}/arbitragem/senha/troca`, {});
+        await expect(paginaLinha.getByRole("heading", { name: "Seu acesso terminou" })).toBeVisible();
+        await expect(paginaMesa.getByRole("heading", { name: "Seu acesso terminou" })).toBeVisible();
+      });
+      await test.step("Resposta antiga concluída não restaura dados privados", async () => {
+        const respostaAntiga = paginaLinha.waitForResponse(resposta => resposta.url().endsWith(`${jogo.base}/sessao`) && resposta.request().method() === "GET", { timeout: 15_000 });
+        liberar();
+        const resposta = await transporteQA("receber GET antigo após revogação", () => respostaAntiga);
+        const falha = await transporteQA("concluir GET antigo após revogação", () => resposta.finished());
+        expect(falha === null, "GET antigo concluiu após a revogação").toBe(true);
+        await expect(paginaLinha.getByRole("button", { name: /^Gol, camisa 7,/ })).toHaveCount(0);
+        await expect(paginaLinha.getByLabel(/^Placar oficial\./)).toHaveCount(0);
+        await expect(paginaLinha.getByRole("heading", { name: "Seu acesso terminou" })).toBeVisible();
+      });
+    } finally { liberar(); await Promise.all([mesa.close(), linha.close()]); }
   });
 });
