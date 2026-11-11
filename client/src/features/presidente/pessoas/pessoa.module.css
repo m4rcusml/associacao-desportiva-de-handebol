@@ -1,0 +1,137 @@
+/* Partes próprias do detalhe de pessoa; o restante vem de `ui/pagina.module.css`. */
+
+/* QR em fundo branco com margem silenciosa, legível por câmera mesmo em telas pequenas. */
+.qr {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  max-width: 20rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--divisa);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.qr svg {
+  width: 100%;
+  max-width: 14rem;
+  height: auto;
+}
+
+.qrLegenda {
+  display: grid;
+  gap: 0.15rem;
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.eventos,
+.jogos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--divisa);
+}
+
+.eventos li,
+.jogo {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--divisa);
+}
+
+.eventoNome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.eventoMeta {
+  color: var(--suave);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.marca {
+  font-size: 0.78rem;
+}
+
+.jogoTopo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* Placar como na súmula: números grandes, condensados e alinhados. */
+.placar {
+  flex: none;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.foto {
+  display: grid;
+  gap: 1rem;
+}
+
+.moldura {
+  display: grid;
+  place-items: center;
+  width: 9rem;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--divisa);
+  border-radius: 10px;
+  background: var(--fundo);
+  overflow: hidden;
+}
+
+.imagem {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.semFoto {
+  margin: 0;
+  padding: 0.5rem;
+  color: var(--suave);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.envio {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.previa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.imagemPrevia {
+  width: 5rem;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--divisa);
+  object-fit: cover;
+}
+
+@media (min-width: 40rem) {
+  .foto {
+    grid-template-columns: 9rem 1fr;
+  }
+}

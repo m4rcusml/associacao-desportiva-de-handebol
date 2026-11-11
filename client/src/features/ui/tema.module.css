@@ -1,0 +1,35 @@
+/* Tokens de DESIGN.md; nomes preservados para compor as áreas sobre uma única base visual. */
+.tema {
+  --quadra: #174f42;
+  --quadra-escura: #103d33;
+  --tinta: #182e29;
+  --suave: #566861;
+  --fundo: #f2f4f0;
+  --superficie: #ffffff;
+  --divisa: #d3ddd6;
+  --sinal: #805400;
+  --aprovado: #174f42;
+  --aprovado-fundo: #e5f1e9;
+  --rejeitado: #ab302b;
+  --rejeitado-fundo: #fcedeb;
+  --pendente: #805400;
+  --pendente-fundo: #fff3d2;
+  --clube-a: #285ca7;
+  --clube-a-fundo: #edf2fc;
+  --clube-b: #a44728;
+  --clube-b-fundo: #fbeee7;
+  --texto: var(--fonte-plex), "IBM Plex Sans", sans-serif;
+  --display: var(--texto);
+
+  min-height: 100dvh;
+  background: var(--fundo);
+  color: var(--tinta);
+  font-family: var(--texto);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.tema :focus-visible {
+  outline: 3px solid var(--clube-a);
+  outline-offset: 3px;
+}

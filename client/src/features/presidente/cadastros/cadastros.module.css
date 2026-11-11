@@ -1,0 +1,41 @@
+.composicao { display: grid; grid-template-columns: minmax(0, 430fr) minmax(0, 702fr); gap: 28px; align-items: start; margin-top: 20px; }
+.fila { display: grid; gap: 12px; min-width: 0; }
+.seletor { display: flex; gap: 4px; padding: 4px; background: var(--superficie); border-radius: 8px; }
+.seletor > button { flex: 1; }
+.lista { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.linha { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid transparent; border-radius: 0; background: var(--superficie); color: var(--tinta); text-align: left; }
+.linha:hover:not(:disabled) { background: var(--aprovado-fundo); }
+.linha[aria-pressed="true"] { border-color: var(--quadra); }
+.identidade { display: grid; gap: 4px; min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.identidade strong { font-size: 15px; line-height: 20px; font-weight: 600; }
+.identidade > span { color: var(--suave); font-size: 13px; font-weight: 400; }
+.acaoLinha { flex: 0 0 auto; font-size: 13px; font-weight: 600; }
+.ficha { min-width: 0; display: grid; gap: 16px; padding: 24px; border-radius: 12px; background: var(--superficie); }
+.ficha > span { justify-self: start; }
+.cabecalhoFicha { display: flex; gap: 12px; align-items: center; }
+.cabecalhoFicha > div { min-width: 0; }
+.nome { margin: 0 0 4px; font-size: 24px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.dados { display: grid; gap: 4px; margin: 0; }
+.dados > div { display: grid; grid-template-columns: minmax(100px, 140px) minmax(0, 1fr); gap: 12px; padding: 12px; align-items: baseline; }
+.dados dt { color: var(--suave); font-size: 13px; }
+.dados dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.rejeitar { min-height: 44px; border: 1px solid transparent; border-radius: 8px; background: var(--superficie); color: var(--tinta); }
+.rejeitar:hover:not(:disabled) { background: var(--rejeitado-fundo); color: var(--rejeitado); }
+.barraMobile { display: none; }
+.filtros { color: var(--suave); font-size: 13px; }
+.filtros summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.filtros[open] { display: grid; gap: 12px; }
+@media (max-width: 47.99rem) {
+  .composicao { display: block; margin-top: 12px; }
+  .atualizarDesktop { display: none; }
+  .barraMobile { display: flex; align-items: center; gap: 8px; }
+  .barraMobile > span { flex: 1; color: var(--suave); }
+  .barraMobile button { min-height: 44px; padding-inline: 10px; }
+  .fila { display: none; }
+  .filaAberta { display: grid; }
+  .fichaOculta { display: none; }
+  .ficha { padding: 16px; gap: 10px; }
+  .nome { font-size: 20px; }
+  .dados > div { grid-template-columns: minmax(80px, 1fr) minmax(0, 1.7fr); padding: 12px; }
+  .acaoLinha { max-width: 65px; }
+}

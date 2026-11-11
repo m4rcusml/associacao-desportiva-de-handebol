@@ -1,0 +1,141 @@
+{
+  "fileKey": "gwHYKm5u7V8uP1lXBmxPPG",
+  "sessionId": "ea74e7ca-c55e-45c7-a072-49d4d9d0e879",
+  "removedFrames": {
+    "4:3": [
+      {
+        "id": "52:523",
+        "name": "Anterior · 01 · Cadastros · /presidente"
+      },
+      {
+        "id": "52:591",
+        "name": "Anterior · 02 · Analisar cadastro · diálogo"
+      },
+      {
+        "id": "52:646",
+        "name": "Anterior · 03 · Pessoas · /presidente/pessoas"
+      },
+      {
+        "id": "52:717",
+        "name": "Anterior · 04 · Pessoa · /presidente/pessoas/{id}"
+      },
+      {
+        "id": "52:802",
+        "name": "Anterior · 05 · Clubes · /presidente/clubes"
+      },
+      {
+        "id": "52:857",
+        "name": "Anterior · 06 · Clube · /presidente/clubes/{id}"
+      },
+      {
+        "id": "52:920",
+        "name": "Anterior · 07 · Campeonatos · /presidente/campeonatos"
+      },
+      {
+        "id": "52:970",
+        "name": "Anterior · 08 · Campeonato · /presidente/campeonatos/{id}"
+      },
+      {
+        "id": "52:1045",
+        "name": "Anterior · 09 · Jogo · /presidente/campeonatos/{id}/jogos/{id}"
+      },
+      {
+        "id": "52:1129",
+        "name": "Anterior · 10 · Conta · /presidente/conta"
+      }
+    ],
+    "4:4": [
+      {
+        "id": "82:171",
+        "name": "Anterior · 01 · Jogos · /tecnico"
+      },
+      {
+        "id": "82:186",
+        "name": "Anterior · 02 · Escalação · /tecnico/jogos/{id}"
+      },
+      {
+        "id": "82:215",
+        "name": "Anterior · 03 · Meu clube · /tecnico/clube"
+      },
+      {
+        "id": "82:237",
+        "name": "Anterior · 04 · Conta · /tecnico/conta"
+      }
+    ],
+    "4:5": [
+      {
+        "id": "82:1122",
+        "name": "Anterior · 01 · Carteirinha · /atleta"
+      },
+      {
+        "id": "82:1151",
+        "name": "Anterior · 02 · QR ampliado · diálogo"
+      },
+      {
+        "id": "82:1169",
+        "name": "Anterior · 03 · Histórico · /atleta/historico"
+      },
+      {
+        "id": "82:1196",
+        "name": "Anterior · 04 · Conta · /atleta/conta"
+      },
+      {
+        "id": "82:1232",
+        "name": "Anterior · 05 · Cadastro pendente · /atleta"
+      },
+      {
+        "id": "82:1247",
+        "name": "Anterior · 06 · Cadastro rejeitado · /atleta"
+      }
+    ],
+    "4:6": [
+      {
+        "id": "11:2",
+        "name": "Anterior · 01 · Entrada · /arbitragem/jogos/{id}"
+      },
+      {
+        "id": "11:33",
+        "name": "Anterior · 02 · Antes do início · credenciamento"
+      },
+      {
+        "id": "11:98",
+        "name": "Anterior · 03 · Durante o jogo · Linha · mobile"
+      },
+      {
+        "id": "11:155",
+        "name": "Anterior · 04 · Durante o jogo · Banco"
+      },
+      {
+        "id": "11:217",
+        "name": "Anterior · 05 · Revisão de ocorrência · diálogo"
+      },
+      {
+        "id": "11:237",
+        "name": "Anterior · 06 · Credenciamento · diálogo"
+      },
+      {
+        "id": "11:255",
+        "name": "Anterior · 07 · Encerramento · recibo do POST"
+      },
+      {
+        "id": "11:282",
+        "name": "Anterior · 08 · Acesso revogado · estado"
+      },
+      {
+        "id": "39:2041",
+        "name": "Iteração anterior · Arbitragem · Mesa · Nova experiência"
+      },
+      {
+        "id": "39:2177",
+        "name": "Iteração anterior · Arbitragem · Linha · Celular"
+      }
+    ]
+  },
+  "removedComponents": [{"id":"4:37","name":"Botão","instanceCount":0,"legacyFont":true},{"id":"4:44","name":"Situação","instanceCount":0,"legacyFont":true},{"id":"4:45","name":"Campo","instanceCount":0,"legacyFont":true},{"id":"4:49","name":"Linha de lista","instanceCount":0,"legacyFont":true},{"id":"4:54","name":"Cabeçalho / Presidente","instanceCount":0,"legacyFont":true},{"id":"10:2","name":"Atleta / Linha","instanceCount":0,"legacyFont":true},{"id":"13:152","name":"Cabeçalho / atleta","instanceCount":0,"legacyFont":true},{"id":"13:159","name":"Cabeçalho / tecnico","instanceCount":0,"legacyFont":true},{"id":"13:164","name":"Cabeçalho / arbitragem-mobile","instanceCount":0,"legacyFont":true},{"id":"13:169","name":"Cabeçalho / arbitragem-desktop","instanceCount":0,"legacyFont":true}],
+  "componentsIndex": "92:6511",
+  "legacyAudit": {"pages": ["0:1", "4:2", "4:3", "4:4", "4:5", "4:6", "4:7"], "oldFramePrefixesRemaining": 0, "oldFrontendTextReferences": 0},
+  "reviewSafety": "Remoção ampla inicial recusada por auto-review. Leitura individual getInstancesAsync confirmou zero instâncias nos10 componentes legados Roboto. Remoção filtrada por ID exato, fonte legada e zero instâncias aprovada. Famílias atuais preservadas.",
+  "overview": "17:2",
+  "overviewCapture": ".impeccable/review/visao-geral-atual.png",
+  "scope": "Remoção autorizada de versões anteriores no Figma. Referências e ledgers históricos locais permanecem como registro, não como telas vigentes."
+}

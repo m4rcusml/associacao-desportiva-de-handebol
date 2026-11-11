@@ -1,0 +1,31 @@
+/* Partes próprias da área Conta; o restante vem de `ui/pagina.module.css` e `ui/controles.module.css`. */
+
+/* IDs: algarismos de largura fixa e quebra em qualquer ponto, para caber no celular. */
+.id {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ID em destaque na confirmação, como número de súmula a conferir. */
+.idConferencia {
+  composes: id;
+  margin: 0;
+  max-width: none;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--divisa);
+  border-radius: 8px;
+  background: var(--fundo);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Avisos de sucesso que citam IDs completos. */
+.avisoLongo {
+  overflow-wrap: anywhere;
+}
+
+.espaco {
+  margin-top: 0.6rem;
+}

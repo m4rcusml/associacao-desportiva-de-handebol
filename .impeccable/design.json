@@ -1,0 +1,430 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11T01:55:49Z",
+  "title": "Design System: Acesso, Arbitragem, Presidente, Atleta e Técnico · Proposta Figma",
+  "extensions": {
+    "colorMeta": {
+      "gym-background": {
+        "role": "neutral",
+        "displayName": "Fundo de ginásio",
+        "tonalRamp": [
+          "oklch(15.00% 0.00569 128.53)",
+          "oklch(26.43% 0.00569 128.53)",
+          "oklch(37.86% 0.00569 128.53)",
+          "oklch(49.29% 0.00569 128.53)",
+          "oklch(60.71% 0.00569 128.53)",
+          "oklch(72.14% 0.00569 128.53)",
+          "oklch(83.57% 0.00569 128.53)",
+          "oklch(95.00% 0.00569 128.53)"
+        ]
+      },
+      "panel-white": {
+        "role": "neutral",
+        "displayName": "Branco de painel",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "Tinta escura",
+        "tonalRamp": [
+          "oklch(15.00% 0.02973 177.86)",
+          "oklch(26.43% 0.02973 177.86)",
+          "oklch(37.86% 0.02973 177.86)",
+          "oklch(49.29% 0.02973 177.86)",
+          "oklch(60.71% 0.02973 177.86)",
+          "oklch(72.14% 0.02973 177.86)",
+          "oklch(83.57% 0.02973 177.86)",
+          "oklch(95.00% 0.02973 177.86)"
+        ]
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Tinta secundária",
+        "tonalRamp": [
+          "oklch(15.00% 0.02440 169.78)",
+          "oklch(26.43% 0.02440 169.78)",
+          "oklch(37.86% 0.02440 169.78)",
+          "oklch(49.29% 0.02440 169.78)",
+          "oklch(60.71% 0.02440 169.78)",
+          "oklch(72.14% 0.02440 169.78)",
+          "oklch(83.57% 0.02440 169.78)",
+          "oklch(95.00% 0.02440 169.78)"
+        ]
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "Divisória",
+        "tonalRamp": [
+          "oklch(15.00% 0.01432 155.56)",
+          "oklch(26.43% 0.01432 155.56)",
+          "oklch(37.86% 0.01432 155.56)",
+          "oklch(49.29% 0.01432 155.56)",
+          "oklch(60.71% 0.01432 155.56)",
+          "oklch(72.14% 0.01432 155.56)",
+          "oklch(83.57% 0.01432 155.56)",
+          "oklch(95.00% 0.01432 155.56)"
+        ]
+      },
+      "pine-action": {
+        "role": "primary",
+        "displayName": "Verde pinho de ação",
+        "tonalRamp": [
+          "oklch(15.00% 0.06201 174.47)",
+          "oklch(26.43% 0.06201 174.47)",
+          "oklch(37.86% 0.06201 174.47)",
+          "oklch(49.29% 0.06201 174.47)",
+          "oklch(60.71% 0.06201 174.47)",
+          "oklch(72.14% 0.06201 174.47)",
+          "oklch(83.57% 0.06201 174.47)",
+          "oklch(95.00% 0.06201 174.47)"
+        ]
+      },
+      "deep-pine": {
+        "role": "primary",
+        "displayName": "Verde profundo",
+        "tonalRamp": [
+          "oklch(15.00% 0.05177 175.29)",
+          "oklch(26.43% 0.05177 175.29)",
+          "oklch(37.86% 0.05177 175.29)",
+          "oklch(49.29% 0.05177 175.29)",
+          "oklch(60.71% 0.05177 175.29)",
+          "oklch(72.14% 0.05177 175.29)",
+          "oklch(83.57% 0.05177 175.29)",
+          "oklch(95.00% 0.05177 175.29)"
+        ]
+      },
+      "pine-tint": {
+        "role": "primary",
+        "displayName": "Tinta verde clara",
+        "tonalRamp": [
+          "oklch(15.00% 0.01656 156.91)",
+          "oklch(26.43% 0.01656 156.91)",
+          "oklch(37.86% 0.01656 156.91)",
+          "oklch(49.29% 0.01656 156.91)",
+          "oklch(60.71% 0.01656 156.91)",
+          "oklch(72.14% 0.01656 156.91)",
+          "oklch(83.57% 0.01656 156.91)",
+          "oklch(95.00% 0.01656 156.91)"
+        ]
+      },
+      "club-blue": {
+        "role": "secondary",
+        "displayName": "Azul de clube",
+        "tonalRamp": [
+          "oklch(15.00% 0.13280 257.97)",
+          "oklch(26.43% 0.13280 257.97)",
+          "oklch(37.86% 0.13280 257.97)",
+          "oklch(49.29% 0.13280 257.97)",
+          "oklch(60.71% 0.13280 257.97)",
+          "oklch(72.14% 0.13280 257.97)",
+          "oklch(83.57% 0.13280 257.97)",
+          "oklch(95.00% 0.13280 257.97)"
+        ]
+      },
+      "club-blue-tint": {
+        "role": "secondary",
+        "displayName": "Fundo azul de clube",
+        "tonalRamp": [
+          "oklch(15.00% 0.01444 264.50)",
+          "oklch(26.43% 0.01444 264.50)",
+          "oklch(37.86% 0.01444 264.50)",
+          "oklch(49.29% 0.01444 264.50)",
+          "oklch(60.71% 0.01444 264.50)",
+          "oklch(72.14% 0.01444 264.50)",
+          "oklch(83.57% 0.01444 264.50)",
+          "oklch(95.00% 0.01444 264.50)"
+        ]
+      },
+      "club-copper": {
+        "role": "secondary",
+        "displayName": "Cobre de clube",
+        "tonalRamp": [
+          "oklch(15.00% 0.13115 38.53)",
+          "oklch(26.43% 0.13115 38.53)",
+          "oklch(37.86% 0.13115 38.53)",
+          "oklch(49.29% 0.13115 38.53)",
+          "oklch(60.71% 0.13115 38.53)",
+          "oklch(72.14% 0.13115 38.53)",
+          "oklch(83.57% 0.13115 38.53)",
+          "oklch(95.00% 0.13115 38.53)"
+        ]
+      },
+      "club-copper-tint": {
+        "role": "secondary",
+        "displayName": "Fundo cobre de clube",
+        "tonalRamp": [
+          "oklch(15.00% 0.01696 50.43)",
+          "oklch(26.43% 0.01696 50.43)",
+          "oklch(37.86% 0.01696 50.43)",
+          "oklch(49.29% 0.01696 50.43)",
+          "oklch(60.71% 0.01696 50.43)",
+          "oklch(72.14% 0.01696 50.43)",
+          "oklch(83.57% 0.01696 50.43)",
+          "oklch(95.00% 0.01696 50.43)"
+        ]
+      },
+      "danger-red": {
+        "role": "tertiary",
+        "displayName": "Vermelho de consequência",
+        "tonalRamp": [
+          "oklch(15.00% 0.16035 27.07)",
+          "oklch(26.43% 0.16035 27.07)",
+          "oklch(37.86% 0.16035 27.07)",
+          "oklch(49.29% 0.16035 27.07)",
+          "oklch(60.71% 0.16035 27.07)",
+          "oklch(72.14% 0.16035 27.07)",
+          "oklch(83.57% 0.16035 27.07)",
+          "oklch(95.00% 0.16035 27.07)"
+        ]
+      },
+      "danger-tint": {
+        "role": "tertiary",
+        "displayName": "Fundo vermelho de consequência",
+        "tonalRamp": [
+          "oklch(15.00% 0.01654 26.65)",
+          "oklch(26.43% 0.01654 26.65)",
+          "oklch(37.86% 0.01654 26.65)",
+          "oklch(49.29% 0.01654 26.65)",
+          "oklch(60.71% 0.01654 26.65)",
+          "oklch(72.14% 0.01654 26.65)",
+          "oklch(83.57% 0.01654 26.65)",
+          "oklch(95.00% 0.01654 26.65)"
+        ]
+      },
+      "caution-amber": {
+        "role": "tertiary",
+        "displayName": "Âmbar de atenção",
+        "tonalRamp": [
+          "oklch(15.00% 0.10223 74.13)",
+          "oklch(26.43% 0.10223 74.13)",
+          "oklch(37.86% 0.10223 74.13)",
+          "oklch(49.29% 0.10223 74.13)",
+          "oklch(60.71% 0.10223 74.13)",
+          "oklch(72.14% 0.10223 74.13)",
+          "oklch(83.57% 0.10223 74.13)",
+          "oklch(95.00% 0.10223 74.13)"
+        ]
+      },
+      "caution-tint": {
+        "role": "tertiary",
+        "displayName": "Fundo âmbar de atenção",
+        "tonalRamp": [
+          "oklch(15.00% 0.04485 90.39)",
+          "oklch(26.43% 0.04485 90.39)",
+          "oklch(37.86% 0.04485 90.39)",
+          "oklch(49.29% 0.04485 90.39)",
+          "oklch(60.71% 0.04485 90.39)",
+          "oklch(72.14% 0.04485 90.39)",
+          "oklch(83.57% 0.04485 90.39)",
+          "oklch(95.00% 0.04485 90.39)"
+        ]
+      },
+      "action-white": {
+        "role": "neutral",
+        "displayName": "Branco de ação",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 89.88)",
+          "oklch(26.43% 0.00000 89.88)",
+          "oklch(37.86% 0.00000 89.88)",
+          "oklch(49.29% 0.00000 89.88)",
+          "oklch(60.71% 0.00000 89.88)",
+          "oklch(72.14% 0.00000 89.88)",
+          "oklch(83.57% 0.00000 89.88)",
+          "oklch(95.00% 0.00000 89.88)"
+        ]
+      },
+      "disabled-surface": {
+        "role": "neutral",
+        "displayName": "Superfície desabilitada",
+        "tonalRamp": [
+          "oklch(15.00% 0.00929 150.68)",
+          "oklch(26.43% 0.00929 150.68)",
+          "oklch(37.86% 0.00929 150.68)",
+          "oklch(49.29% 0.00929 150.68)",
+          "oklch(60.71% 0.00929 150.68)",
+          "oklch(72.14% 0.00929 150.68)",
+          "oklch(83.57% 0.00929 150.68)",
+          "oklch(95.00% 0.00929 150.68)"
+        ]
+      },
+      "disabled-ink": {
+        "role": "neutral",
+        "displayName": "Tinta desabilitada",
+        "tonalRamp": [
+          "oklch(15.00% 0.02086 165.84)",
+          "oklch(26.43% 0.02086 165.84)",
+          "oklch(37.86% 0.02086 165.84)",
+          "oklch(49.29% 0.02086 165.84)",
+          "oklch(60.71% 0.02086 165.84)",
+          "oklch(72.14% 0.02086 165.84)",
+          "oklch(83.57% 0.02086 165.84)",
+          "oklch(95.00% 0.02086 165.84)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "scoreboard": {
+        "displayName": "Placar de mesa",
+        "purpose": "Destaque do resultado na visão ampla."
+      },
+      "scoreboard-compact": {
+        "displayName": "Placar compacto",
+        "purpose": "Resultado no celular."
+      },
+      "headline": {
+        "displayName": "Título principal",
+        "purpose": "Hierarquia principal e identificação de clube."
+      },
+      "title": {
+        "displayName": "Título de trabalho",
+        "purpose": "Seções e tarefas da arbitragem."
+      },
+      "body": {
+        "displayName": "Texto de apoio",
+        "purpose": "Instruções e estados junto ao trabalho."
+      },
+      "label": {
+        "displayName": "Comando",
+        "purpose": "Ações e identificação de controles."
+      },
+      "shirt-number": {
+        "displayName": "Número na camisa",
+        "purpose": "Número central no ícone da visão ampla."
+      },
+      "shirt-number-compact": {
+        "displayName": "Número compacto",
+        "purpose": "Número central na camisa do celular."
+      },
+      "athlete-name": {
+        "displayName": "Nome na camisa",
+        "purpose": "Nome abaixo do ícone na visão ampla."
+      },
+      "compact-label": {
+        "displayName": "Rótulo compacto",
+        "purpose": "Nome abreviado, instrução e ação no celular."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Modo de ocorrência",
+      "kind": "nav",
+      "refersTo": "occurrence-mode-selected",
+      "description": "Gol ativo; punição é escolhida antes da camisa. Demonstração estática sem registrar eventos.",
+      "html": "<nav class=\"ds-modes\" aria-label=\"Ocorrência\"><button class=\"ds-mode ds-mode-selected\" aria-pressed=\"true\">Gol</button><button class=\"ds-mode\" aria-pressed=\"false\">2 min</button><button class=\"ds-mode\" aria-pressed=\"false\">Amarelo</button><button class=\"ds-mode\" aria-pressed=\"false\">Vermelho</button></nav>",
+      "css": ".ds-modes{display:flex;background:#FFFFFF}.ds-mode{flex:1;min-width:0;height:48px;border:0;border-radius:8px;background:#FFFFFF;color:#182E29;font:500 12px/16px \"IBM Plex Sans\",sans-serif;cursor:pointer}.ds-mode:hover,.ds-mode:active{background:#E5F1E9}.ds-mode-selected{background:#174F42;color:#FFFFFF}.ds-mode-selected:hover,.ds-mode-selected:active{background:#103D33}.ds-mode:focus-visible{outline:2px solid #285CA7;outline-offset:-2px}"
+    },
+    {
+      "name": "Ação secundária",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Demonstração de comando branco com borda discreta.",
+      "html": "<button class=\"ds-secondary\">Credenciar</button>",
+      "css": ".ds-secondary{font-family:\"IBM Plex Sans\",sans-serif;font-size:14px;font-weight:600;line-height:18px;min-height:50px;padding:12px 20px;border:1px solid #D3DDD6;border-radius:8px;background:#FFFFFF;color:#182E29;cursor:pointer}.ds-secondary:hover,.ds-secondary:active{background:#FFFFFF}.ds-secondary:focus-visible{outline:2px solid #285CA7;outline-offset:2px}.ds-secondary:disabled{background:#DDE3DE;color:#67766F;border-color:#DDE3DE;cursor:default}"
+    },
+    {
+      "name": "Confirmar encerramento",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Demonstração da ação final na tela de conferência.",
+      "html": "<button class=\"ds-danger\">Confirmar encerramento</button>",
+      "css": ".ds-danger{font-family:\"IBM Plex Sans\",sans-serif;font-size:14px;font-weight:600;line-height:18px;min-height:50px;padding:12px 20px;border:1px solid #AB302B;border-radius:8px;background:#AB302B;color:#FFFFFF;cursor:pointer}.ds-danger:hover,.ds-danger:active{background:#AB302B}.ds-danger:focus-visible{outline:2px solid #285CA7;outline-offset:2px}.ds-danger:disabled{background:#DDE3DE;color:#67766F;border-color:#DDE3DE;cursor:default}"
+    },
+    {
+      "name": "Busca de atleta",
+      "kind": "input",
+      "refersTo": "search-field",
+      "description": "Busca nas telas de apoio; não faz parte da operação principal e não executa consulta nesta demonstração.",
+      "html": "<label class=\"ds-search-label\">Buscar atleta ou camisa<input class=\"ds-search\" placeholder=\"Nome ou número\" type=\"search\"></label>",
+      "css": ".ds-search-label{display:grid;gap:10px;font:400 14px/18px \"IBM Plex Sans\",sans-serif;color:#182E29}.ds-search{height:50px;padding:0 14px;border:1px solid #D3DDD6;border-radius:10px;background:#FFFFFF;color:#182E29;font:400 16px/21px \"IBM Plex Sans\",sans-serif;min-width:0}.ds-search::placeholder{color:#566861}.ds-search:focus-visible{outline:2px solid #285CA7;outline-offset:2px}.ds-search:disabled{background:#DDE3DE;color:#67766F}"
+    },
+    {
+      "name": "Destinos inferiores",
+      "kind": "nav",
+      "description": "Barra móvel de 56 px, com ações de 44 px; Opções fica apenas aqui no celular.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Arbitragem\"><button class=\"ds-tab\">Credenciar</button><button class=\"ds-tab\">Súmula</button><button class=\"ds-tab\">Opções</button></nav>",
+      "css": ".ds-nav{display:flex;height:56px;align-items:center;background:#FFFFFF;padding:0 16px}.ds-tab{flex:1;min-width:0;height:44px;border:0;border-radius:8px;background:#FFFFFF;color:#182E29;font:600 14px/18px \"IBM Plex Sans\",sans-serif;cursor:pointer}.ds-tab:hover,.ds-tab:active{background:#E5F1E9}.ds-tab:focus-visible{outline:2px solid #285CA7;outline-offset:-2px}"
+    },
+    {
+      "name": "Estado do jogo",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "Texto explícito de estado em tinta verde clara.",
+      "html": "<span class=\"ds-status\">Em andamento</span>",
+      "css": ".ds-status{display:inline-block;padding:6px;border-radius:5px;background:#E5F1E9;color:#174F42;font:400 12px/16px \"IBM Plex Sans\",sans-serif}"
+    },
+    {
+      "name": "Último gol confirmado",
+      "kind": "card",
+      "description": "Retorno curto com anulação auditável direta antes de encerrar. Demonstração sem persistência.",
+      "html": "<section class=\"ds-last\"><div><strong class=\"ds-last-title\">Gol salvo · 7 · Ana Monteiro</strong><p class=\"ds-last-detail\">Serra Azul · placar atualizado</p></div><button class=\"ds-undo\">Desfazer</button></section>",
+      "css": ".ds-last{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px;background:#E5F1E9;color:#182E29;font-family:\"IBM Plex Sans\",sans-serif}.ds-last-title{font-size:14px;font-weight:600;line-height:18px}.ds-last-detail{margin:4px 0 0;color:#566861;font-size:12px;line-height:16px}.ds-undo{min-width:88px;height:44px;padding:0 12px;border:0;border-radius:8px;background:#FFFFFF;color:#182E29;font:600 14px/18px \"IBM Plex Sans\",sans-serif;cursor:pointer}.ds-undo:hover,.ds-undo:active{background:#FFFFFF}.ds-undo:focus-visible{outline:2px solid #285CA7;outline-offset:-2px}"
+    },
+    {
+      "name": "Camisa com ação direta",
+      "kind": "custom",
+      "refersTo": "shirt-compact",
+      "description": "Variante compacta do Clube A; a camisa do credenciado é o alvo de + Gol, sem indicar presença em quadra.",
+      "html": "<button class=\"ds-shirt-button\" aria-label=\"Registrar gol de Ana Monteiro, camisa 7, Serra Azul\"><svg class=\"ds-jersey\" viewBox=\"0 0 54 44\" aria-hidden=\"true\"><path d=\"M17 3 8 7 2 19 10 23 12 18V41H42V18L44 23 52 19 46 7 37 3C34 8 20 8 17 3Z\" fill=\"#EDF2FC\" stroke=\"#285CA7\" stroke-width=\"1.5\"/><text x=\"27\" y=\"32\" text-anchor=\"middle\" fill=\"#285CA7\">7</text></svg><span class=\"ds-shirt-name\">A. Monteiro</span><span class=\"ds-shirt-action\">+ Gol</span></button>",
+      "css": ".ds-shirt-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;width:83.5px;height:80px;padding:4px 0;border:0;border-radius:8px;background:#FFFFFF;color:#285CA7;font-family:\"IBM Plex Sans\",sans-serif;cursor:pointer}.ds-jersey{display:block;width:40px;height:34px;font-size:26px;font-weight:600;line-height:34px}.ds-shirt-name{color:#182E29;font-size:12px;font-weight:500;line-height:16px}.ds-shirt-action{font-size:12px;font-weight:500;line-height:16px}.ds-shirt-button:hover,.ds-shirt-button:active{background:#EDF2FC}.ds-shirt-button:focus-visible{outline:2px solid #285CA7;outline-offset:-2px}.ds-shirt-button:disabled{background:#DDE3DE;color:#67766F;cursor:default}"
+    },
+    {
+      "name": "Ficha de cadastro do presidente",
+      "kind": "card",
+      "refersTo": "work-panel",
+      "description": "Dados fictícios e decisão no mesmo painel; exemplo visual sem aprovação ou emissão real.",
+      "html": "<section class=\"ds-registration\"><header class=\"ds-registration-head\"><span class=\"ds-registration-avatar\" aria-hidden=\"true\">LC</span><div><h2 class=\"ds-registration-name\">Luísa Costa Almeida</h2><p class=\"ds-registration-role\">Atleta</p></div></header><p class=\"ds-registration-state\">Aguardando aprovação</p><dl class=\"ds-registration-data\"><dt>Clube informado</dt><dd>Clube Atlético Serra Azul</dd><dt>Conta</dt><dd>Ativa</dd></dl><p class=\"ds-registration-help\">A aprovação confirma o vínculo e emite a carteirinha.</p><button class=\"ds-registration-approve\">Aprovar e emitir carteirinha</button></section>",
+      "css": ".ds-registration{padding:16px;border-radius:12px;background:#FFFFFF;color:#182E29;font-family:\"IBM Plex Sans\",sans-serif;max-width:358px}.ds-registration-head{display:flex;align-items:center;gap:12px}.ds-registration-avatar{display:grid;place-items:center;flex-shrink:0;width:52px;height:52px;border-radius:50%;background:#EDF2FC;color:#285CA7;font-size:24px;font-weight:600}.ds-registration-name{margin:0;font-size:18px;font-weight:600;line-height:24px}.ds-registration-role{margin:4px 0 0;color:#566861;font-size:14px;line-height:18px}.ds-registration-state{padding:6px;border-radius:5px;background:#FFF3D2;color:#805400;font-size:12px;line-height:16px}.ds-registration-data{display:grid;grid-template-columns:auto 1fr;gap:16px;font-size:14px;line-height:18px;margin:24px 0}.ds-registration-data dt{color:#566861}.ds-registration-data dd{margin:0;font-weight:500}.ds-registration-help{font-size:14px;line-height:18px;color:#566861}.ds-registration-approve{width:100%;min-height:50px;padding:12px;border:0;border-radius:8px;background:#174F42;color:#FFFFFF;font:600 14px/18px \"IBM Plex Sans\",sans-serif;cursor:pointer}.ds-registration-approve:hover,.ds-registration-approve:active{background:#103D33}.ds-registration-approve:focus-visible{outline:2px solid #285CA7;outline-offset:2px}.ds-registration-approve:disabled{background:#DDE3DE;color:#67766F;cursor:default}"
+    },
+    {
+      "name": "Lista visual de clube",
+      "kind": "custom",
+      "description": "Emblema de exemplo, nome e contexto juntos; o emblema não representa uma identidade oficial.",
+      "html": "<button class=\"ds-club-row\"><span class=\"ds-club-emblem\" aria-hidden=\"true\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M12 2 4 6v7c0 4 8 8 8 8s8-4 8-8V6Z\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"m8 11 3 3 5-6\" stroke=\"currentColor\" stroke-width=\"1.6\"/></svg><span>SA</span></span><span class=\"ds-club-context\"><strong>Clube Atlético Serra Azul</strong><span>Serra Azul · 12 atletas</span><span>Técnico: Marcos Freitas</span></span></button>",
+      "css": ".ds-club-row{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border:0;background:#FFFFFF;color:#182E29;text-align:left;font-family:\"IBM Plex Sans\",sans-serif;cursor:pointer}.ds-club-emblem{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;width:48px;height:48px;border-radius:12px;background:#EDF2FC;color:#285CA7;font-size:12px;font-weight:500;line-height:16px}.ds-club-context{display:flex;flex-direction:column;gap:4px;min-width:0}.ds-club-context strong{font-size:16px;font-weight:600;line-height:21px}.ds-club-context span{font-size:12px;line-height:16px;color:#566861}.ds-club-row:hover,.ds-club-row:active{background:#E5F1E9}.ds-club-row:focus-visible{outline:2px solid #285CA7;outline-offset:-2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Orientação de ginásio",
+    "overview": "Escopo: tokens e regras da proposta Figma de acesso, Arbitragem, Presidente, Atleta e Técnico de associação esportiva de handebol. A direção foi selecionada como referência para implementar o novo frontend em docs/frontend.md. O desenho ainda não está implantado; a etapa documental não altera o backend nem o código experimental.\n\nLeitura rápida por clube e camisa, com superfícies claras, contraste firme e controles diretos. A simplificação conserva a identidade e aproxima a ação da camisa: gol em um toque, duas equipes visíveis e confirmação curta na própria tela. A mesa concentra o registro; a linha acompanha e também pode registrar. A mudança de apresentação não define permissões. A escolha visual foi confirmada por Marcus; hipóteses de uso em ginásio ainda não foram testadas com árbitros reais.\n\nNa visão do presidente, a mesma direção aproxima ficha, contexto e decisão. Avatares por iniciais, emblemas e calendários ajudam a localizar pessoas, clubes e jogos; a tarefa principal recebe prioridade sobre controles ocasionais. A extensão preserva a arbitragem v2 aprovada e reutiliza sua identidade, sem nova paleta ou pesquisa empírica.\n\nAtleta e técnico estendem essa direção já aprovada. A carteirinha do atleta aparece aberta, com identificação, código e QR visíveis; ampliar o QR exige uma ação. A escalação do técnico coloca atleta, estado e ação na mesma linha: incluir ou retirar exige um toque por pessoa, com retorno próximo da lista. Iniciais, ícones e rótulos apoiam a identificação. Os quatro perfis compartilham a linguagem visual, preservando suas tarefas e permissões próprias.\n\nA entrada e o cadastro agora compartilham essa mesma direção. Login por e-mail e senha leva à área da conta, sem seletor de perfil. O cadastro distingue atleta, com clube obrigatório, de técnico, sem escolha de clube. Envio e aprovação esportiva permanecem etapas distintas. Validações de campo retornam diretamente ao mesmo formulário de origem, preservando perfil, clube selecionado e formato. Inputs, autenticação e estados são simulações sem API ou persistência.\n\nA limpeza removeu do Figma as versões anteriores e componentes Roboto sem instâncias, preservando as famílias atuais. Referências históricas permanecem somente nos registros locais e não representam nós vigentes. Correções locais de texto e layout preservam conteúdo, identidade e destinos atuais; não certificam acessibilidade de aplicativo.",
+    "keyCharacteristics": [
+      "Camisa vetorial clicável com número, nome e rótulo da ação.",
+      "Duas equipes visíveis, placar compacto e retorno do último registro.",
+      "Superfícies foscas, sem sombras e com separação por espaço, cor e divisórias.",
+      "No presidente, ficha visível e decisão adjacente, com listas visuais e ações contextuais.",
+      "No atleta, carteirinha imediata e QR ampliado em uma ação, sem confundir validade com elegibilidade no jogo.",
+      "No técnico, inclusão ou retirada individual na própria lista, com confirmação e contexto do jogo.",
+      "No acesso, formulário direto, rótulos visíveis e caminho próprio para a arbitragem."
+    ],
+    "rules": [
+      {
+        "name": "The Clube Legível Rule",
+        "body": "Cor acompanha o nome do clube e a camisa; nunca os substitui.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do manter clube, camisa e atleta próximos da ação e da confirmação.",
+      "Do preservar rótulos de estado, foco visível e alvos de toque nas adaptações de viewport.",
+      "Do usar os tokens como referência do novo frontend, seguindo docs/frontend.md e preservando os contratos reais."
+    ],
+    "donts": [
+      "Don't confundir referência de implementação com frontend integrado, publicado ou validado pelo cliente.",
+      "Don't usar cor como única identificação de clube ou estado.",
+      "Don't interpretar snapshots como jogo contínuo, sincronização, câmera ou API validados.",
+      "Don't acrescentar cronômetro, modo offline, controle de substituições, agenda pública ou exportação ao escopo demonstrado."
+    ]
+  }
+}

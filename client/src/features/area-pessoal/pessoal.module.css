@@ -1,0 +1,88 @@
+.principal { width: min(100%, 1192px); max-width: none; margin-inline: auto; padding: 24px 16px 104px; min-width: 0; }
+.atleta { padding-top: 20px; }
+.principal p, .principal h1, .principal h2, .principal h3, .principal strong { overflow-wrap: anywhere; }
+.pilha { display: grid; gap: 14px; min-width: 0; }
+.pilha > p { margin: 0; }
+.titulo { margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; }
+.subtitulo { margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; }
+.texto { margin: 0; color: var(--suave); }
+.estado { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.estado > p { flex-basis: 100%; }
+.estado > button { flex: 1; min-height: 44px; }
+.lista { display: grid; gap: 12px; list-style: none; padding: 0; margin: 0; min-width: 0; }
+.item { padding: 16px; display: grid; gap: 10px; min-width: 0; background: var(--superficie); border-radius: 10px; }
+.item p { margin: 0; }
+.linha { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; min-width: 0; }
+.linha > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding-block: 6px; color: var(--quadra); font-weight: 600; overflow-wrap: anywhere; }
+.codigo { font-family: var(--display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; color: var(--suave); font-size: 12px; }
+.etapas { display: flex; flex-wrap: wrap; gap: 6px; }
+.etapas span { padding: 5px 6px; border-radius: 5px; background: var(--aprovado-fundo); color: var(--quadra); font-size: 12px; }
+.sumula, .resumoTotais { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr)); margin: 0; background: var(--superficie); }
+.sumula div, .resumoTotais div { display: flex; flex-direction: column-reverse; gap: 3px; padding: 16px; }
+.sumula dt, .resumoTotais dt { color: var(--suave); font-size: 12px; }
+.sumula dd, .resumoTotais dd { margin: 0; font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 37px; }
+.resumoTotais { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.foto { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; background: var(--clube-a-fundo); }
+.avatar { display: grid; place-content: center; flex-shrink: 0; width: 60px; height: 60px; border-radius: 50%; background: var(--clube-a-fundo); color: var(--clube-a); font-size: 24px; font-weight: 600; }
+.previa { width: 128px; height: 160px; object-fit: cover; border-radius: 10px; }
+.placar { margin: 0; font-size: 28px; line-height: 37px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ficha { display: grid; gap: 12px; margin: 0; }
+.ficha div { display: grid; gap: 4px; border-bottom: 1px solid var(--divisa); padding-bottom: 10px; }
+.ficha dt { color: var(--suave); font-size: 13px; }
+.ficha dd { margin: 0; overflow-wrap: anywhere; }
+.identidade { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.identidade > div { min-width: 0; }
+.identidade h2 { margin: 0; font-size: 20px; line-height: 26px; font-weight: 600; }
+.identidade p { margin: 3px 0 0; color: var(--suave); }
+.painel { display: grid; gap: 16px; min-width: 0; padding: 20px; border-radius: 12px; background: var(--superficie); }
+.atalho { display: flex; gap: 12px; align-items: center; width: 100%; min-width: 0; min-height: 68px; padding: 14px; border: 0; border-radius: 0; background: var(--superficie); color: var(--tinta); text-align: left; text-decoration: none; font: inherit; cursor: pointer; }
+.atalho:hover { background: var(--aprovado-fundo); }
+.atalho > span { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.atalho strong { font-size: 16px; line-height: 21px; font-weight: 600; }
+.atalho small { color: var(--suave); font-size: 13px; }
+.atalho img { flex-shrink: 0; }
+.duasColunas { display: grid; gap: 24px; align-items: start; min-width: 0; }
+.secaoLista { display: grid; gap: 10px; min-width: 0; }
+.linhaAtleta { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; column-gap: 8px; min-width: 0; padding: 12px; background: var(--superficie); }
+.linhaAtleta > button { min-width: 88px; min-height: 48px; }
+.linhaAtleta > div { min-width: 0; }
+.linhaAtleta strong, .nomeAtleta { margin: 0; font-size: 15px; line-height: 20px; font-weight: 600; }
+.nomeAtleta { display: flex; align-items: center; min-height: 44px; color: var(--tinta); text-decoration: none; }
+.nomeAtleta:hover { text-decoration: underline; }
+.linhaAtleta p { margin: 0; color: var(--suave); font-size: 12px; line-height: 16px; }
+.linhaAtleta .suspensao { color: var(--pendente); }
+.linhaAtleta .transferido { grid-column: 2 / -1; margin-top: 6px; color: var(--rejeitado); }
+.ajudaDetalhe { min-width: 0; }
+.ajudaDetalhe summary { display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px; border: 1px solid var(--divisa); border-radius: 8px; background: var(--superficie); color: var(--tinta); font-weight: 600; text-align: center; cursor: pointer; }
+.ajudaDetalhe[open] summary { margin-bottom: 12px; background: var(--aprovado-fundo); }
+.ajudaDetalhe > p { margin-block: 12px; }
+.acoesConta { display: grid; gap: 14px; max-width: 648px; min-width: 0; }
+.sucesso { margin: 0; padding: 12px; border-radius: 8px; background: var(--aprovado-fundo); color: var(--quadra); font-weight: 500; }
+.emblema { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; width: 56px; height: 56px; border-radius: 12px; background: var(--clube-a-fundo); color: var(--clube-a); font-weight: 600; font-size: 12px; }
+.emblemaCobre { background: var(--clube-b-fundo); color: var(--clube-b); }
+.clubesLista { display: grid; gap: 14px; list-style: none; margin: 0; padding: 0; }
+.clubesLista .atalho { padding: 16px; }
+.clubesLista strong { font-size: 18px; line-height: 24px; }
+.clubesLista small { font-size: 14px; }
+.cardHistorico { display: grid; gap: 10px; padding: 16px; background: var(--superficie); border-radius: 10px; min-width: 0; }
+.cardHistorico h3 { margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; }
+.cardHistorico p { margin: 0; }
+.cardHistorico > button { min-height: 44px; }
+.historicoGrade { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.filtros { display: grid; gap: 14px; margin-top: 14px; }
+.pessoaResumo { display: flex; gap: 14px; align-items: center; }
+.pessoaResumo > div { min-width: 0; }
+@media (min-width: 48rem) {
+  .principal { padding-top: 32px; }
+  .duasColunas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .historicoGrade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .clubesLista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .linhaAtleta > button { min-width: 104px; }
+}
+@media (max-width: 22rem) {
+  .principal { padding-inline: 12px; }
+  .linhaAtleta { grid-template-columns: 30px minmax(0, 1fr) auto; padding: 10px; gap: 6px; }
+  .linhaAtleta > button { min-width: 72px; padding-inline: 8px; }
+  .resumoTotais div { padding: 12px; }
+}

@@ -4,7 +4,7 @@
 
 Aplicação para organizar clubes, atletas, campeonatos e jogos de uma associação de handebol. Abrange aprovação de cadastros, carteirinhas de atletas, escalação, credenciamento, arbitragem, resultados e histórico esportivo.
 
-A estrutura mínima local de frontend e backend já existe. Consulte a arquitetura e o README para o estado atual, os comandos de desenvolvimento e as validações realizadas; funcionalidades de domínio e integrações ainda precisam ser implementadas e validadas.
+O projeto já contém funcionalidades de domínio e interfaces experimentais integradas. Consulte a arquitetura e o README para o estado atual, os comandos e os limites das validações. O novo frontend está especificado no Figma e em docs/frontend.md; sua implementação e publicação exigem validações próprias.
 
 O presidente administra cadastros e competições; o técnico escolhe previamente os atletas; a arbitragem credencia os participantes e registra as ocorrências do jogo. Escalação, credenciamento e entrada em quadra são etapas distintas.
 
@@ -13,6 +13,7 @@ O presidente administra cadastros e competições; o técnico escolhe previament
 Consulte os documentos conforme a tarefa, mantendo as definições detalhadas em suas fontes:
 
 - [README.md](README.md): visão geral, fluxo principal e limites do escopo inicial.
+- [docs/frontend.md](docs/frontend.md): ao implementar ou revisar interface, consulte o Figma atual, o escopo por perfil e os critérios de integração, QA e entrega.
 - [docs/requisitos.md](docs/requisitos.md): funcionalidades, regras de negócio e requisitos não funcionais.
 - [docs/arquitetura.md](docs/arquitetura.md): tecnologias e decisões técnicas aprovadas.
 - [docs/modelo-banco-dados.md](docs/modelo-banco-dados.md): entidades, relacionamentos e restrições.
@@ -34,7 +35,7 @@ Consulte os documentos conforme a tarefa, mantendo as definições detalhadas em
 - Ao revisar uma PR, leia a descrição e todos os comentários existentes, incluindo comentários de revisão no código, para considerar esclarecimentos e decisões registrados na discussão.
 - Se a revisão identificar erros, lance um subagente para corrigi-los. Se alguma decisão ou comportamento precisar de validação do usuário, pergunte antes de prosseguir com essa parte. Após as correções, revise novamente e execute as verificações aplicáveis; se não houver problemas pendentes e as verificações passarem, faça o merge da PR sem pedir nova autorização.
 - Consulte os scripts e comandos no README e nos manifests. Execute as verificações adequadas à alteração e informe o que foi validado e o que permanece pendente.
-- A interface atual em `client/` é experimental e serve apenas para testar a integração; pode ser alterada ou descartada a qualquer momento. A UX final ainda não foi iniciada: não a infira da interface atual nem trate mudanças nesta como decisões de UX.
+- A interface experimental em `client/` pode ser substituída pelo novo frontend especificado em `docs/frontend.md` e no Figma atual. Reaproveite integrações válidas e preserve as regras, mas não infira a direção visual do tema experimental. Desenho, implementação, deploy e validação com o cliente são etapas distintas.
 - Ao finalizar uma funcionalidade no backend, priorize testes no próprio backend. Crie um frontend básico para testar a integração somente se necessário e após confirmar com o usuário essa necessidade e o escopo da interface.
 - Atualize a documentação de referência quando o trabalho alterar o comportamento ou as decisões que ela descreve. Mantenha cada definição em sua fonte, evitando documentos e processos desnecessários.
 - Quando o usuário selecionar uma tarefa do Linear para implementação, essa seleção autoriza criar uma nova branch `feat/<identificador>-<descricao>`, fazer commits do escopo da tarefa, enviar a branch ao remoto `origin` e abrir uma PR vinculada à tarefa, sem pedir nova permissão.

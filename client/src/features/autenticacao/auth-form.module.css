@@ -1,0 +1,33 @@
+.pagina { min-height: 100dvh; }
+.cabecalho { min-height: 80px; display: flex; align-items: center; padding: 20px 40px; background: var(--quadra-escura); }
+.marca { color: white; font-size: 24px; font-weight: 600; text-decoration: none; }
+.principal { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 460px); gap: 80px; width: min(100%, 1080px); margin-inline: auto; padding: 40px; align-items: start; }
+.contexto { display: grid; gap: 20px; }
+.contexto h2 { margin: 0; font-size: 48px; font-weight: 600; line-height: 1.31; }
+.contexto > p { margin: 0; color: var(--suave); font-size: 19px; line-height: 25px; }
+.associacao { padding: 20px; border-radius: 12px; background: var(--aprovado-fundo); color: var(--quadra); }
+.associacao h3 { margin: 0 0 12px; font-size: 22px; font-weight: 600; line-height: 29px; }
+.associacao p { margin: 0; font-size: 16px; }
+.painel { display: grid; gap: 14px; min-width: 0; padding: 24px; background: var(--superficie); border-radius: 12px; }
+.titulo { margin: 0; font-size: 28px; font-weight: 600; line-height: 37px; }
+.subtitulo { margin: 0; font-size: 24px; font-weight: 600; }
+.texto { margin: 0; color: var(--suave); line-height: 18px; }
+.formulario { display: grid; gap: 14px; margin: 0; }
+.perfis { display: flex; gap: 8px; margin: 0; padding: 0; border: 0; }
+.perfis button { flex: 1; min-width: 0; }
+.escolher { text-align: left; font-weight: 400; cursor: pointer; }
+.escolher:disabled { color: var(--suave); }
+.erroCampo { margin: 0; color: var(--rejeitado); font-size: 13px; }
+.pilha, .seletor { display: grid; gap: 14px; }
+.seletor { padding: 24px; }
+.clubes { list-style: none; display: grid; gap: 8px; padding: 0; margin: 0; }
+.clubes button { width: 100%; text-align: left; justify-content: space-between; }
+.clubes small { display: block; font-size: 13px; color: var(--suave); font-weight: 400; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
+@media (max-width: 55rem) {
+  .cabecalho { min-height: 64px; padding: 16px; }
+  .marca { font-size: 20px; }
+  .principal { display: block; max-width: 492px; padding: 16px; }
+  .contexto { display: none; }
+  .painel { background: transparent; padding: 0; border-radius: 0; }
+}

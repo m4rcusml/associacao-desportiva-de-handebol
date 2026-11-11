@@ -1,0 +1,122 @@
+{
+  "fileKey": "gwHYKm5u7V8uP1lXBmxPPG",
+  "sessionId": "ae17cdf4-976f-478e-a1c8-7d2fc032013c",
+  "pageId": "4:4",
+  "frames": {
+    "home": "8:2",
+    "lineup": "8:30",
+    "d_home": "82:421",
+    "d_lineup": "82:449",
+    "added": "82:514",
+    "removed": "82:578",
+    "d_added": "82:642",
+    "d_removed": "82:709",
+    "club": "8:84",
+    "account": "8:115",
+    "d_club": "82:833",
+    "d_account": "82:865",
+    "performance": "82:892",
+    "live": "82:936",
+    "history": "82:969",
+    "search": "82:994",
+    "suspension": "82:1021",
+    "missing": "82:1040",
+    "changes": "82:1057",
+    "edit": "82:2426",
+    "nameSaved": "82:2446",
+    "clubs": "82:2463",
+    "referee": "82:2496",
+    "logout": "82:2512",
+    "participations": "82:2528",
+    "pending": "82:2554",
+    "rejected": "82:2571",
+    "reapply": "82:2588",
+    "noClub": "82:2605",
+    "empty": "82:2622",
+    "network": "82:2639",
+    "writeError": "82:2656",
+    "rereadError": "82:2673",
+    "loading": "82:2690",
+    "conflict": "82:2707",
+    "cancelled": "82:2724",
+    "noPlayers": "82:2741",
+    "performanceUpdated": "82:2758",
+    "liveUpdated": "82:2775",
+    "anaRemoved": "82:2792",
+    "transferred": "82:2809",
+    "transferredRemoved": "82:2826",
+    "brunoRemoved": "83:2296",
+    "login": "7:2"
+  },
+  "archives": [
+    "82:171",
+    "82:186",
+    "82:215",
+    "82:237"
+  ],
+  "components": {
+    "true": {
+      "id": "82:259",
+      "np": "Nome#82:0",
+      "sp": "Detalhe#82:1"
+    },
+    "false": {
+      "id": "82:325",
+      "np": "Nome#82:2",
+      "sp": "Detalhe#82:3"
+    }
+  },
+  "connections": 219,
+  "validation": [
+    {
+      "id": "8:30",
+      "count": 49,
+      "types": {
+        "FRAME": 10,
+        "TEXT": 27,
+        "INSTANCE": 12
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "id": "82:449",
+      "count": 52,
+      "types": {
+        "FRAME": 13,
+        "TEXT": 27,
+        "INSTANCE": 12
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    }
+  ],
+  "screenshots": [
+    ".impeccable/review/tecnico-mobile.png",
+    ".impeccable/review/tecnico-desktop.png",
+    ".impeccable/review/tecnico-jogos.png",
+    ".impeccable/review/tecnico-desempenho.png",
+    ".impeccable/review/tecnico-inclusao.png",
+    ".impeccable/review/tecnico-suspensao.png",
+    ".impeccable/review/tecnico-andamento.png",
+    ".impeccable/review/tecnico-sem-clube.png",
+    ".impeccable/review/tecnico-conta.png",
+    ".impeccable/review/tecnico-clube.png"
+  ],
+  "scope": "Editable Figma proposal; synthetic data. Individual saved snapshots, not executable app persistence. Existing buttons/tokens reused. No app code changed.",
+  "limits": [
+    "No agenda/adversary pregame",
+    "No own card or photo for coach",
+    "Read-only game after start",
+    "Local game references only",
+    "All sample data synthetic"
+  ],
+  "knownPrototypeLimits": [
+    "Figma snapshots demonstrate individual actions; no continuous live data, editable field, persistence, real logout or network test.",
+    "Desktop nav branches to mobile for secondary screens. Main desktop home/lineup/club/account provided."
+  ]
+}

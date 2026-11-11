@@ -1,0 +1,1233 @@
+{
+  "fileKey": "gwHYKm5u7V8uP1lXBmxPPG",
+  "sessionId": "ae17cdf4-976f-478e-a1c8-7d2fc032013c",
+  "page": "4:5",
+  "frames": {
+    "card": "9:2",
+    "d_card": "82:1316",
+    "qr": "9:27",
+    "d_qr": "82:1426",
+    "history": "9:45",
+    "d_history": "82:1533",
+    "part": "82:1603",
+    "d_part": "82:1660",
+    "bench": "82:1712",
+    "d_bench": "82:1769",
+    "scheduled": "82:1821",
+    "d_scheduled": "82:1880",
+    "clubs": "82:1934",
+    "d_clubs": "82:1998",
+    "club": "82:2057",
+    "d_club": "82:2099",
+    "clubVale": "82:2136",
+    "d_clubVale": "82:2176",
+    "clubPorto": "82:2211",
+    "d_clubPorto": "82:2251",
+    "account": "9:72",
+    "d_account": "82:2358",
+    "editName": "83:652",
+    "nameSaved": "83:690",
+    "photo": "83:726",
+    "photoChosen": "83:766",
+    "photoSaved": "83:805",
+    "refEntry": "83:841",
+    "refAccess": "83:881",
+    "filters": "83:919",
+    "historyPlayed": "83:957",
+    "partOctober": "83:1011",
+    "totals": "83:1062",
+    "d_editName": "83:1117",
+    "d_nameSaved": "83:1150",
+    "d_photo": "83:1181",
+    "d_photoChosen": "83:1216",
+    "d_photoSaved": "83:1250",
+    "d_refEntry": "83:1281",
+    "d_refAccess": "83:1316",
+    "d_filters": "83:1349",
+    "d_historyPlayed": "83:1382",
+    "d_partOctober": "83:1431",
+    "d_totals": "83:1477",
+    "pending": "9:108",
+    "rejected": "9:123",
+    "pendingAccount": "83:1565",
+    "rejectedAccount": "83:1619",
+    "pendingPhoto": "83:1673",
+    "rejectedPhoto": "83:1711",
+    "pendingPhotoChosen": "83:1749",
+    "rejectedPhotoChosen": "83:1787",
+    "resubmitted": "83:1825",
+    "pendingSaved": "83:1861",
+    "rejectedSaved": "83:1897",
+    "pendingPhotoChosenSaved": "83:1933",
+    "rejectedPhotoChosenSaved": "83:1969",
+    "invalid": "83:2005",
+    "offline": "83:2041",
+    "loadError": "83:2077",
+    "empty": "83:2113",
+    "photoError": "83:2149",
+    "photoUnavailable": "83:2185",
+    "loading": "83:2221",
+    "statesBoard": "83:2256",
+    "cardUpdated": "83:3025",
+    "d_cardUpdated": "83:3076",
+    "historyUpdated": "83:3151",
+    "d_historyUpdated": "83:3228",
+    "pendingUpdated": "83:3300",
+    "rejectedUpdated": "83:3321",
+    "invalidUpdated": "83:3344",
+    "cancelled": "84:861",
+    "invalidated": "84:897"
+  },
+  "qrComponent": "82:1267",
+  "buttonComponentSet": "29:295",
+  "preservedOriginals": [
+    "82:1122",
+    "82:1123",
+    "82:1124",
+    "82:1125",
+    "82:1126",
+    "82:1127",
+    "82:1128",
+    "82:1129",
+    "82:1130",
+    "82:1131",
+    "82:1132",
+    "82:1133",
+    "82:1134",
+    "82:1135",
+    "82:1136",
+    "82:1137",
+    "82:1138",
+    "82:1139",
+    "82:1140",
+    "82:1141",
+    "82:1142",
+    "82:1143",
+    "82:1151",
+    "82:1152",
+    "82:1153",
+    "82:1154",
+    "82:1155",
+    "82:1156",
+    "82:1157",
+    "82:1158",
+    "82:1159",
+    "82:1160",
+    "82:1161",
+    "82:1162",
+    "82:1169",
+    "82:1170",
+    "82:1171",
+    "82:1172",
+    "82:1173",
+    "82:1174",
+    "82:1175",
+    "82:1176",
+    "82:1177",
+    "82:1178",
+    "82:1179",
+    "82:1180",
+    "82:1181",
+    "82:1182",
+    "82:1183",
+    "82:1184",
+    "82:1185",
+    "82:1186",
+    "82:1187",
+    "82:1188",
+    "82:1189",
+    "82:1196",
+    "82:1197",
+    "82:1198",
+    "82:1199",
+    "82:1200",
+    "82:1201",
+    "82:1202",
+    "82:1203",
+    "82:1204",
+    "82:1205",
+    "82:1206",
+    "82:1207",
+    "82:1208",
+    "82:1209",
+    "82:1210",
+    "82:1211",
+    "82:1212",
+    "82:1213",
+    "82:1214",
+    "82:1215",
+    "82:1216",
+    "82:1217",
+    "82:1218",
+    "82:1232",
+    "82:1233",
+    "82:1234",
+    "82:1235",
+    "82:1236",
+    "82:1237",
+    "82:1238",
+    "82:1239",
+    "82:1240",
+    "82:1247",
+    "82:1248",
+    "82:1249",
+    "82:1250",
+    "82:1251",
+    "82:1252",
+    "82:1253",
+    "82:1254",
+    "82:1255",
+    "82:1256"
+  ],
+  "checks": [
+    {
+      "key": "card",
+      "id": "9:2",
+      "counts": {
+        "FRAME": 19,
+        "TEXT": 14,
+        "VECTOR": 12,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_card",
+      "id": "82:1316",
+      "counts": {
+        "FRAME": 29,
+        "TEXT": 26,
+        "VECTOR": 15,
+        "INSTANCE": 4
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "qr",
+      "id": "9:27",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 9,
+        "VECTOR": 12,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_qr",
+      "id": "82:1426",
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "history",
+      "id": "9:45",
+      "counts": {
+        "FRAME": 26,
+        "TEXT": 37,
+        "VECTOR": 10,
+        "INSTANCE": 6
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_history",
+      "id": "82:1533",
+      "counts": {
+        "FRAME": 23,
+        "TEXT": 37,
+        "VECTOR": 8,
+        "INSTANCE": 6
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "part",
+      "id": "82:1603",
+      "counts": {
+        "FRAME": 23,
+        "TEXT": 19,
+        "VECTOR": 13,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_part",
+      "id": "82:1660",
+      "counts": {
+        "FRAME": 20,
+        "TEXT": 19,
+        "VECTOR": 11,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "bench",
+      "id": "82:1712",
+      "counts": {
+        "FRAME": 22,
+        "TEXT": 18,
+        "VECTOR": 15,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_bench",
+      "id": "82:1769",
+      "counts": {
+        "FRAME": 19,
+        "TEXT": 18,
+        "VECTOR": 13,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "scheduled",
+      "id": "82:1821",
+      "counts": {
+        "FRAME": 22,
+        "TEXT": 18,
+        "VECTOR": 17,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_scheduled",
+      "id": "82:1880",
+      "counts": {
+        "FRAME": 19,
+        "TEXT": 18,
+        "VECTOR": 15,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "clubs",
+      "id": "82:1934",
+      "counts": {
+        "FRAME": 28,
+        "TEXT": 16,
+        "VECTOR": 19
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_clubs",
+      "id": "82:1998",
+      "counts": {
+        "FRAME": 25,
+        "TEXT": 16,
+        "VECTOR": 17
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "club",
+      "id": "82:2057",
+      "counts": {
+        "FRAME": 16,
+        "TEXT": 12,
+        "VECTOR": 12,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_club",
+      "id": "82:2099",
+      "counts": {
+        "FRAME": 13,
+        "TEXT": 12,
+        "VECTOR": 10,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "clubVale",
+      "id": "82:2136",
+      "counts": {
+        "FRAME": 15,
+        "TEXT": 11,
+        "VECTOR": 12,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_clubVale",
+      "id": "82:2176",
+      "counts": {
+        "FRAME": 12,
+        "TEXT": 11,
+        "VECTOR": 10,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "clubPorto",
+      "id": "82:2211",
+      "counts": {
+        "FRAME": 15,
+        "TEXT": 11,
+        "VECTOR": 12,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_clubPorto",
+      "id": "82:2251",
+      "counts": {
+        "FRAME": 12,
+        "TEXT": 11,
+        "VECTOR": 10,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "account",
+      "id": "9:72",
+      "counts": {
+        "FRAME": 32,
+        "TEXT": 19,
+        "VECTOR": 20,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_account",
+      "id": "82:2358",
+      "counts": {
+        "FRAME": 29,
+        "TEXT": 19,
+        "VECTOR": 18,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "editName",
+      "id": "83:652",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 11,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "nameSaved",
+      "id": "83:690",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "photo",
+      "id": "83:726",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 13,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "photoChosen",
+      "id": "83:766",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 11,
+        "VECTOR": 10,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "photoSaved",
+      "id": "83:805",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "refEntry",
+      "id": "83:841",
+      "counts": {
+        "FRAME": 15,
+        "TEXT": 12,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "refAccess",
+      "id": "83:881",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 11,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "filters",
+      "id": "83:919",
+      "counts": {
+        "FRAME": 13,
+        "TEXT": 10,
+        "VECTOR": 10,
+        "INSTANCE": 4
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "historyPlayed",
+      "id": "83:957",
+      "counts": {
+        "FRAME": 19,
+        "TEXT": 20,
+        "VECTOR": 10,
+        "INSTANCE": 4
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "partOctober",
+      "id": "83:1011",
+      "counts": {
+        "FRAME": 20,
+        "TEXT": 15,
+        "VECTOR": 13,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "totals",
+      "id": "83:1062",
+      "counts": {
+        "FRAME": 20,
+        "TEXT": 22,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_editName",
+      "id": "83:1117",
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 11,
+        "VECTOR": 8,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_nameSaved",
+      "id": "83:1150",
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 9,
+        "VECTOR": 8,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_photo",
+      "id": "83:1181",
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 13,
+        "VECTOR": 8,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_photoChosen",
+      "id": "83:1216",
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 11,
+        "VECTOR": 8,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_photoSaved",
+      "id": "83:1250",
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 9,
+        "VECTOR": 8,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_refEntry",
+      "id": "83:1281",
+      "counts": {
+        "FRAME": 12,
+        "TEXT": 12,
+        "VECTOR": 8,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_refAccess",
+      "id": "83:1316",
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 11,
+        "VECTOR": 8,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_filters",
+      "id": "83:1349",
+      "counts": {
+        "FRAME": 10,
+        "TEXT": 10,
+        "VECTOR": 8,
+        "INSTANCE": 4
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_historyPlayed",
+      "id": "83:1382",
+      "counts": {
+        "FRAME": 16,
+        "TEXT": 20,
+        "VECTOR": 8,
+        "INSTANCE": 4
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_partOctober",
+      "id": "83:1431",
+      "counts": {
+        "FRAME": 17,
+        "TEXT": 15,
+        "VECTOR": 11,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_totals",
+      "id": "83:1477",
+      "counts": {
+        "FRAME": 17,
+        "TEXT": 22,
+        "VECTOR": 8,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "pending",
+      "id": "9:108",
+      "counts": {
+        "FRAME": 6,
+        "TEXT": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "rejected",
+      "id": "9:123",
+      "counts": {
+        "FRAME": 6,
+        "TEXT": 11,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "pendingAccount",
+      "id": "83:1565",
+      "counts": {
+        "FRAME": 10,
+        "TEXT": 12,
+        "INSTANCE": 3,
+        "VECTOR": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "rejectedAccount",
+      "id": "83:1619",
+      "counts": {
+        "FRAME": 10,
+        "TEXT": 12,
+        "INSTANCE": 3,
+        "VECTOR": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "pendingPhoto",
+      "id": "83:1673",
+      "counts": {
+        "FRAME": 2,
+        "TEXT": 7,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "rejectedPhoto",
+      "id": "83:1711",
+      "counts": {
+        "FRAME": 2,
+        "TEXT": 7,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "pendingPhotoChosen",
+      "id": "83:1749",
+      "counts": {
+        "FRAME": 3,
+        "TEXT": 6,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "rejectedPhotoChosen",
+      "id": "83:1787",
+      "counts": {
+        "FRAME": 3,
+        "TEXT": 6,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "resubmitted",
+      "id": "83:1825",
+      "counts": {
+        "FRAME": 3,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "pendingSaved",
+      "id": "83:1861",
+      "counts": {
+        "FRAME": 3,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "rejectedSaved",
+      "id": "83:1897",
+      "counts": {
+        "FRAME": 3,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "pendingPhotoChosenSaved",
+      "id": "83:1933",
+      "counts": {
+        "FRAME": 3,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "rejectedPhotoChosenSaved",
+      "id": "83:1969",
+      "counts": {
+        "FRAME": 3,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "invalid",
+      "id": "83:2005",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "offline",
+      "id": "83:2041",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "loadError",
+      "id": "83:2077",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "empty",
+      "id": "83:2113",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "photoError",
+      "id": "83:2149",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "photoUnavailable",
+      "id": "83:2185",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "loading",
+      "id": "83:2221",
+      "counts": {
+        "FRAME": 13,
+        "TEXT": 9,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "statesBoard",
+      "id": "83:2256",
+      "counts": {
+        "FRAME": 1,
+        "TEXT": 13,
+        "INSTANCE": 11
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "cardUpdated",
+      "id": "83:3025",
+      "counts": {
+        "FRAME": 20,
+        "TEXT": 15,
+        "VECTOR": 12,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_cardUpdated",
+      "id": "83:3076",
+      "counts": {
+        "FRAME": 30,
+        "TEXT": 26,
+        "VECTOR": 15,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "historyUpdated",
+      "id": "83:3151",
+      "counts": {
+        "FRAME": 27,
+        "TEXT": 37,
+        "VECTOR": 10,
+        "INSTANCE": 5
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "d_historyUpdated",
+      "id": "83:3228",
+      "counts": {
+        "FRAME": 24,
+        "TEXT": 37,
+        "VECTOR": 8,
+        "INSTANCE": 5
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "pendingUpdated",
+      "id": "83:3300",
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 11,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "rejectedUpdated",
+      "id": "83:3321",
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 12,
+        "INSTANCE": 3
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "invalidUpdated",
+      "id": "83:3344",
+      "counts": {
+        "FRAME": 15,
+        "TEXT": 10,
+        "VECTOR": 10,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "cancelled",
+      "id": "84:861",
+      "counts": {
+        "FRAME": 14,
+        "TEXT": 10,
+        "VECTOR": 10,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "invalidated",
+      "id": "84:897",
+      "counts": {
+        "FRAME": 21,
+        "TEXT": 15,
+        "VECTOR": 13,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    }
+  ],
+  "prototype": {
+    "configured": 425,
+    "unresolved": [],
+    "type": "Snapshots conectados; sem operações reais, edição de inputs, persistência ou upload. URL saída abre login do protótipo."
+  },
+  "screenshots": [
+    ".impeccable/review/atleta-mobile.png",
+    ".impeccable/review/atleta-desktop.png",
+    ".impeccable/review/atleta-historico.png",
+    ".impeccable/review/atleta-conta.png",
+    ".impeccable/review/atleta-rejeitado.png",
+    ".impeccable/review/atleta-cadastro-dados.png",
+    ".impeccable/review/atleta-participacao.png",
+    ".impeccable/review/atleta-qr.png",
+    ".impeccable/review/atleta-clubes.png",
+    ".impeccable/review/atleta-foto.png",
+    ".impeccable/review/atleta-pendente.png",
+    ".impeccable/review/atleta-invalidada.png"
+  ],
+  "notes": [
+    "Dados sintéticos. QR ilustrativo original sem validade real, documentado no componente e board.",
+    "Foto não fornecida: identificação por iniciais. Foto opcional.",
+    "Sem agenda geral, autosserviço de transferência, e-mail/senha ou suspensões.",
+    "Histórico próprio preserva adversário em agendados; métricas indisponíveis antes credenciamento.",
+    "Novo filtro é consulta local visual; todos os totais disponíveis em tela específica.",
+    "Gate cadastral sem navegação aos recursos esportivos.",
+    "Desktop e mobile390x844 usam mesmos tokens IBM Plex Sans e instâncias botões existentes.",
+    "Sem alteração de app, backend, commits ou páginas de outros perfis."
+  ]
+}

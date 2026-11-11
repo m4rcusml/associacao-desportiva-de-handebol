@@ -11,6 +11,9 @@ coverage/
 .vercel/
 server/src/generated/
 output/playwright/
+.playwright/
+client/playwright-report/
+client/test-results/
 .playwright-cli/
 .claude/
 server/.fotos-local/

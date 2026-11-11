@@ -2,8 +2,9 @@
 
 Decisões acordadas com Marcus em 06/11/2026 e atualizadas em 07/11/2026 pela resolução da
 PEN-030 e pelas definições posteriores de desenvolvimento, infraestrutura e arbitragem.
-Este documento descreve a direção aprovada. Persistência e cadastro/autenticação mínimos estão
-implementados e validados localmente; os demais fluxos de domínio e a infraestrutura online não.
+Este documento descreve a direção aprovada e suas evoluções. O README registra os fluxos de domínio
+implementados, a implantação de teste e as validações realizadas, com seus limites. A interface
+experimental não equivale à implementação do novo desenho do Figma.
 
 Referências: [requisitos](requisitos.md), [modelagem](modelo-banco-dados.md) e
 [pendências](pendencias.md).
@@ -24,6 +25,18 @@ Referências: [requisitos](requisitos.md), [modelagem](modelo-banco-dados.md) e
 As telas não decidem permissões nem acessam o banco. A lógica de negócio fica no backend.
 Renderização no servidor pelo Next.js, quando utilizada, consome a API do NestJS;
 não cria uma segunda implementação das regras no frontend.
+
+## Novo frontend: referência de implementação
+
+[docs/frontend.md](frontend.md) consolida a experiência atual do Figma para acesso, presidente,
+atleta, técnico e arbitragem, substituindo a direção visual experimental. Tokens e componentes
+visuais têm referência em [DESIGN.md](../DESIGN.md). A implementação mantém a arquitetura,
+as sessões, o proxy e os contratos descritos aqui; o backend fica preservado neste escopo.
+
+Snapshots do Figma devem virar componentes e estados reais alimentados pela API. O redesenho não
+introduz endpoints, modo offline ou notificações para contas permanentes. Reaproveitar integrações
+existentes exige nova validação após a mudança de apresentação. O plano de entrega inclui revisão
+independente, CI do frontend e deploy no ambiente de teste; não significa que essas etapas já ocorreram.
 
 ## Organização planejada
 
@@ -191,6 +204,29 @@ Sem `PROXY_SEGREDO` (desenvolvimento e testes) o comportamento anterior continua
 Client usa fetch com cookies e sem cache; as páginas são cascas estáticas, sem SSR de sessão.
 Ao introduzir SSR autenticado, repassar cookies e provar isolamento/cache antes de utilizá-lo.
 O contrato mínimo é servido em `/api/openapi.json`, com schema de cadastro derivado da validação.
+
+A interface usa `/presidente`, `/tecnico` e `/atleta`, com consultas e operações reais pela API REST.
+A entrada e os layouts consultam a sessão para orientar a navegação; a autorização e a validação de cada
+operação continuam no backend. O técnico abre jogos por link ou ID conhecido, pois o contrato atual não
+oferece agenda ao seu perfil. Atalhos locais lembram apenas ID e rótulo, isolados por usuário/clube, sem
+guardar estado oficial. A arbitragem operacional usa `/arbitragem` e `/arbitragem/jogos/{id}`, com
+cookie temporário por jogo, entrada por senha ou designação e modos linha/banco com as mesmas ações.
+As áreas dos perfis permanentes não assinam Socket.IO. A interface temporária usa `socket.io-client`
+4.8.4 por long-polling com cookies e `auth.jogoId`, no caminho da API: eventos apenas invalidam consultas,
+sem aplicar payload como placar. Reconexão relê REST; revogação invalida respostas em voo e limpa dados
+privados. O recibo do POST de encerramento é independente da sessão revogada. Intenções de lançamento,
+correção e anulação conservam UUID e conteúdo em memória quando a resposta é incerta, para reenvio
+explícito. Não há fila offline nem retry automático de escrita.
+O scanner usa `getUserMedia`, `BarcodeDetector` quando disponível e `jsqr` 1.4.0 carregado sob demanda;
+a decodificação é local e a seleção manual permanece disponível. Vídeo para ao fechar ou revogar acesso.
+O QR da carteirinha é renderizado localmente em SVG com `qrcode.react` **4.2.0**, compatível com
+o React instalado, sem enviar o token a um serviço externo ([documentação da biblioteca](https://github.com/zpao/qrcode.react)).
+
+A lista administrativa de atletas e técnicos agrega as consultas dos três estados de verificação;
+não há endpoint genérico de usuários. Conforme decisão de Marcus em 10/11/2026, a interface não
+amplia o backend para listar presidentes: gerencia os criados pela interface ou um ID informado.
+Os nomes e IDs lembrados no navegador ajudam a localizar essas contas; não comprovam sua situação
+atual e não incluem senhas. As operações seguem autorizadas e persistidas pelo backend.
 
 Autorização de domínio (MAR-54): `SessionGuard` resolve o ator (`carregarAtor`) a partir da sessão
 persistida — conta ativa, perfil, status de verificação e clube atual (vínculo aberto do atleta ou
@@ -469,7 +505,9 @@ Referências da validação de imagens: [Sharp 0.35.5](https://sharp.pixelplumbi
 | Express / tipos Express | 5.2.1 / 5.0.6 | Dependências diretas para montagem do handler e parsers, compatíveis com Nest instalado. |
 | Zod | 4.6.7 | Mesmo validador de e-mail do Better Auth fixado; schema estrito do cadastro. |
 | @nestjs/throttler | 6.7.1 | Pacote oficial Nest; peers aceitam Nest 12; limite de `/api/cadastros`. |
-| Socket.IO / socket.io-client | 4.8.4 | Servidor montado no HTTP do Nest, sem `@nestjs/websockets`; o cliente só nos testes do backend (MAR-73). |
+| Socket.IO / socket.io-client | 4.8.4 | Servidor montado no HTTP do Nest, sem `@nestjs/websockets`; cliente na arbitragem temporária e nos testes do backend. |
+| jsqr | 1.4.0 | Decodificação local do QR da carteirinha na arbitragem; carregamento sob demanda e alternativa manual. |
+| @playwright/test | 1.65.0 | Somente desenvolvimento: regressões do novo frontend contra API real local e capturas sanitizadas; CI usa Chromium, Windows pode usar Edge instalado. |
 | pg / @types/pg | 8.23.1 | Já trazido pelo adaptador Prisma; dependência direta para a conexão `LISTEN` das notificações. |
 | Sharp | 0.35.5 | Decoder de JPEG/PNG/WebP para validar fotos antes do Storage; Node >= 20.9.0, binários nativos via dependências opcionais do npm. |
 

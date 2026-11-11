@@ -1,0 +1,103 @@
+{
+  "version": 2,
+  "fileKey": "gwHYKm5u7V8uP1lXBmxPPG",
+  "pageId": "4:6",
+  "previousLedger": "figma-arbitragem-state.json",
+  "scope": "Simplificação do protótipo Figma a pedido do usuário; nenhum código de UI alterado",
+  "frames": {
+    "mesa": "24:273",
+    "mobile": "24:409",
+    "tablet": "26:507",
+    "mobileB": "28:312",
+    "savedMobile": "25:257",
+    "savedBruno": "28:257",
+    "savedB": "28:424",
+    "mesa_two": "40:1135",
+    "mesa_yellow": "40:1318",
+    "mesa_red": "40:1501",
+    "mesa_savedA": "40:1684",
+    "mesa_savedBruno": "40:1867",
+    "mesa_savedB": "40:2050",
+    "mesa_twoSaved": "40:2233",
+    "mesa_yellowSaved": "40:2416",
+    "mesa_undo": "40:2599",
+    "mobile_two": "40:2782",
+    "mobile_yellow": "40:2969",
+    "mobile_red": "40:3156",
+    "mobile_twoSaved": "40:3343",
+    "mobile_yellowSaved": "40:3530",
+    "mobile_undo": "40:3717",
+    "tablet_two": "40:3904",
+    "tablet_yellow": "40:4087",
+    "tablet_red": "40:4270",
+    "tablet_savedA": "40:4453",
+    "tablet_savedBruno": "40:4636",
+    "tablet_savedB": "40:4819",
+    "tablet_twoSaved": "40:5002",
+    "tablet_yellowSaved": "40:5185",
+    "tablet_undo": "40:5368",
+    "mesa_undoInicial": "46:3727",
+    "mobile_undoInicial": "46:3910",
+    "tablet_undoInicial": "46:4097"
+  },
+  "componentSetId": "39:2282",
+  "prototypeVariables": {
+    "mutatedNodeIds": [
+      "39:2284",
+      "39:2466",
+      "39:2652",
+      "39:2834",
+      "39:3020",
+      "39:3206",
+      "39:3392",
+      "39:2515"
+    ],
+    "collectionId": "VariableCollectionId:41:3729",
+    "vars": {
+      "golA": "VariableID:41:3730",
+      "golB": "VariableID:41:3731",
+      "punicao": "VariableID:41:3732"
+    }
+  },
+  "archived": [
+    "39:2041",
+    "39:2177"
+  ],
+  "flows": {
+    "goal": "1 toque em + Gol",
+    "twoMinutes": "Modo 2 min + camisa (2 toques)",
+    "undo": "Desfazer no último gol confirmado (1 toque)",
+    "red": "Modo vermelho + camisa + revisão obrigatória com relatório explícito"
+  },
+  "viewports": {
+    "desktop": [
+      1440,
+      900
+    ],
+    "tablet": [
+      1024,
+      900
+    ],
+    "mobile": [
+      390,
+      844
+    ]
+  },
+  "screenshots": [
+    "desktop-v2.png",
+    "mobile-v2.png",
+    "tablet-v2.png",
+    "gol-v2.png",
+    "exclusao-v2.png",
+    "gol-mobile-v2.png",
+    "exclusao-salva-v2.png",
+    "desfazer-v2.png",
+    "desfazer-inicial-v2.png"
+  ],
+  "limitations": [
+    "Sem câmera, API ou sincronização executadas",
+    "Dados e placares de exemplo; não simula partida contínua",
+    "Validação com árbitros reais pendente"
+  ],
+  "review": "ship: recuperação uniforme do último gol; revisão independente das capturas v2 e da correção aplicada."
+}
