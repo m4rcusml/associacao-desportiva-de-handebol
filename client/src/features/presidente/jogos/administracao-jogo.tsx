@@ -8,6 +8,7 @@ import controles from "../../ui/controles.module.css";
 import pagina from "../../ui/pagina.module.css";
 import { data, ModalJogo, useOperacaoJogo, type AoAlterar } from "./apoio";
 import styles from "./jogo.module.css";
+import { LinkArbitragem } from "./link-tecnico";
 
 type Acao = { tipo: "designar" | "adiar" | "cancelar" | "trocar-senha" } | { tipo: "remover"; arbitragem: ArbitragemDesignada };
 const TITULOS = { designar: "Designar arbitragem", adiar: "Adiar jogo", cancelar: "Cancelar jogo?", "trocar-senha": "Trocar a senha da arbitragem?", remover: "Retirar designação?" };
@@ -83,17 +84,18 @@ export function AdministracaoJogo({ jogo, pessoas, atualizar, focoAlternativo }:
     <section className={pagina.secao} aria-labelledby="arbitragem-titulo">
       <div className={pagina.secaoTopo}>
         <h2 id="arbitragem-titulo" className={pagina.secaoTitulo}>Arbitragem</h2>
-        {podeDesignar && <button type="button" className={controles.primario} disabled={operacao.ocupado} onClick={() => abrir({ tipo: "designar" })}>Designar arbitragem</button>}
+        {podeDesignar && <button type="button" className={jogo.status === "em_andamento" ? controles.secundario : controles.primario} disabled={operacao.ocupado} onClick={() => abrir({ tipo: "designar" })}>Designar arbitragem</button>}
       </div>
       {jogo.arbitragens.length === 0 ? <p className={pagina.secaoTexto}>Nenhuma pessoa designada para a arbitragem.</p> : <ul className={styles.lista}>
         {jogo.arbitragens.map(a => <li className={styles.item} key={a.id}>
           <p className={styles.nome}>{a.usuario?.nomeCompleto ?? a.nomeCompleto ?? "Nome indisponível"}</p>
-          <span className={styles.meta}>{a.tipo === "cadastrado" ? "Conta cadastrada" : a.tipo === "externo" ? "Pessoa sem cadastro" : "Entrada por senha"}{a.visualizacao ? ` · visualização de ${a.visualizacao}` : ""}</span>
+          <span className={styles.meta}>{a.tipo === "cadastrado" ? "Conta cadastrada" : a.tipo === "externo" ? "Pessoa sem cadastro" : "Entrada por senha"}{a.visualizacao ? ` · ${a.visualizacao === "banco" ? "Mesa" : "Linha"}` : ""}</span>
           <span className={styles.meta}>{a.acessouEm ? `Acessou em ${data(a.acessouEm, jogo.fusoHorario)}` : "Ainda não acessou"}</span>
           {podeDesignar && a.tipo !== "entrada_por_senha" && <div className={styles.acoes}><button type="button" className={controles.rejeitar} disabled={operacao.ocupado} onClick={() => abrir({ tipo: "remover", arbitragem: a })}>Retirar designação</button></div>}
         </li>)}
       </ul>}
       {podeDesignar && <>
+        <LinkArbitragem jogoId={jogo.id} />
         <h3 className={pagina.subtitulo}>Acesso por senha do jogo</h3>
         <p className={pagina.secaoTexto}>A primeira consulta gera a senha. Compartilhe somente com os responsáveis pela arbitragem.</p>
         <div className={styles.acoes}>

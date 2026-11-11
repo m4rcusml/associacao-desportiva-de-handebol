@@ -79,9 +79,19 @@ export function CorrecoesJogo({ jogo, registros, credenciamentos, pessoas, atual
     if (await operacao.executar(path, body, mensagem)) setAcao(null);
   }
 
-  if (jogo.status !== "finalizado") return <p className={controles.nota}>As correções administrativas ficam disponíveis após o encerramento do jogo pela arbitragem.</p>;
+  if (jogo.status !== "finalizado") return <p className={controles.nota}>{jogo.status === "cancelado" ? "Jogo cancelado. Os registros ficam disponíveis para consulta; não há correções pós-jogo." : "As correções administrativas ficam disponíveis após o encerramento do jogo pela arbitragem."}</p>;
 
   return <div className={pagina.secoes}>
+    <section className={pagina.secao} aria-labelledby="ordem-correcao-titulo">
+      <h2 id="ordem-correcao-titulo" className={pagina.secaoTitulo}>Corrigir uma participação registrada por engano</h2>
+      <ol className={styles.passos}>
+        <li>Se outra pessoa realmente jogou, registre primeiro a participação real dela.</li>
+        <li>Corrija os lançamentos para o atleta certo ou anule os que não aconteceram.</li>
+        <li>Anule a entrada indevida e desfaça o credenciamento quando não houver entrada nem lançamentos válidos.</li>
+        <li>Ajuste a camisa do atleta correto depois de liberar o número.</li>
+      </ol>
+      <p className={styles.meta}>Se a camisa ainda estiver ocupada, use um número livre ao registrar a participação e corrija-o ao final. Cada alteração só vale após confirmação do servidor.</p>
+    </section>
     <section className={pagina.secao} aria-labelledby="correcao-resultado-titulo">
       <h2 id="correcao-resultado-titulo" className={pagina.secaoTitulo}>Resultado e validade</h2>
       <p className={pagina.secaoTexto}>O vencedor é independente do placar. Corrigir o resultado não muda os gols; cada lançamento é corrigido separadamente.</p>
@@ -102,11 +112,13 @@ export function CorrecoesJogo({ jogo, registros, credenciamentos, pessoas, atual
       {!participacoes.length ? <p className={styles.texto}>Nenhum credenciamento vigente.</p> : <ul className={styles.lista}>
         {participacoes.map(p => {
           const entradaValida = !!p.entrouEmQuadraEm && !p.entradaAnulada;
-          const temLancamentos = registros.lancamentos.some(l => l.participacaoId === p.participacaoId && valido(l));
+          const quantidadeLancamentos = registros.lancamentos.filter(l => l.participacaoId === p.participacaoId && valido(l)).length;
+          const temLancamentos = quantidadeLancamentos > 0;
           return <li className={styles.item} key={p.participacaoId}>
             <p className={styles.nome}>{p.atleta.nomeCompleto} · camisa {p.numeroCamisa}</p>
             <span className={styles.meta}>{nomeClube(jogo, p.inscricaoId)} · {entradaValida ? "Entrou em quadra" : p.entradaAnulada ? "Entrada anulada" : "Sem entrada registrada"}</span>
             {p.registroAdministrativo && <span className={styles.meta}>Registro administrativo{p.registroAdministrativo.irregularidades.length ? ` · ${p.registroAdministrativo.irregularidades.map(i => IRREGULARIDADES[i]).join(", ")}` : ""}</span>}
+            <p className={styles.meta}>Para desfazer: {entradaValida ? "entrada em quadra ainda válida" : "sem entrada válida"}; {quantidadeLancamentos === 1 ? "1 lançamento válido" : `${quantidadeLancamentos} lançamentos válidos`}. {!entradaValida && !temLancamentos ? "Credenciamento pronto para ser desfeito." : "Resolva as pendências antes de desfazer."}</p>
             <div className={styles.acoes}>
               <button type="button" className={controles.secundario} disabled={operacao.ocupado} onClick={() => abrir({ tipo: "camisa", participacao: p })} aria-label={`Corrigir camisa de ${p.atleta.nomeCompleto}`}>Corrigir camisa</button>
               {entradaValida && <button type="button" className={controles.rejeitar} disabled={operacao.ocupado} onClick={() => abrir({ tipo: "anular-entrada", participacao: p })} aria-label={`Anular entrada de ${p.atleta.nomeCompleto}`}>Anular entrada</button>}
@@ -134,8 +146,9 @@ export function CorrecoesJogo({ jogo, registros, credenciamentos, pessoas, atual
       </ul>}
     </section>
 
-    <ModalJogo aberto={!!acao} fechar={() => setAcao(null)} titulo={acao ? TITULOS[acao.tipo] : ""} focoAlternativo={focoAlternativo} ocupado={operacao.ocupado}>
+    <ModalJogo aberto={!!acao} fechar={() => setAcao(null)} titulo={acao ? TITULOS[acao.tipo] : ""} focoAlternativo={focoAlternativo} ocupado={operacao.ocupado || operacao.incerta}>
       {acao && <form className={styles.formulario} onSubmit={enviar} onChange={novaIntencao}>
+        <fieldset className={styles.camposOperacao} disabled={operacao.ocupado || operacao.incerta}>
         {acao.tipo === "resultado" && <>
           <p className={styles.texto}>Resultado visto: {RESULTADOS[acao.visto.resultado]} · vencedor: {nomeClube(jogo, acao.visto.vencedorInscricaoId)}.</p>
           <div className={controles.campo}><label htmlFor="resultado-novo" className={controles.rotulo}>Forma do encerramento</label><select id="resultado-novo" name="resultado" className={controles.entrada} defaultValue={acao.visto.resultado} required>{Object.entries(RESULTADOS).map(([valor, rotulo]) => <option key={valor} value={valor} disabled={valor === "wo" ? !!jogo.iniciadoEm : !jogo.iniciadoEm}>{rotulo}</option>)}</select></div>
@@ -150,6 +163,7 @@ export function CorrecoesJogo({ jogo, registros, credenciamentos, pessoas, atual
         {acao.tipo === "registrar" && <>
           <div className={controles.campo}><label htmlFor="participacao-atleta" className={controles.rotulo}>Atleta que realmente participou</label><select id="participacao-atleta" name="atletaId" className={controles.entrada} required defaultValue=""><option value="" disabled>Selecione o atleta</option>{atletas.map(p => <option key={p.usuarioId} value={p.usuarioId}>{p.nomeCompleto} · {p.clube?.nome ?? "Sem clube atual"}{!p.ativo ? " · Conta desativada" : ""}</option>)}</select></div>
           <div className={controles.campo}><label htmlFor="participacao-camisa" className={controles.rotulo}>Número da camisa neste jogo</label><input id="participacao-camisa" name="numeroCamisa" className={controles.entrada} type="number" min={0} max={2147483647} step={1} required /></div>
+          <p className={controles.ajuda}>A camisa não pode estar em uso por outro credenciamento do mesmo clube. Se estiver, registre com um número livre e corrija depois de liberar o número original.</p>
           <label className={styles.checkbox}><input type="checkbox" name="entrouEmQuadra" value="sim" />O atleta entrou em quadra neste jogo</label>
           <p className={controles.nota}>O servidor verifica o vínculo com um dos clubes na hora do início do jogo. Suspensão, conta desativada ou carteirinha invalidada ficam registradas como irregularidades. Isso não regulariza a participação.</p>
         </>}
@@ -168,11 +182,12 @@ export function CorrecoesJogo({ jogo, registros, credenciamentos, pessoas, atual
           <p className={controles.nota}>Transferir um gol para o adversário altera o placar dos dois clubes. A correção recalcula métricas e suspensões afetadas e preserva o lançamento original.</p>
         </>}
         {acao.tipo === "anular-lancamento" && <p className={controles.nota}>Anule somente se a ocorrência não aconteceu. A anulação recalcula placar, métricas e suspensões afetadas, preservando o registro original.</p>}
+        </fieldset>
         {operacao.erro && <p role="alert" className={controles.erro}>{operacao.erro}</p>}
         {!!operacao.conflito && "operacaoId" in acao && <p className={controles.nota}>Feche este diálogo e confira o lançamento vigente antes de iniciar outra correção.</p>}
         <div className={pagina.acoes}>
           <button type="submit" className={acao.tipo === "invalidar" || acao.tipo === "anular-entrada" || acao.tipo === "estornar" || acao.tipo === "anular-lancamento" ? controles.rejeitar : controles.primario} disabled={operacao.ocupado || (!!operacao.conflito && "operacaoId" in acao)}>{operacao.ocupado ? "Salvando…" : acao.tipo === "resultado" ? "Confirmar resultado" : acao.tipo === "invalidar" ? "Confirmar invalidação" : acao.tipo === "registrar" ? "Confirmar participação" : acao.tipo === "camisa" ? "Corrigir camisa" : acao.tipo === "anular-entrada" ? "Confirmar anulação da entrada" : acao.tipo === "estornar" ? "Desfazer credenciamento" : acao.tipo === "corrigir-lancamento" ? "Confirmar correção" : "Confirmar anulação"}</button>
-          <button type="button" className={controles.secundario} disabled={operacao.ocupado} onClick={() => setAcao(null)}>Voltar</button>
+          <button type="button" className={controles.secundario} disabled={operacao.ocupado || operacao.incerta} onClick={() => setAcao(null)}>Voltar</button>
         </div>
       </form>}
     </ModalJogo>

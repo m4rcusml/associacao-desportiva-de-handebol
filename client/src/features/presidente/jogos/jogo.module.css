@@ -3,16 +3,24 @@
 .subtitulo { margin: 0 0 0.75rem; font-family: var(--display); font-size: 1.4rem; line-height: 1.2; }
 .texto { margin: 0.35rem 0; max-width: none; line-height: 1.5; }
 .muted { color: var(--suave); }
-.resumo { padding: 1rem; border-top: 2px solid var(--tinta); background: var(--superficie); }
+.resumo { padding: 24px; border-radius: 12px; background: var(--superficie); margin-top: 20px; }
+.confronto { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding-block: 12px; }
+.clubeA, .clubeB { display: flex; min-width: 0; flex-direction: column; gap: 6px; align-items: center; text-align: center; font-size: 18px; overflow-wrap: anywhere; }
+.clubeA { color: var(--clube-a); }
+.clubeB { color: var(--clube-b); }
+.compartilhar { margin-block: 1rem; }
+.passos { margin: 0.75rem 0; padding-left: 1.5rem; line-height: 1.6; }
+.passos li + li { margin-top: 0.5rem; }
 .placar { margin: 0.75rem 0; font-family: var(--display); font-size: 2rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
 .abas { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block: 1.25rem; }
-.lista { margin: 0; padding: 0; list-style: none; border-top: 2px solid var(--tinta); background: var(--superficie); }
+.lista { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--divisa); background: var(--superficie); }
 .item { padding: 1rem; border-bottom: 1px solid var(--divisa); overflow-wrap: anywhere; }
 .nome { margin: 0 0 0.25rem; font-weight: 650; line-height: 1.4; }
 .meta { display: block; margin: 0.2rem 0; max-width: none; color: var(--suave); font-size: 0.9rem; line-height: 1.5; }
 .metricas { display: block; margin-top: 0.35rem; color: var(--tinta); font-size: 0.9rem; line-height: 1.5; }
 .acoes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .formulario { display: grid; gap: 0.9rem; margin: 1rem 0 0; }
+.camposOperacao { display: grid; gap: 0.9rem; padding: 0; margin: 0; border: 0; min-width: 0; }
 .grade { display: grid; gap: 0.9rem; }
 .checkbox { display: flex; align-items: flex-start; gap: 0.6rem; margin: 0; line-height: 1.5; }
 .checkbox input { flex: 0 0 1.25rem; width: 1.25rem; min-height: 1.25rem; height: 1.25rem; margin: 0.2rem 0 0; padding: 0; }
@@ -29,4 +37,10 @@
   .grade { grid-template-columns: 1fr 1fr; }
   .ficha > div { display: grid; grid-template-columns: 10rem 1fr; gap: 1rem; }
   .ficha dd { margin: 0; }
+}
+@media (max-width: 47.99rem) {
+  .resumo { padding: 16px; }
+  .clubeA, .clubeB { font-size: 14px; }
+  .confronto { gap: 8px; }
+  .confronto .placar { font-size: 24px; white-space: nowrap; }
 }

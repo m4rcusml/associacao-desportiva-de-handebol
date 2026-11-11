@@ -1,0 +1,89 @@
+name: Frontend
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_DB: handebol_frontend_test
+          POSTGRES_USER: handebol
+          POSTGRES_PASSWORD: ci_only_password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U handebol -d handebol_frontend_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://handebol:ci_only_password@127.0.0.1:5432/handebol_frontend_test
+      BETTER_AUTH_URL: http://localhost:3001
+      CLIENT_ORIGIN: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-only-secret-at-least-32-characters-long
+      ARBITRAGEM_SENHA_CHAVE: 00000000000000000000000000000000000000000000000000000000c1c1c1c1
+      FOTOS_DIRETORIO: .fotos-local
+      HANDEBOL_QA_API: http://localhost:3001/api
+      HANDEBOL_QA_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26.8.2
+          cache: npm
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+      - name: Install npm
+        run: npm install --global npm@12.2.0
+      - name: Install frontend
+        run: npm ci --prefix client
+      - name: Lint, types, build and contract regressions
+        working-directory: client
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run build
+          npm test
+      - name: Prepare real local API and fictitious data
+        run: |
+          npm ci --prefix server
+          npm run build --prefix server
+          npm run db:deploy --prefix server
+          npm run start:prod --prefix server > "$RUNNER_TEMP/frontend-api.log" 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:3001/api/health/ready > /dev/null; then break; fi
+            sleep 2
+          done
+          curl --fail --silent http://localhost:3001/api/health/ready
+          cd server
+          node scripts/seed-frontend.ts
+      - name: Install Chromium
+        working-directory: client
+        run: npx playwright install --with-deps chromium
+      - name: Browser regressions against the real API
+        working-directory: client
+        run: |
+          export HANDEBOL_QA_ACESSO="$GITHUB_WORKSPACE/output/playwright/acesso-local.json"
+          npm run test:ui
+      - name: Sanitized visual evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: frontend-evidence
+          path: output/playwright/novo-frontend/**/*.png
+          if-no-files-found: ignore
+          retention-days: 14

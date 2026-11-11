@@ -9,7 +9,9 @@ import controles from "../../ui/controles.module.css";
 import pagina from "../../ui/pagina.module.css";
 import { AdministracaoJogo } from "./administracao-jogo";
 import { CorrecoesJogo } from "./correcoes-jogo";
+import { LinkTecnico } from "./link-tecnico";
 import { data, MetricasAtleta, nomeClube, RESULTADOS, STATUS_JOGO, TIPOS_LANCAMENTO } from "./apoio";
+import { EmblemaClube } from "../visual";
 import styles from "./jogo.module.css";
 
 type Base = { jogo: Jogo; campeonato: DetalheCampeonato; resultado: ResultadoDetalhado; registros: RegistrosJogo };
@@ -31,6 +33,8 @@ export function DetalheJogo({ campeonatoId, jogoId }: { campeonatoId: string; jo
   const [aviso, setAviso] = useState("");
   const titulo = useRef<HTMLHeadingElement>(null);
   const complementosEmCurso = useRef(false);
+  const versaoBase = useRef(0);
+  const versaoComplementos = useRef(0);
   const tratarErro = useErroApi();
 
   const consultarBase = useCallback(async (): Promise<Base> => {
@@ -43,12 +47,15 @@ export function DetalheJogo({ campeonatoId, jogoId }: { campeonatoId: string; jo
   }, [campeonatoId, jogoId]);
 
   async function carregarBase() {
-    setBase(await consultarBase());
+    const versao = ++versaoBase.current;
+    const dados = await consultarBase();
+    if (versao === versaoBase.current) setBase(dados);
   }
 
   async function carregarComplementos() {
     if (complementosEmCurso.current) return;
     complementosEmCurso.current = true;
+    const versao = ++versaoComplementos.current;
     setCarregandoComplementos(true);
     setErroComplementos("");
     try {
@@ -56,9 +63,9 @@ export function DetalheJogo({ campeonatoId, jogoId }: { campeonatoId: string; jo
         api<CredenciamentosJogo>(`/jogos/${jogoId}/credenciamentos`), api<EscalacaoJogo>(`/jogos/${jogoId}/escalacao`),
         api<DesempenhoJogo>(`/jogos/${jogoId}/desempenho`), consultarSolicitacoes(),
       ]);
-      setComplementos({ credenciamentos, escalacao, desempenho, pessoas });
+      if (versao === versaoComplementos.current) setComplementos({ credenciamentos, escalacao, desempenho, pessoas });
     } catch (error) {
-      setErroComplementos(tratarErro(error));
+      if (versao === versaoComplementos.current) setErroComplementos(tratarErro(error));
     } finally {
       complementosEmCurso.current = false;
       setCarregandoComplementos(false);
@@ -90,23 +97,29 @@ export function DetalheJogo({ campeonatoId, jogoId }: { campeonatoId: string; jo
 
   const { jogo, campeonato, registros, resultado } = base;
   const placar = registros.placar;
+  const ordem: Aba[] = jogo.status === "finalizado" ? ["resumo", "correcoes", "participantes", "lancamentos", "administracao"]
+    : jogo.status === "agendado" ? ["resumo", "administracao", "participantes", "lancamentos"]
+    : ["resumo", "participantes", "lancamentos", "administracao"];
   return <>
     <Link className={pagina.voltar} href={`/presidente/campeonatos/${campeonatoId}`}>Voltar a {campeonato.nome}</Link>
     <div className={pagina.topo}>
-      <div><h1 ref={titulo} tabIndex={-1} className={pagina.titulo}>{jogo.clubeA.clube.nome} × {jogo.clubeB.clube.nome}</h1><p className={pagina.texto}>{campeonato.nome} · {campeonato.edicao} · {campeonato.categoria}</p></div>
+      <div><h1 ref={titulo} tabIndex={-1} className={pagina.titulo}>{jogo.status === "agendado" ? "Preparar jogo" : jogo.status === "em_andamento" ? "Jogo em andamento" : jogo.status === "finalizado" ? "Jogo encerrado" : "Jogo cancelado"}</h1><p className={pagina.texto}>{campeonato.nome} · {campeonato.categoria} {campeonato.edicao}</p></div>
       <button type="button" className={controles.secundario} onClick={() => void atualizar()}>Atualizar jogo</button>
     </div>
+    <span className={`${controles.status} ${jogo.status === "finalizado" ? controles.statusAprovado : jogo.status === "cancelado" ? controles.statusRejeitado : controles.statusPendente}`}>{STATUS_JOGO[jogo.status]}{jogo.interrompidoEm ? " · Interrompido" : ""}{jogo.invalidadoEm ? " · Invalidado" : ""}</span>
     <div className={styles.resumo}>
-      <span className={`${controles.status} ${jogo.status === "finalizado" ? controles.statusAprovado : jogo.status === "cancelado" ? controles.statusRejeitado : controles.statusPendente}`}>{STATUS_JOGO[jogo.status]}{jogo.interrompidoEm ? " · Interrompido" : ""}{jogo.invalidadoEm ? " · Invalidado" : ""}</span>
+      <div className={styles.confronto}><div className={styles.clubeA}><EmblemaClube nome={jogo.clubeA.clube.nome} /><strong>{jogo.clubeA.clube.nome}</strong></div><p className={styles.placar} aria-label={placar ? `Placar: ${placar.placarClubeA} a ${placar.placarClubeB}` : "Placar indisponível"}>{placar ? `${placar.placarClubeA} × ${placar.placarClubeB}` : "— × —"}</p><div className={styles.clubeB}><EmblemaClube nome={jogo.clubeB.clube.nome} cobre /><strong>{jogo.clubeB.clube.nome}</strong></div></div>
       <p className={styles.texto}>{jogo.inicioPrevistoEm ? data(jogo.inicioPrevistoEm, jogo.fusoHorario) : "Sem data prevista"} · {jogo.fusoHorario}{jogo.local ? ` · ${jogo.local}` : ""}</p>
-      <p className={styles.placar}>{placar ? `${placar.placarClubeA} × ${placar.placarClubeB}` : "Sem placar"}</p>
       {jogo.status === "finalizado" && <p className={styles.texto}>{jogo.resultado ? RESULTADOS[jogo.resultado] : "Resultado não informado"} · Vencedor: {nomeClube(jogo, jogo.vencedorInscricaoId)}</p>}
     </div>
+    {jogo.status === "agendado" && aba === "resumo" && <section className={`${pagina.secao} ${styles.secao}`}><h2 className={pagina.secaoTitulo}>Arbitragem</h2><p className={pagina.secaoTexto}>{jogo.arbitragens.length ? jogo.arbitragens.map(a => a.usuario?.nomeCompleto ?? a.nomeCompleto ?? "Pessoa designada").join(", ") : "Nenhuma pessoa designada."}</p><button type="button" className={controles.primario} onClick={() => mudarAba("administracao")}>Designar arbitragem</button></section>}
+    {jogo.status === "em_andamento" && <div className={styles.acoes}><button type="button" className={controles.primario} onClick={() => mudarAba("participantes")}>Consultar registros do jogo</button><button type="button" className={controles.secundario} onClick={() => mudarAba("administracao")}>Designar arbitragem</button></div>}
+    {jogo.status === "agendado" && <LinkTecnico jogoId={jogoId} />}
     <p role="status" className={pagina.aviso}>{aviso}</p>
     {erro && <p role="alert" className={`${controles.erro} ${styles.erro}`}>{erro}</p>}
-    <div className={styles.abas} role="group" aria-label="Informações do jogo">{ABAS.map(a => <button key={a.id} type="button" className={controles.opcao} aria-pressed={aba === a.id} onClick={() => mudarAba(a.id)}>{a.nome}</button>)}</div>
+    <div className={styles.abas} role="group" aria-label="Informações do jogo">{ordem.map(id => ABAS.find(a => a.id === id)!).map(a => <button key={a.id} type="button" className={controles.opcao} aria-pressed={aba === a.id} onClick={() => mudarAba(a.id)}>{a.nome}</button>)}</div>
 
-    {aba === "resumo" && <Resumo jogo={jogo} resultado={resultado} />}
+    {aba === "resumo" && <details className={styles.historico}><summary>Dados e histórico do jogo</summary><Resumo jogo={jogo} resultado={resultado} /></details>}
     {aba === "lancamentos" && <Lancamentos jogo={jogo} registros={registros} />}
     {aba !== "resumo" && aba !== "lancamentos" && <>
       {carregandoComplementos && !complementos && <p role="status" className={pagina.carregando}>Consultando participantes e cadastros…</p>}

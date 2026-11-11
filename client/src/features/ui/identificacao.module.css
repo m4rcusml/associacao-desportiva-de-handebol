@@ -1,0 +1,2 @@
+.iniciais { display: inline-flex; flex: 0 0 44px; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: var(--clube-a-fundo); color: var(--clube-a); font-size: 15px; font-weight: 600; }
+.grande { flex-basis: 64px; width: 64px; height: 64px; font-size: 24px; }

@@ -1,0 +1,89 @@
+{
+  "fileKey": "gwHYKm5u7V8uP1lXBmxPPG",
+  "pageId": "4:6",
+  "scope": "Proposta Figma; nenhuma alteração em frontend/backend",
+  "approvedDirection": "Orientação de ginásio",
+  "confirmedUserPriority": "Mesa registra; linha acompanha e pode registrar",
+  "frames": {
+    "mesa": "24:273",
+    "line": "24:409",
+    "entry": "24:486",
+    "pre": "24:511",
+    "event": "25:222",
+    "saved": "25:257",
+    "red": "25:312",
+    "history": "25:342",
+    "correction": "25:401",
+    "qr": "25:426",
+    "credential": "25:447",
+    "athlete": "25:472",
+    "roster": "25:496",
+    "paused": "25:553",
+    "finish": "25:596",
+    "receipt": "25:627",
+    "more": "26:222",
+    "uncertain": "26:250",
+    "conflict": "26:280",
+    "revoked": "26:298",
+    "shirt": "26:314",
+    "annul": "26:334",
+    "wo": "26:348",
+    "undo": "26:370",
+    "entered": "26:385",
+    "yellowSaved": "26:401",
+    "twoSaved": "26:428",
+    "redSaved": "26:455",
+    "receiptWo": "26:482",
+    "mesaTablet": "26:507",
+    "eventBruno": "28:222",
+    "savedBruno": "28:257",
+    "lineB": "28:312",
+    "eventB": "28:389",
+    "savedB": "28:424"
+  },
+  "componentSetId": "29:295",
+  "buttonInstances": 207,
+  "textStyleCount": 22,
+  "validation": {
+    "screenCount": 35,
+    "overflowNodes": 0,
+    "viewports": {
+      "desktop": [
+        1440,
+        1000
+      ],
+      "mobile": [
+        390,
+        844
+      ],
+      "tablet": [
+        1024,
+        1000
+      ]
+    },
+    "screenshots": [
+      "desktop",
+      "mobile",
+      "tablet",
+      "entry",
+      "pre",
+      "event",
+      "credential",
+      "red",
+      "finish",
+      "paused",
+      "uncertain",
+      "conflict",
+      "receipt",
+      "roster",
+      "lineB"
+    ],
+    "limitations": [
+      "Sem entrevista ou teste em quadra",
+      "Protótipo de snapshots; placares fixos",
+      "Sem execução de câmera, API ou sincronização no protótipo",
+      "Detector Markdown sem achados não valida interface Figma"
+    ]
+  },
+  "provenance": "PNGs de QA exportados do Figma durante esta sessão; sem imagens geradas ou conteúdo fotográfico."
+}

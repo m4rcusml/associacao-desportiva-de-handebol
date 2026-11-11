@@ -8,7 +8,8 @@
   max-width: 20rem;
   margin: 1rem 0;
   padding: 1rem;
-  border: 2px solid var(--tinta);
+  border: 1px solid var(--divisa);
+  border-radius: 12px;
   background: #ffffff;
 }
 
@@ -74,8 +75,7 @@
   flex: none;
   font-family: var(--display);
   font-size: 1.35rem;
-  font-weight: 700;
-  font-stretch: condensed;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -89,7 +89,8 @@
   place-items: center;
   width: 9rem;
   aspect-ratio: 3 / 4;
-  border: 2px solid var(--tinta);
+  border: 1px solid var(--divisa);
+  border-radius: 10px;
   background: var(--fundo);
   overflow: hidden;
 }

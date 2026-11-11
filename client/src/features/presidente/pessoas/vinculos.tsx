@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../../../lib/api";
 import type { Clube, HistoricoVinculos, ReferenciaClube } from "../../../lib/presidente";
 import { Confirmacao } from "../../ui/confirmacao";
@@ -23,17 +23,21 @@ export function Vinculos({ atletaId, aprovado, aoTransferir }: Props) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
+  const consulta = useRef(0);
+  const envio = useRef(false);
 
   const carregar = useCallback(() => {
+    const versao = ++consulta.current;
     Promise.all([
       api<HistoricoVinculos>(`/atletas/${atletaId}/vinculos`),
       aprovado ? api<Clube[]>("/clubes/visao-geral") : Promise.resolve([]),
     ])
-      .then(([historico, clubes]) => { setDados({ historico, clubes }); setErroCarga(""); })
-      .catch(falha => setErroCarga(tratarErro(falha)));
+      .then(([historico, clubes]) => { if (versao === consulta.current) { setDados({ historico, clubes }); setErroCarga(""); } })
+      .catch(falha => { if (versao === consulta.current) setErroCarga(tratarErro(falha)); });
   }, [atletaId, aprovado, tratarErro]);
 
-  useEffect(carregar, [carregar]);
+  const invalidarConsulta = useCallback(() => { consulta.current++; }, []);
+  useEffect(() => { carregar(); return invalidarConsulta; }, [carregar, invalidarConsulta]);
 
   const atual = dados?.historico.clubeAtual ?? null;
   const opcoes = (dados?.clubes ?? []).filter(c => c.id !== atual?.id);
@@ -48,7 +52,9 @@ export function Vinculos({ atletaId, aprovado, aoTransferir }: Props) {
   }
 
   async function transferir() {
-    if (!atual || !clubeDestino) return;
+    if (!atual || !clubeDestino || envio.current) return;
+    envio.current = true;
+    consulta.current++;
     setEnviando(true);
     setErro("");
     try {
@@ -64,6 +70,7 @@ export function Vinculos({ atletaId, aprovado, aoTransferir }: Props) {
       setErro(tratarErro(falha));
       if (conflito(falha) || status(falha) === 404) carregar();
     } finally {
+      envio.current = false;
       setEnviando(false);
     }
   }
@@ -72,7 +79,8 @@ export function Vinculos({ atletaId, aprovado, aoTransferir }: Props) {
     <section className={pagina.secao} aria-labelledby="secao-vinculos">
       <h2 id="secao-vinculos" className={`${pagina.secaoTitulo} ${pagina.erroDecisao}`}>Vínculos com clubes</h2>
 
-      {erroCarga ? (
+      {erroCarga && dados && <p className={controles.erro} role="alert">{erroCarga} Os últimos vínculos confirmados foram mantidos.</p>}
+      {erroCarga && !dados ? (
         <>
           <p className={controles.erro} role="alert">{erroCarga}</p>
           <button type="button" className={`${controles.secundario} ${pagina.acaoVazio}`} onClick={() => { setErroCarga(""); setDados(null); carregar(); }}>Tentar novamente</button>

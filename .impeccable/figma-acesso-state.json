@@ -1,0 +1,1463 @@
+{
+  "fileKey": "gwHYKm5u7V8uP1lXBmxPPG",
+  "sessionId": "ea74e7ca-c55e-45c7-a072-49d4d9d0e879",
+  "page": "4:2",
+  "frames": {
+    "login": "7:2",
+    "m_login": "92:5465",
+    "filled": "92:5486",
+    "m_filled": "92:5514",
+    "signup": "7:22",
+    "m_signup": "92:5575",
+    "coach": "92:5609",
+    "m_coach": "92:5647",
+    "selected": "92:5678",
+    "m_selected": "92:5719",
+    "clubs": "92:5937",
+    "clubSearch": "92:5963",
+    "clubVale": "92:5982",
+    "clubPorto": "92:6001",
+    "missing": "92:6020",
+    "name": "92:6039",
+    "email": "92:6056",
+    "password": "92:6073",
+    "m_clubs": "92:6090",
+    "m_clubSearch": "92:6109",
+    "m_clubVale": "92:6121",
+    "m_clubPorto": "92:6133",
+    "m_missing": "92:6145",
+    "m_name": "92:6157",
+    "m_email": "92:6167",
+    "m_password": "92:6177",
+    "athleteSent": "92:6187",
+    "coachSent": "92:6199",
+    "invalidLogin": "92:6211",
+    "network": "92:6223",
+    "rateLimit": "92:6235",
+    "emailExists": "92:6245",
+    "conflict": "92:6257",
+    "noClubs": "92:6269",
+    "loading": "92:6281",
+    "expired": "92:6292",
+    "board": "92:6302",
+    "coachLogin": "92:6331",
+    "presidentLogin": "92:6343",
+    "athlete": "9:2",
+    "coachHome": "8:2",
+    "president": "6:20",
+    "pendingAthlete": "9:108",
+    "pendingCoach": "82:2554",
+    "ref": "24:486",
+    "tecnico_desktop_0": "97:220",
+    "tecnico_desktop_1": "97:239",
+    "tecnico_desktop_2": "97:258",
+    "tecnico_mobile_0": "97:277",
+    "tecnico_mobile_1": "97:289",
+    "tecnico_mobile_2": "97:301",
+    "atleta-clube-selecionado_desktop_0": "97:313",
+    "atleta-clube-selecionado_desktop_1": "97:332",
+    "atleta-clube-selecionado_desktop_2": "97:351",
+    "atleta-clube-selecionado_mobile_0": "97:370",
+    "atleta-clube-selecionado_mobile_1": "97:382",
+    "atleta-clube-selecionado_mobile_2": "97:394"
+  },
+  "components": {
+    "field": "92:5434",
+    "buttonSet": "29:295"
+  },
+  "validation": [
+    {
+      "key": "login",
+      "id": "7:2",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 8,
+        "TEXT": 14,
+        "INSTANCE": 5
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_login",
+      "id": "92:5465",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 5,
+        "TEXT": 10,
+        "INSTANCE": 5
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "filled",
+      "id": "92:5486",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 8,
+        "TEXT": 14,
+        "INSTANCE": 5
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_filled",
+      "id": "92:5514",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 5,
+        "TEXT": 10,
+        "INSTANCE": 5
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "signup",
+      "id": "7:22",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 21,
+        "INSTANCE": 8
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_signup",
+      "id": "92:5575",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 8,
+        "TEXT": 17,
+        "INSTANCE": 8
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "coach",
+      "id": "92:5609",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 19,
+        "INSTANCE": 7
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_coach",
+      "id": "92:5647",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 8,
+        "TEXT": 15,
+        "INSTANCE": 7
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "selected",
+      "id": "92:5678",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 11,
+        "TEXT": 21,
+        "INSTANCE": 8
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_selected",
+      "id": "92:5719",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 8,
+        "TEXT": 17,
+        "INSTANCE": 8
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "clubs",
+      "id": "92:5937",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 13,
+        "INSTANCE": 5
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "clubSearch",
+      "id": "92:5963",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 9,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "clubVale",
+      "id": "92:5982",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 9,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "clubPorto",
+      "id": "92:6001",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 9,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "missing",
+      "id": "92:6020",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 9,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "name",
+      "id": "92:6039",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 8,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "email",
+      "id": "92:6056",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 8,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "password",
+      "id": "92:6073",
+      "width": 1440,
+      "height": 900,
+      "counts": {
+        "FRAME": 7,
+        "TEXT": 8,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_clubs",
+      "id": "92:6090",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 9,
+        "INSTANCE": 5
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_clubSearch",
+      "id": "92:6109",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_clubVale",
+      "id": "92:6121",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_clubPorto",
+      "id": "92:6133",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_missing",
+      "id": "92:6145",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_name",
+      "id": "92:6157",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 4,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_email",
+      "id": "92:6167",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 4,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "m_password",
+      "id": "92:6177",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 4,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "athleteSent",
+      "id": "92:6187",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "coachSent",
+      "id": "92:6199",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "invalidLogin",
+      "id": "92:6211",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "network",
+      "id": "92:6223",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "rateLimit",
+      "id": "92:6235",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 4,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "emailExists",
+      "id": "92:6245",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "conflict",
+      "id": "92:6257",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "noClubs",
+      "id": "92:6269",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "loading",
+      "id": "92:6281",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "expired",
+      "id": "92:6292",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 4,
+        "INSTANCE": 1
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "board",
+      "id": "92:6302",
+      "width": 800,
+      "height": 945,
+      "counts": {
+        "TEXT": 15,
+        "INSTANCE": 13
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "coachLogin",
+      "id": "92:6331",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    },
+    {
+      "key": "presidentLogin",
+      "id": "92:6343",
+      "width": 390,
+      "height": 844,
+      "counts": {
+        "FRAME": 4,
+        "TEXT": 5,
+        "INSTANCE": 2
+      },
+      "fonts": [
+        "IBM Plex Sans"
+      ],
+      "images": []
+    }
+  ],
+  "connections": 123,
+  "unresolved": [],
+  "externalLinks": [
+    [
+      "92:6195",
+      "pendingAthlete"
+    ],
+    [
+      "92:6207",
+      "pendingCoach"
+    ],
+    [
+      "92:6339",
+      "coachHome"
+    ],
+    [
+      "92:6351",
+      "president"
+    ],
+    [
+      "92:5463",
+      "ref"
+    ],
+    [
+      "92:5484",
+      "ref"
+    ],
+    [
+      "92:5508",
+      "athlete"
+    ],
+    [
+      "92:5512",
+      "ref"
+    ],
+    [
+      "92:5529",
+      "athlete"
+    ],
+    [
+      "92:5533",
+      "ref"
+    ]
+  ],
+  "screenshots": [
+    ".impeccable/review/acesso-desktop.png",
+    ".impeccable/review/acesso-mobile.png",
+    ".impeccable/review/acesso-cadastro-atleta.png",
+    ".impeccable/review/acesso-cadastro-tecnico.png",
+    ".impeccable/review/acesso-erro.png",
+    ".impeccable/review/acesso-retorno-tecnico-mobile.png",
+    ".impeccable/review/acesso-retorno-tecnico-desktop.png",
+    ".impeccable/review/acesso-validacao-tecnico-mobile.png",
+    ".impeccable/review/acesso-validacao-tecnico-desktop.png"
+  ],
+  "notes": [
+    "Inputs e autenticação são snapshots, sem execução real.",
+    "Saídas entre páginas usam URL do protótipo canônico; API rejeita NAVIGATE entre páginas.",
+    "Login não seleciona perfil: exemplos de sessão ficam somente no board de revisão.",
+    "Atleta exige clube; técnico não escolhe clube; aprovação pelo presidente.",
+    "Sem cadastro público de presidente ou recuperação de senha.",
+    "Textos multilinha corrigidos na rodada visual; todos IBM Plex Sans.",
+    "Removidos conteúdos antigos dos roots preservados7:2 e7:22; nenhum backup novo.",
+    "P2 final:18rotas campo→validação→origem relidas literalmente em chamada independente,com1NODE por ida/volta; nenhuma variável ou conditional necessária nas rotas.12validações dedicadas criadas."
+  ],
+  "contextReturnFix": {
+    "method": "Snapshots dedicados e navegação direta; substitui tentativa condicional truncada pela API.",
+    "newFrames": {
+      "tecnico_desktop_0": "97:220",
+      "tecnico_desktop_1": "97:239",
+      "tecnico_desktop_2": "97:258",
+      "tecnico_mobile_0": "97:277",
+      "tecnico_mobile_1": "97:289",
+      "tecnico_mobile_2": "97:301",
+      "atleta-clube-selecionado_desktop_0": "97:313",
+      "atleta-clube-selecionado_desktop_1": "97:332",
+      "atleta-clube-selecionado_desktop_2": "97:351",
+      "atleta-clube-selecionado_mobile_0": "97:370",
+      "atleta-clube-selecionado_mobile_1": "97:382",
+      "atleta-clube-selecionado_mobile_2": "97:394"
+    },
+    "readback": {
+      "readback": [
+        {
+          "origin": "7:22",
+          "profile": "atleta",
+          "mode": "desktop",
+          "field": "92:5553",
+          "error": "92:6039",
+          "back": "92:6054",
+          "expectedReturn": "7:22",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "92:6039",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "7:22",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "7:22",
+          "profile": "atleta",
+          "mode": "desktop",
+          "field": "92:5557",
+          "error": "92:6056",
+          "back": "92:6071",
+          "expectedReturn": "7:22",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "92:6056",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "7:22",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "7:22",
+          "profile": "atleta",
+          "mode": "desktop",
+          "field": "92:5561",
+          "error": "92:6073",
+          "back": "92:6088",
+          "expectedReturn": "7:22",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "92:6073",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "7:22",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5575",
+          "profile": "atleta",
+          "mode": "mobile",
+          "field": "92:5587",
+          "error": "92:6157",
+          "back": "92:6165",
+          "expectedReturn": "92:5575",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "92:6157",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5575",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5575",
+          "profile": "atleta",
+          "mode": "mobile",
+          "field": "92:5591",
+          "error": "92:6167",
+          "back": "92:6175",
+          "expectedReturn": "92:5575",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "92:6167",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5575",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5575",
+          "profile": "atleta",
+          "mode": "mobile",
+          "field": "92:5595",
+          "error": "92:6177",
+          "back": "92:6185",
+          "expectedReturn": "92:5575",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "92:6177",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5575",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5609",
+          "profile": "tecnico",
+          "mode": "desktop",
+          "field": "92:5628",
+          "error": "97:220",
+          "back": "97:235",
+          "expectedReturn": "92:5609",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:220",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5609",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5609",
+          "profile": "tecnico",
+          "mode": "desktop",
+          "field": "92:5632",
+          "error": "97:239",
+          "back": "97:254",
+          "expectedReturn": "92:5609",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:239",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5609",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5609",
+          "profile": "tecnico",
+          "mode": "desktop",
+          "field": "92:5636",
+          "error": "97:258",
+          "back": "97:273",
+          "expectedReturn": "92:5609",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:258",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5609",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5647",
+          "profile": "tecnico",
+          "mode": "mobile",
+          "field": "92:5659",
+          "error": "97:277",
+          "back": "97:285",
+          "expectedReturn": "92:5647",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:277",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5647",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5647",
+          "profile": "tecnico",
+          "mode": "mobile",
+          "field": "92:5663",
+          "error": "97:289",
+          "back": "97:297",
+          "expectedReturn": "92:5647",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:289",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5647",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5647",
+          "profile": "tecnico",
+          "mode": "mobile",
+          "field": "92:5667",
+          "error": "97:301",
+          "back": "97:309",
+          "expectedReturn": "92:5647",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:301",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5647",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5678",
+          "profile": "atleta-clube-selecionado",
+          "mode": "desktop",
+          "field": "92:5697",
+          "error": "97:313",
+          "back": "97:328",
+          "expectedReturn": "92:5678",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:313",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5678",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5678",
+          "profile": "atleta-clube-selecionado",
+          "mode": "desktop",
+          "field": "92:5701",
+          "error": "97:332",
+          "back": "97:347",
+          "expectedReturn": "92:5678",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:332",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5678",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5678",
+          "profile": "atleta-clube-selecionado",
+          "mode": "desktop",
+          "field": "92:5705",
+          "error": "97:351",
+          "back": "97:366",
+          "expectedReturn": "92:5678",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:351",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5678",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5719",
+          "profile": "atleta-clube-selecionado",
+          "mode": "mobile",
+          "field": "92:5731",
+          "error": "97:370",
+          "back": "97:378",
+          "expectedReturn": "92:5719",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:370",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5719",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5719",
+          "profile": "atleta-clube-selecionado",
+          "mode": "mobile",
+          "field": "92:5735",
+          "error": "97:382",
+          "back": "97:390",
+          "expectedReturn": "92:5719",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:382",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5719",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        },
+        {
+          "origin": "92:5719",
+          "profile": "atleta-clube-selecionado",
+          "mode": "mobile",
+          "field": "92:5739",
+          "error": "97:394",
+          "back": "97:402",
+          "expectedReturn": "92:5719",
+          "forward": [
+            {
+              "type": "NODE",
+              "destinationId": "97:394",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "reverse": [
+            {
+              "type": "NODE",
+              "destinationId": "92:5719",
+              "navigation": "NAVIGATE",
+              "transition": {
+                "type": "DISSOLVE",
+                "easing": {
+                  "type": "EASE_OUT"
+                },
+                "duration": 0.15000000596046448
+              },
+              "resetVideoPosition": false
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "passed": 18,
+      "failed": [],
+      "variableCollectionRemoved": false
+    }
+  }
+}

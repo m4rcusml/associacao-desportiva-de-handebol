@@ -1,0 +1,161 @@
+.area { min-height: 100dvh; padding: 0; max-width: none; margin: 0; }
+.cabecalho { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 64px; padding: 8px 24px; background: var(--quadra-escura); color: white; }
+.marca { flex: 1; min-width: 0; margin: 0; color: white; font-size: 20px; font-weight: 600; line-height: 26px; }
+.conexao { padding: 6px; min-width: 96px; border-radius: 5px; background: var(--aprovado-fundo); color: var(--aprovado); font-size: 12px; }
+.acoesCabecalho { display: flex; gap: 8px; }
+.acoesCabecalho button { min-width: 130px; min-height: 48px; }
+.principal { display: flex; flex-direction: column; width: 100%; max-width: 1200px; min-height: calc(100dvh - 64px); box-sizing: border-box; padding: 0 40px 24px; margin-inline: auto; }
+.pular { position: fixed; top: -8rem; left: 1rem; z-index: 10; background: white; padding: .75rem; }
+.pular:focus { top: 1rem; }
+.estreito { width: 100%; max-width: 400px; margin: 24px auto; padding: 0 20px; box-sizing: border-box; }
+.pilha { display: grid; gap: 16px; }
+.acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.acoes > * { max-width: 100%; }
+.ligacao { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; }
+.placarCompacto { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 24px; min-height: 94px; width: 100%; max-width: 790px; margin-inline: auto; }
+.nomePlacarA, .nomePlacarB { min-width: 0; overflow-wrap: anywhere; font-size: 18px; font-weight: 600; }
+.nomePlacarA { color: var(--clube-a); }
+.nomePlacarB { color: var(--clube-b); }
+.numerosPlacar { display: flex; align-items: center; justify-content: center; gap: 20px; font-variant-numeric: tabular-nums; }
+.numerosPlacar strong { font-size: 44px; line-height: 58px; font-weight: 600; }
+.numerosPlacar > span { font-size: 20px; color: var(--suave); }
+.registroDireto { display: grid; gap: 12px; }
+.modos { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; background: var(--superficie); }
+.modo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 48px; padding: 4px; border: 0; border-radius: 8px; background: var(--superficie); color: var(--tinta); font: inherit; font-size: 12px; line-height: 16px; cursor: pointer; }
+.modo img { display: block; }
+.modo:hover:not(:disabled) { background: var(--aprovado-fundo); }
+.modo[aria-pressed='true'] { background: var(--quadra); color: white; font-weight: 600; }
+.modo:disabled { cursor: not-allowed; opacity: .65; }
+.doisMinutos { font-size: 15px; font-weight: 600; line-height: 20px; }
+.amarelo, .vermelho { width: 11px; height: 16px; border-radius: 2px; box-sizing: border-box; }
+.amarelo { border: 1px solid var(--pendente); background: var(--pendente-fundo); }
+.vermelho { border: 1px solid var(--rejeitado); background: var(--rejeitado); }
+.instrucao { max-width: none; margin: 0 0 4px; color: var(--suave); font-size: 13px; line-height: 18px; }
+.equipesRegistro { display: grid; gap: 20px; }
+.clubeA, .clubeB { min-width: 0; }
+.clubeA { --cor-clube: var(--clube-a); --fundo-clube: var(--clube-a-fundo); }
+.clubeB { --cor-clube: var(--clube-b); --fundo-clube: var(--clube-b-fundo); }
+.nomeClube { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; color: var(--cor-clube); font-size: 18px; line-height: 24px; font-weight: 600; overflow-wrap: anywhere; }
+.nomeClube span { color: var(--suave); font-size: 13px; line-height: 17px; font-weight: 400; }
+.camisasRegistro { display: grid; grid-template-columns: repeat(auto-fill,minmax(112px,1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.camisasRegistro li { min-width: 0; }
+.camisaAcao { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 100%; min-height: 112px; height: 100%; padding: 4px; border: 1px solid transparent; border-radius: 8px; background: var(--superficie); color: var(--tinta); font: inherit; cursor: pointer; }
+.camisaAcao:hover:not(:disabled) { background: var(--fundo-clube); border-color: var(--cor-clube); }
+.camisaAcao:disabled { cursor: not-allowed; opacity: .65; }
+.camisaVisual { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; color: var(--cor-clube); }
+.camisaVisual .camisaAmpla { display: block; }
+.camisaVisual .camisaCompacta { display: none; }
+.camisaVisual strong { position: absolute; font-size: 26px; line-height: 34px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.camisaVisual .numeroLongo { position: static; padding: 0 2px; background: var(--superficie); font-size: 16px; overflow-wrap: anywhere; }
+.camisaVisual:has(.numeroLongo) { flex-direction: column; }
+.nomeCamisa { max-width: 100%; color: var(--tinta); text-align: center; overflow-wrap: anywhere; font-size: 13px; line-height: 17px; font-weight: 500; }
+.nomeAbreviado { display: none; }
+.acaoCamisa { color: var(--cor-clube); font-size: 14px; line-height: 18px; font-weight: 600; }
+.ultimoLance { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 64px; margin-top: 4px; padding: 8px; background: var(--aprovado-fundo); }
+.ultimoLance > div { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.ultimoLance strong { font-size: 16px; line-height: 21px; font-weight: 600; }
+.ultimoLance span { color: var(--suave); font-size: 12px; line-height: 16px; }
+.ultimoLance button { flex: 0 0 auto; min-width: 140px; min-height: 44px; }
+.ultimoAnulado { background: var(--superficie); }
+.contextoJogo { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: auto; padding-top: 28px; color: var(--suave); font-size: 13px; line-height: 17px; }
+.contextoJogo p { margin: 0; max-width: none; }
+.navegacao { display: flex; justify-content: flex-end; gap: 8px; padding-top: 16px; }
+.navegacao button { min-width: 112px; min-height: 48px; border: 0; border-radius: 8px; padding: 8px 12px; background: var(--superficie); color: var(--tinta); font: inherit; font-weight: 600; cursor: pointer; }
+.navegacao button:hover { background: var(--aprovado-fundo); }
+.navegacao button[aria-current='page'] { background: var(--clube-a-fundo); color: var(--clube-a); }
+.operacao { display: grid; gap: 16px; margin-top: 16px; padding-bottom: 20px; }
+.operacao > button { justify-self: start; }
+.seletorClubes { display: flex; gap: 4px; padding: 4px; border-radius: 8px; background: var(--superficie); }
+.seletorClubes button { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.listaAtletas { display: grid; gap: 12px; padding: 0; margin: 12px 0 0; list-style: none; }
+.atleta { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 68px; padding: 12px; border: 1px solid transparent; border-radius: 0; text-align: left; background: var(--superficie); color: var(--tinta); font: inherit; cursor: pointer; }
+.atleta:hover:not(:disabled) { background: var(--aprovado-fundo); border-color: var(--divisa); }
+.atleta:disabled { cursor: not-allowed; }
+.atleta > img { margin-left: auto; flex-shrink: 0; }
+.numeroLista { display: grid; place-content: center; flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 4px; border-radius: 5px; background: var(--clube-a-fundo); color: var(--clube-a); font-size: 22px; line-height: 29px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.identidade { display: grid; gap: 3px; min-width: 0; }
+.identidade strong { overflow-wrap: anywhere; font-weight: 600; }
+.etapas { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0; color: var(--suave); font-size: 12px; line-height: 16px; font-weight: 400; }
+.feito { color: var(--aprovado); font-weight: 600; }
+.lista { padding: 0; margin: 0; list-style: none; }
+.faixa { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding: 12px; background: var(--superficie); }
+.faixa p { margin: 0; }
+.resumo { display: grid; gap: 8px; padding: 16px; background: var(--superficie); border: 1px solid var(--divisa); }
+.resumo p, .resumo h3 { margin: 0; overflow-wrap: anywhere; }
+.resumo h3 { font-size: 20px; line-height: 26px; font-weight: 600; }
+.formulario { display: grid; gap: 14px; margin: 0; }
+.entradaConta { display: grid; gap: 16px; padding-top: 20px; border-top: 1px solid var(--divisa); }
+.dialogo { display: grid; gap: 16px; padding: 20px; }
+.dialogo h2 { margin: 0; }
+.checkbox { display: flex; align-items: center; gap: 12px; margin: 0; }
+.checkbox input { flex-shrink: 0; width: 22px; min-height: 22px; height: 22px; }
+.relatorio { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.relatorio legend { margin-bottom: 12px; font-size: 18px; font-weight: 600; }
+.relatorio label { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 12px; border: 1px solid var(--divisa); border-radius: 8px; }
+.relatorio label:has(input:checked) { border-color: var(--quadra); background: var(--aprovado-fundo); }
+.relatorio input { width: 22px; min-height: 22px; height: 22px; accent-color: var(--quadra); }
+.confirmarPerigo { display: inline-flex; align-items: center; justify-content: center; min-height: 50px; padding: 12px; border: 1px solid var(--rejeitado); border-radius: 8px; background: var(--rejeitado); color: white; font: inherit; font-weight: 600; cursor: pointer; }
+.confirmarPerigo:hover:not(:disabled) { background: #812420; }
+.confirmarPerigo:disabled { background: #dde3de; border-color: #dde3de; color: #67766f; cursor: not-allowed; }
+.foto { display: flex; gap: 16px; align-items: start; }
+.foto img { display: block; width: 80px; height: 96px; object-fit: cover; border: 1px solid var(--divisa); }
+.registro { display: grid; gap: 8px; padding: 16px; margin-bottom: 12px; background: var(--superficie); }
+.registro p { margin: 0; max-width: none; overflow-wrap: anywhere; }
+.registro button { justify-self: start; }
+.anulado { color: var(--suave); background: var(--fundo); border: 1px solid var(--divisa); }
+.senha { margin: 8px 0; font-size: 28px; font-weight: 600; letter-spacing: .04em; overflow-wrap: anywhere; }
+.comunicado { display: grid; gap: 12px; margin-block: 16px; }
+.sucesso { margin: 0; max-width: none; padding: 12px; border-radius: 8px; background: var(--aprovado-fundo); color: var(--aprovado); overflow-wrap: anywhere; }
+.placar { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 12px; padding: 20px; background: var(--superficie); color: var(--tinta); }
+.equipe { display: grid; gap: 8px; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.equipe:first-child { color: var(--clube-a); }
+.equipe:last-child { color: var(--clube-b); }
+.pontos { font-size: 44px; line-height: 58px; color: var(--tinta); font-weight: 600; font-variant-numeric: tabular-nums; }
+.separador { font-size: 20px; color: var(--suave); }
+.somenteLeitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (min-width: 48rem) and (max-width: 70rem) { .camisasRegistro { grid-template-columns: repeat(auto-fill,minmax(88px,1fr)); } }
+@media (min-width: 48rem) { .visaoLinha { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .visaoLinha .camisasRegistro { grid-template-columns: repeat(auto-fill,minmax(96px,1fr)); } }
+@media (max-width: 47.99rem) {
+ .cabecalho { min-height: 52px; padding: 8px 16px; gap: 8px; }
+ .marca { font-size: 18px; line-height: 24px; }
+ .acoesCabecalho { display: none; }
+ .principal { min-height: calc(100dvh - 52px); padding: 0 16px 84px; }
+ .principal > .estreito { padding: 0; }
+ .placarCompacto { min-height: 88px; gap: 10px; }
+ .nomePlacarA, .nomePlacarB { font-size: 14px; line-height: 18px; }
+ .numerosPlacar { gap: 9px; }
+ .numerosPlacar strong { font-size: 36px; line-height: 48px; }
+ .registroDireto { gap: 10px; }
+ .instrucao { font-size: 12px; line-height: 16px; margin: 0; }
+ .equipesRegistro { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
+ .nomeClube { font-size: 14px; line-height: 18px; margin-bottom: 8px; }
+ .nomeClube span { display: none; }
+ .camisasRegistro { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px 6px; }
+ .camisaAcao { min-height: 80px; gap: 2px; }
+ .camisaVisual { min-height: 30px; }
+ .camisaVisual .camisaAmpla { display: none; }
+ .camisaVisual .camisaCompacta { display: block; }
+ .camisaVisual strong { font-size: 20px; line-height: 26px; }
+ .camisaVisual .numeroLongo { font-size: 13px; }
+ .nomeCamisa { font-size: 12px; line-height: 16px; }
+ .nomeCompleto { display: none; }
+ .nomeAbreviado { display: inline; }
+ .acaoCamisa { font-size: 12px; line-height: 16px; }
+ .ultimoLance { min-height: 60px; margin-top: 0; }
+ .ultimoLance strong { font-size: 13px; line-height: 17px; }
+ .ultimoLance button { min-width: 88px; padding-inline: 10px; }
+ .navegacao { position: fixed; inset: auto 0 0; z-index: 2; justify-content: space-around; gap: 4px; padding: 8px 12px max(8px,env(safe-area-inset-bottom)); border-top: 1px solid var(--divisa); background: var(--superficie); }
+ .navegacao button { flex: 1; min-width: 0; min-height: 44px; padding: 8px 4px; font-size: 13px; }
+ .operacao > button { justify-self: stretch; }
+ .dialogo { padding: 20px; }
+ .contextoJogo { padding-top: 20px; font-size: 12px; }
+}
+@media (max-width: 22rem) {
+ .principal { padding-inline: 12px; }
+ .equipesRegistro { gap: 8px; }
+ .camisasRegistro { gap: 6px 4px; }
+ .numeroLista { min-width: 36px; }
+ .numerosPlacar strong { font-size: 30px; }
+ .ultimoLance { flex-wrap: wrap; }
+ .ultimoLance button { margin-left: auto; }
+}

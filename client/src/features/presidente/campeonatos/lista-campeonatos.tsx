@@ -10,6 +10,8 @@ import { conflito, useErroApi } from "../../ui/use-erro-api";
 import controles from "../../ui/controles.module.css";
 import styles from "../../ui/pagina.module.css";
 import { dataCivil, normalizar, NOME_STATUS_CAMPEONATO } from "./formatos";
+import { IconePresidente } from "../visual";
+import visual from "../visual.module.css";
 
 export function ListaCampeonatos() {
   const router = useRouter();
@@ -23,11 +25,16 @@ export function ListaCampeonatos() {
   const [enviando, setEnviando] = useState(false);
   const envio = useRef(false);
   const fechar = useRef<HTMLButtonElement>(null);
+  const consulta = useRef(0);
 
-  const carregar = useCallback(() => api<Campeonato[]>("/campeonatos")
-    .then(lista => { setCampeonatos(lista); setErro(""); })
-    .catch(falha => setErro(tratarErro(falha))), [tratarErro]);
-  useEffect(() => { void carregar(); }, [carregar]);
+  const carregar = useCallback(() => {
+    const versao = ++consulta.current;
+    return api<Campeonato[]>("/campeonatos")
+      .then(lista => { if (versao === consulta.current) { setCampeonatos(lista); setErro(""); } })
+      .catch(falha => { if (versao === consulta.current) setErro(tratarErro(falha)); });
+  }, [tratarErro]);
+  const invalidarConsulta = useCallback(() => { consulta.current++; }, []);
+  useEffect(() => { void carregar(); return invalidarConsulta; }, [carregar, invalidarConsulta]);
 
   const termo = normalizar(busca);
   const visiveis = (campeonatos ?? []).filter(c => (status === "todos" || c.status === status)
@@ -61,23 +68,22 @@ export function ListaCampeonatos() {
 
   return <>
     <div className={styles.topo}>
-      <div><h1 className={styles.titulo}>Campeonatos</h1><p className={styles.texto}>Organize os clubes participantes, os jogos e as decisões disciplinares.</p></div>
+      <div><h1 className={styles.titulo}>Campeonatos</h1><p className={styles.texto}>Jogos, clubes inscritos e disciplina.</p></div>
       <div className={styles.acoes}>
         <button className={controles.secundario} type="button" onClick={() => { setErro(""); void carregar(); }} disabled={enviando}>Atualizar</button>
-        <button className={controles.primario} type="button" onClick={() => { setErroCriacao(""); setCriando(true); }} disabled={enviando}>Criar campeonato</button>
+        <button className={controles.primario} type="button" onClick={() => { setErroCriacao(""); setCriando(true); }} disabled={enviando}>Novo campeonato</button>
       </div>
     </div>
-    <div className={styles.campos}>
-      <div className={controles.campo}><label className={controles.rotulo} htmlFor="busca-campeonato">Buscar por nome, edição ou categoria</label><input id="busca-campeonato" className={controles.entrada} type="search" value={busca} onChange={e => setBusca(e.target.value)} /></div>
-      <div className={controles.campo}><label className={controles.rotulo} htmlFor="status-campeonato">Situação</label><select id="status-campeonato" className={controles.entrada} value={status} onChange={e => setStatus(e.target.value as StatusCampeonato | "todos")}><option value="todos">Todas as situações</option>{Object.entries(NOME_STATUS_CAMPEONATO).map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}</select></div>
-    </div>
+    <div className={controles.campo}><label className={controles.rotulo} htmlFor="busca-campeonato">Buscar campeonato</label><input id="busca-campeonato" className={controles.entrada} type="search" placeholder="Nome, edição ou categoria" value={busca} onChange={e => setBusca(e.target.value)} /></div>
+    <div className={visual.seletor} role="group" aria-label="Situação dos campeonatos"><button type="button" className={controles.opcao} aria-pressed={status === "em_andamento"} onClick={() => setStatus("em_andamento")}>Em andamento</button><button type="button" className={controles.opcao} aria-pressed={status === "planejado"} onClick={() => setStatus("planejado")}>Planejados</button><button type="button" className={controles.opcao} aria-pressed={status === "todos"} onClick={() => setStatus("todos")}>Todos</button></div>
+    <details className={visual.maisFiltros}><summary>Outras situações</summary><div className={controles.campo}><label className={controles.rotulo} htmlFor="status-campeonato">Situação</label><select id="status-campeonato" className={controles.entrada} value={status} onChange={e => setStatus(e.target.value as StatusCampeonato | "todos")}><option value="todos">Todas as situações</option>{Object.entries(NOME_STATUS_CAMPEONATO).map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}</select></div></details>
     {erro && <p className={controles.erro} role="alert">{erro}</p>}
     {campeonatos === null && !erro && <p className={styles.carregando} role="status">Carregando campeonatos…</p>}
     {campeonatos !== null && <>
       <h2 className={styles.resultado}>{visiveis.length === 1 ? "1 campeonato" : `${visiveis.length} campeonatos`}</h2>
-      {visiveis.length ? <ul className={styles.lista}>{visiveis.map(c => <li key={c.id}><Link className={styles.linha} href={`/presidente/campeonatos/${c.id}`}>
-        <span className={styles.linhaNome}>{c.nome}</span><span className={styles.linhaMeta}>{c.edicao} · {c.categoria} · {c.inscricoes} {c.inscricoes === 1 ? "clube inscrito" : "clubes inscritos"}</span>
-        <span className={styles.linhaData}>{c.inicio ? `Início: ${dataCivil(c.inicio)}` : "Início não informado"}</span><span className={`${styles.linhaStatus} ${controles.status} ${c.status === "planejado" ? controles.statusPendente : c.status === "cancelado" ? controles.statusRejeitado : controles.statusAprovado}`}>{NOME_STATUS_CAMPEONATO[c.status]}</span>
+      {visiveis.length ? <ul className={visual.lista}>{visiveis.map(c => <li key={c.id}><Link className={visual.linha} href={`/presidente/campeonatos/${c.id}`}>
+        <span className={visual.emblema}><IconePresidente tipo="trofeu" /></span><span><span className={visual.nome}>{c.nome}</span><span className={visual.meta}>Edição {c.edicao} · {c.categoria} · {c.inscricoes} {c.inscricoes === 1 ? "clube inscrito" : "clubes inscritos"}</span>
+        <span className={visual.meta}>{c.inicio ? `Início: ${dataCivil(c.inicio)}` : "Início não informado"}</span><span className={`${visual.chip} ${controles.status} ${c.status === "planejado" ? controles.statusPendente : c.status === "cancelado" ? controles.statusRejeitado : controles.statusAprovado}`}>{NOME_STATUS_CAMPEONATO[c.status]}</span></span><span className={visual.abrir}>Abrir</span>
       </Link></li>)}</ul> : <div className={styles.vazio}><p className={styles.vazioTexto}>{campeonatos.length ? "Nenhum campeonato corresponde à busca e à situação escolhidas." : "Ainda não há campeonatos cadastrados. Crie o primeiro para inscrever clubes e agendar jogos."}</p>{campeonatos.length > 0 && <button className={controles.secundario} type="button" onClick={() => { setBusca(""); setStatus("todos"); }}>Limpar filtros</button>}</div>}
     </>}
     <Dialogo aberto={criando} bloqueado={enviando} aoFechar={() => setCriando(false)} tituloId="novo-campeonato-titulo" focoInicial={fechar}>

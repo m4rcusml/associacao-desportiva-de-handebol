@@ -1,0 +1,93 @@
+{
+  "fileKey": "gwHYKm5u7V8uP1lXBmxPPG",
+  "sessionId": "ea74e7ca-c55e-45c7-a072-49d4d9d0e879",
+  "pages": [
+    "4:3",
+    "4:6"
+  ],
+  "scope": "Correções locais nas telas atuais; sem redesenhar visual, conteúdo ou fluxos",
+  "findings": [
+    {
+      "cause": "Larguras de texto fixas maiores que seus containers",
+      "presidente": {
+        "titleText": 1160,
+        "titleContainer": 940,
+        "statusText": 254,
+        "statusContainer": 132
+      },
+      "fix": "Texto FILL, largura útil do container; altura automática",
+      "ids": [
+        "52:1230",
+        "52:1231",
+        "52:1320",
+        "52:1321",
+        "52:1805",
+        "52:1806",
+        "56:1375",
+        "56:1386",
+        "58:677",
+        "58:678"
+      ]
+    },
+    {
+      "cause": "Instâncias tablet96px herdavam caixas de texto104px do componente112px",
+      "fix": "FILL nos oito textos dos quatro componentes de camisa; instâncias mantêm seu tamanho e readaptam nomes e ações",
+      "ids": [
+        "39:2259",
+        "39:2260",
+        "39:2266",
+        "39:2267",
+        "39:2273",
+        "39:2274",
+        "39:2280",
+        "39:2281"
+      ],
+      "affectedTextInstancesBefore": 360
+    },
+    {
+      "cause": "Placar mobile118px tinha conteúdo120px",
+      "fix": "Intervalos internos10→9px para caber118px sem reduzir fonte",
+      "ids": [
+        "39:2472",
+        "39:3026",
+        "39:3212",
+        "39:2840",
+        "39:3398",
+        "40:2790",
+        "40:2977",
+        "40:3164",
+        "40:3351",
+        "40:3538",
+        "40:3725",
+        "46:3918"
+      ]
+    }
+  ],
+  "validation": {
+    "presidenteTextOutsideImmediateParent": 0,
+    "arbitragemTextOutsideImmediateParent": 0,
+    "visual": "Uma rodada antes e uma após correções; mobile/tablet/desktop inspecionados; sem regressão visual material",
+    "undoCurrentStatesPreserved": [
+      "46:3727",
+      "46:3910",
+      "46:4097"
+    ],
+    "fonts": "IBM Plex Sans preservada; fontes atuais carregadas antes de editar"
+  },
+  "screenshots": [
+    ".impeccable/review/correcao-presidente-antes.png",
+    ".impeccable/review/correcao-presidente-depois.png",
+    ".impeccable/review/correcao-presidente-desktop.png",
+    ".impeccable/review/correcao-arbitragem-tablet-antes.png",
+    ".impeccable/review/correcao-arbitragem-tablet-depois.png",
+    ".impeccable/review/correcao-arbitragem-mobile-antes.png",
+    ".impeccable/review/correcao-arbitragem-mobile-depois.png",
+    ".impeccable/review/correcao-arbitragem-desktop.png"
+  ],
+  "limits": [
+    "Correção Figma, não aplicativo executável",
+    "Scan de bounding boxes serve como evidência estrutural, não certificação de acessibilidade",
+    "Estados de protótipo sintéticos, sem testes com usuários",
+    "Não removi backups; root gerencia limpeza"
+  ]
+}

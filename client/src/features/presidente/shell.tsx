@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "../../lib/api";
 import type { Sessao, SessaoPresidente } from "../../lib/presidente";
-import { LinhasQuadra } from "../ui/linhas-quadra";
+import { destinoDoPerfil } from "../../lib/destino-perfil";
+import { CabecalhoArea } from "../ui/navegacao";
 import controles from "../ui/controles.module.css";
 import tema from "../ui/tema.module.css";
 import styles from "./shell.module.css";
@@ -31,19 +31,12 @@ export function useSessaoPresidente() {
 
 /** Seções do presidente. `exata`: só a própria rota; as demais também valem para as sub-rotas. */
 const SECOES = [
-  { href: "/presidente", rotulo: "Cadastros", exata: true },
-  { href: "/presidente/pessoas", rotulo: "Pessoas", exata: false },
-  { href: "/presidente/clubes", rotulo: "Clubes", exata: false },
-  { href: "/presidente/campeonatos", rotulo: "Campeonatos", exata: false },
-  { href: "/presidente/conta", rotulo: "Conta", exata: false },
+  { href: "/presidente", rotulo: "Cadastros", exata: true, icone: "/icones/cadastros-mobile.svg", iconeAtivo: "/icones/cadastros-ativo-mobile.svg", iconeDesktop: "/icones/cadastros.svg" },
+  { href: "/presidente/pessoas", rotulo: "Pessoas", exata: false, icone: "/icones/pessoas-mobile.svg", iconeAtivo: "/icones/pessoas-ativo-mobile.svg", iconeDesktop: "/icones/pessoas.svg" },
+  { href: "/presidente/clubes", rotulo: "Clubes", exata: false, icone: "/icones/clubes-mobile.svg", iconeAtivo: "/icones/clubes-ativo-mobile.svg", iconeDesktop: "/icones/clubes.svg" },
+  { href: "/presidente/campeonatos", rotulo: "Campeonatos", exata: false, icone: "/icones/campeonatos-mobile.svg", iconeAtivo: "/icones/campeonatos-ativo-mobile.svg", iconeDesktop: "/icones/campeonatos.svg" },
+  { href: "/presidente/conta", rotulo: "Conta", exata: false, icone: "/icones/conta-nav-mobile.svg", iconeAtivo: "/icones/conta-ativo-mobile.svg", iconeDesktop: "/icones/conta.svg" },
 ] as const;
-
-function secaoAtual(caminho: string, secao: (typeof SECOES)[number]) {
-  return caminho === secao.href || (!secao.exata && caminho.startsWith(`${secao.href}/`));
-}
-
-const NOME_PERFIL = { atleta: "atleta", tecnico: "técnico", presidente: "presidente" } as const;
-const NOME_VERIFICACAO: Record<string, string> = { pendente: "pendente", aprovado: "aprovada", rejeitado: "rejeitada" };
 
 function ehPresidente(sessao: Sessao): sessao is SessaoPresidente {
   return sessao.usuario.perfil === "presidente";
@@ -51,25 +44,38 @@ function ehPresidente(sessao: Sessao): sessao is SessaoPresidente {
 
 export function PresidenteShell({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const caminho = usePathname();
+  const consulta = useRef(0);
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
   const [saindo, setSaindo] = useState(false);
+  const invalidarConsulta = useCallback(() => { consulta.current += 1; }, []);
 
   const consultar = useCallback(() => {
+    const versao = ++consulta.current;
     api<Sessao>("/sessao")
-      .then(sessao => setEstado({ tipo: "pronto", sessao }))
+      .then(sessao => {
+        if (versao !== consulta.current) return;
+        if (!ehPresidente(sessao)) router.replace(destinoDoPerfil(sessao.usuario.perfil));
+        else setEstado({ tipo: "pronto", sessao });
+      })
       .catch(erro => {
-        if (erro instanceof ApiError && erro.status === 401) router.replace("/login");
+        if (versao !== consulta.current) return;
+        if (erro instanceof ApiError && erro.status === 401) router.replace(`/login?retorno=${encodeURIComponent(window.location.pathname)}`);
         else setEstado({ tipo: "falha", mensagem: "Não foi possível consultar sua conta. Confira a conexão e tente novamente." });
       });
   }, [router]);
 
-  useEffect(consultar, [consultar]);
+  useEffect(() => {
+    consultar();
+    // A geração pertence à consulta; invalida a resposta também ao desmontar.
+    return invalidarConsulta;
+  }, [consultar, invalidarConsulta]);
 
   const sair = useCallback(async () => {
     setSaindo(true);
+    consulta.current++;
     try {
       await api("/auth/sign-out", {});
+      setEstado({ tipo: "carregando" });
       router.replace("/login");
     } catch (erro) {
       setSaindo(false);
@@ -83,35 +89,12 @@ export function PresidenteShell({ children }: { children: ReactNode }) {
       : atual);
   }, []);
 
-  function sairPeloCabecalho() {
-    sair().catch(() => setEstado({ tipo: "falha", mensagem: "Não foi possível sair da conta. Tente novamente." }));
-  }
-
   const sessao = estado.tipo === "pronto" ? estado.sessao : null;
   const presidente = sessao && ehPresidente(sessao) ? sessao : null;
-  const contexto = useMemo(() => (presidente ? { sessao: presidente, renomear, sair } : null), [presidente, renomear, sair]);
 
   return (
     <div className={tema.tema}>
-      <header className={styles.cabecalho}>
-        <LinhasQuadra />
-        <div className={styles.barra}>
-          <p className={styles.marca}>Associação Desportiva de Handebol</p>
-          {sessao && (
-            <div className={styles.conta}>
-              <span className={styles.usuario}>{sessao.usuario.nomeCompleto}</span>
-              <button type="button" className={styles.sair} onClick={sairPeloCabecalho} disabled={saindo}>{saindo ? "Saindo…" : "Sair"}</button>
-            </div>
-          )}
-        </div>
-        {presidente && (
-          <nav className={styles.secoes} aria-label="Áreas do presidente">
-            {SECOES.map(s => (
-              <Link key={s.href} href={s.href} className={styles.secao} aria-current={secaoAtual(caminho, s) ? "page" : undefined}>{s.rotulo}</Link>
-            ))}
-          </nav>
-        )}
-      </header>
+      <CabecalhoArea secoes={presidente ? SECOES : []} nome={sessao?.usuario.nomeCompleto} area="Áreas do presidente" contaHref="/presidente/conta" conteudoId="conteudo-presidente" navegacaoInferior contaIcone="/icones/conta-mobile.svg" marcaMobile="Presidente" marcaDesktop="Handebol" mostrarNomeDesktop />
 
       {estado.tipo === "carregando" && <main className={styles.principal}><p className={styles.situacao} role="status">Consultando sua conta…</p></main>}
 
@@ -122,20 +105,9 @@ export function PresidenteShell({ children }: { children: ReactNode }) {
         </main>
       )}
 
-      {sessao && !presidente && (
-        <main className={styles.principal}>
-          <h1 className={styles.titulo}>Área restrita ao presidente</h1>
-          <p className={styles.texto}>
-            Você entrou como {NOME_PERFIL[sessao.usuario.perfil]}
-            {sessao.usuario.statusVerificacao ? `, com verificação esportiva ${NOME_VERIFICACAO[sessao.usuario.statusVerificacao] ?? sessao.usuario.statusVerificacao}` : ""}.
-            As telas de atletas e técnicos ainda não estão disponíveis nesta versão.
-          </p>
-        </main>
-      )}
-
-      {contexto && (
-        <SessaoContexto.Provider value={contexto}>
-          <main className={styles.principal}>{children}</main>
+      {presidente && (
+        <SessaoContexto.Provider value={{ sessao: presidente, renomear, sair }}>
+          <main id="conteudo-presidente" className={styles.principal} aria-busy={saindo}>{children}</main>
         </SessaoContexto.Provider>
       )}
     </div>

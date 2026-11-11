@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { consultarSolicitacoes, type SolicitacaoVerificacao, type StatusVerificacao } from "../../../lib/presidente";
-import { contar, data, normalizar } from "../../ui/formatos";
+import { contar, normalizar } from "../../ui/formatos";
+import { Iniciais } from "../../ui/identificacao";
 import { useErroApi } from "../../ui/use-erro-api";
 import controles from "../../ui/controles.module.css";
 import pagina from "../../ui/pagina.module.css";
 import { CLASSE_STATUS, NOME_PERFIL, NOME_STATUS } from "./nomes";
+import visual from "../visual.module.css";
 
 type Perfil = SolicitacaoVerificacao["perfil"];
 type FiltroPerfil = Perfil | "todos";
@@ -40,20 +42,22 @@ export function Pessoas() {
   const [erroCarga, setErroCarga] = useState("");
   const [busca, setBusca] = useState("");
   const [perfil, setPerfil] = useState<FiltroPerfil>("todos");
-  const [status, setStatus] = useState<FiltroStatus>("todos");
-  const [conta, setConta] = useState<FiltroConta>("todas");
+  const [status, setStatus] = useState<FiltroStatus>("aprovado");
+  const [conta, setConta] = useState<FiltroConta>("ativas");
   const [clube, setClube] = useState(TODOS_CLUBES);
+  const consulta = useRef(0);
 
   const carregar = useCallback(() => {
+    const versao = ++consulta.current;
     consultarSolicitacoes()
-      .then(lista => { setPessoas([...lista].sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto, "pt-BR"))); setErroCarga(""); })
-      .catch(erro => setErroCarga(tratarErro(erro)));
+      .then(lista => { if (versao === consulta.current) { setPessoas([...lista].sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto, "pt-BR"))); setErroCarga(""); } })
+      .catch(erro => { if (versao === consulta.current) setErroCarga(tratarErro(erro)); });
   }, [tratarErro]);
 
-  useEffect(carregar, [carregar]);
+  const invalidarConsulta = useCallback(() => { consulta.current++; }, []);
+  useEffect(() => { carregar(); return invalidarConsulta; }, [carregar, invalidarConsulta]);
 
   function atualizar() {
-    setPessoas(null);
     setErroCarga("");
     carregar();
   }
@@ -75,7 +79,7 @@ export function Pessoas() {
     && (status === "todos" || p.statusVerificacao === status)
     && (conta === "todas" || p.ativo === (conta === "ativas"))
     && (clube === TODOS_CLUBES || (clube === SEM_CLUBE ? p.clube === null : p.clube?.id === clube))
-    && (!termo || normalizar(p.nomeCompleto).includes(termo)));
+    && (!termo || normalizar(`${p.nomeCompleto} ${p.clube?.nome ?? "sem clube"}`).includes(termo)));
   const filtrando = Boolean(termo) || perfil !== "todos" || status !== "todos" || conta !== "todas" || clube !== TODOS_CLUBES;
 
   return (
@@ -83,7 +87,7 @@ export function Pessoas() {
       <div className={pagina.topo}>
         <div>
           <h1 className={pagina.titulo}>Pessoas</h1>
-          <p className={pagina.texto}>Atletas e técnicos com cadastro. Abra uma pessoa para ver conta, carteirinha, foto, vínculos e histórico.</p>
+          <p className={pagina.texto}>Atletas e técnicos da associação.</p>
         </div>
         <button type="button" className={controles.secundario} onClick={atualizar} disabled={pessoas === null && !erroCarga}>
           Atualizar lista
@@ -91,11 +95,12 @@ export function Pessoas() {
       </div>
 
       <div className={pagina.controles}>
-        <div className={pagina.campos}>
           <div className={controles.campo}>
             <label className={controles.rotulo} htmlFor="busca-pessoas">Buscar por nome</label>
-            <input id="busca-pessoas" className={controles.entrada} type="search" value={busca} onChange={e => setBusca(e.target.value)} autoComplete="off" />
+            <input id="busca-pessoas" className={controles.entrada} type="search" placeholder="Nome ou clube" value={busca} onChange={e => setBusca(e.target.value)} autoComplete="off" />
           </div>
+        <div className={visual.seletor} role="group" aria-label="Cadastros exibidos"><button type="button" className={controles.opcao} aria-pressed={status === "aprovado"} onClick={() => setStatus("aprovado")}>Aprovados</button><button type="button" className={controles.opcao} aria-pressed={status === "pendente"} onClick={() => setStatus("pendente")}>Pendentes</button><button type="button" className={controles.opcao} aria-pressed={status === "todos"} onClick={() => setStatus("todos")}>Todos</button></div>
+        <details className={visual.maisFiltros}><summary>Mais filtros</summary>
           <div className={controles.campo}>
             <label className={controles.rotulo} htmlFor="filtro-clube">Clube</label>
             <select id="filtro-clube" className={controles.entrada} value={clube} onChange={e => setClube(e.target.value)}>
@@ -104,7 +109,6 @@ export function Pessoas() {
               {clubes.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
             </select>
           </div>
-        </div>
         <div className={pagina.filtros}>
           <div className={controles.grupo} role="group" aria-label="Perfil">
             {OPCOES_PERFIL.map(o => (
@@ -124,9 +128,11 @@ export function Pessoas() {
             ))}
           </div>
         </div>
+        </details>
       </div>
 
-      {erroCarga ? (
+      {erroCarga && pessoas !== null && <p className={controles.erro} role="alert">{erroCarga} A lista anterior foi mantida.</p>}
+      {erroCarga && pessoas === null ? (
         <div className={`${pagina.vazio} ${pagina.bloco}`}>
           <p className={controles.erro} role="alert">{erroCarga}</p>
           <button type="button" className={`${controles.secundario} ${pagina.acaoVazio}`} onClick={atualizar}>Tentar novamente</button>
@@ -148,21 +154,15 @@ export function Pessoas() {
               )}
             </div>
           ) : (
-            <ul className={pagina.lista}>
+            <ul className={visual.lista}>
               {visiveis.map(p => (
                 <li key={p.usuarioId}>
-                  <Link href={`/presidente/pessoas/${p.usuarioId}`} className={pagina.linha}>
-                    <span className={pagina.linhaNome}>{p.nomeCompleto}</span>
-                    <span className={pagina.linhaMeta}>
+                  <Link href={`/presidente/pessoas/${p.usuarioId}`} className={visual.linha}>
+                    <Iniciais nome={p.nomeCompleto} /><span><span className={visual.nome}>{p.nomeCompleto}</span>
+                    <span className={visual.meta}>
                       {NOME_PERFIL[p.perfil]}, {p.clube?.nome ?? "sem clube"}
                       {!p.ativo && <strong className={controles.textoAlerta}>, conta desativada</strong>}
-                    </span>
-                    <span className={pagina.linhaData}>
-                      {p.verificadoEm ? <>Decidido em <time dateTime={p.verificadoEm}>{data(p.verificadoEm)}</time></>
-                        : p.verificacaoSolicitadaEm ? <>Solicitado em <time dateTime={p.verificacaoSolicitadaEm}>{data(p.verificacaoSolicitadaEm)}</time></>
-                          : "Sem solicitação registrada"}
-                    </span>
-                    <span className={`${controles.status} ${pagina.linhaStatus} ${CLASSE_STATUS[p.statusVerificacao]}`}>{NOME_STATUS[p.statusVerificacao]}</span>
+                    </span><span className={`${visual.chip} ${controles.status} ${CLASSE_STATUS[p.statusVerificacao]}`}>{NOME_STATUS[p.statusVerificacao]}</span></span><span className={visual.abrir}>Abrir ficha</span>
                   </Link>
                 </li>
               ))}

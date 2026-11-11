@@ -11,7 +11,7 @@ import { ApiError } from "../../lib/api";
 export function useErroApi() {
   const router = useRouter();
   return useCallback((erro: unknown) => {
-    if (erro instanceof ApiError && erro.status === 401) router.replace("/login");
+    if (erro instanceof ApiError && erro.status === 401) router.replace(`/login?retorno=${encodeURIComponent(window.location.pathname)}`);
     return erro instanceof Error && erro.message ? erro.message : "Não foi possível concluir. Tente novamente.";
   }, [router]);
 }

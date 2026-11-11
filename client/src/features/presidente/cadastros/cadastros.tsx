@@ -1,280 +1,160 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { api } from "../../../lib/api";
 import { consultarSolicitacoes, type DecisaoVerificacao, type SolicitacaoVerificacao, type StatusVerificacao } from "../../../lib/presidente";
-import { Dialogo } from "../../ui/dialogo";
+import { Confirmacao } from "../../ui/confirmacao";
+import { Iniciais } from "../../ui/identificacao";
 import { data, normalizar, primeiroNome } from "../../ui/formatos";
 import { conflito, status, useErroApi } from "../../ui/use-erro-api";
 import controles from "../../ui/controles.module.css";
-import styles from "../../ui/pagina.module.css";
+import pagina from "../../ui/pagina.module.css";
+import styles from "./cadastros.module.css";
 
 type Solicitacao = SolicitacaoVerificacao;
-type Perfil = Solicitacao["perfil"];
-type Status = StatusVerificacao;
-type Decisao = "aprovar" | "rejeitar";
-type FiltroPerfil = Perfil | "todos";
-type FiltroStatus = Status | "todos";
+type Perfil = Solicitacao["perfil"] | "todos";
+type FiltroStatus = StatusVerificacao | "todos";
+const PERFIS = { atleta: "Atleta", tecnico: "Técnico" } as const;
+const SITUACOES = { pendente: "Aguardando aprovação", aprovado: "Cadastro aprovado", rejeitado: "Cadastro rejeitado" } as const;
+const CLASSE_STATUS = { pendente: controles.statusPendente, aprovado: controles.statusAprovado, rejeitado: controles.statusRejeitado };
 
-const NOME_PERFIL: Record<Perfil, string> = { atleta: "Atleta", tecnico: "Técnico" };
-const NOME_STATUS: Record<Status, string> = { pendente: "Pendente", aprovado: "Aprovado", rejeitado: "Rejeitado" };
-const OPCOES_PERFIL: readonly { valor: FiltroPerfil; rotulo: string }[] = [
-  { valor: "todos", rotulo: "Todos" },
-  { valor: "atleta", rotulo: "Atletas" },
-  { valor: "tecnico", rotulo: "Técnicos" },
-];
-const OPCOES_STATUS: readonly { valor: FiltroStatus; rotulo: string }[] = [
-  { valor: "pendente", rotulo: "Pendentes" },
-  { valor: "aprovado", rotulo: "Aprovados" },
-  { valor: "rejeitado", rotulo: "Rejeitados" },
-  { valor: "todos", rotulo: "Todos" },
-];
-const CLASSE_STATUS: Record<Status, string> = {
-  pendente: controles.statusPendente,
-  aprovado: controles.statusAprovado,
-  rejeitado: controles.statusRejeitado,
-};
-const ROTA_DECISAO: Record<Decisao, string> = { aprovar: "aprovacao", rejeitar: "rejeicao" };
-
+/** Fila e ficha são a mesma tarefa; só a rejeição pede uma confirmação adicional. */
 export function Cadastros() {
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[] | null>(null);
   const [erroCarga, setErroCarga] = useState("");
   const [busca, setBusca] = useState("");
-  const [filtroPerfil, setFiltroPerfil] = useState<FiltroPerfil>("todos");
-  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("pendente");
-  const [abertaId, setAbertaId] = useState<string | null>(null);
-  const [confirmando, setConfirmando] = useState<Decisao | null>(null);
+  const [perfil, setPerfil] = useState<Perfil>("todos");
+  const [filtro, setFiltro] = useState<FiltroStatus>("pendente");
+  const [selecionada, setSelecionada] = useState<string | null>(null);
+  const [filaAberta, setFilaAberta] = useState(false);
+  const [rejeitando, setRejeitando] = useState<Solicitacao | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [atualizando, setAtualizando] = useState(false);
   const [erroDecisao, setErroDecisao] = useState("");
   const [aviso, setAviso] = useState("");
-  const botaoFechar = useRef<HTMLButtonElement>(null);
-  const botaoAprovar = useRef<HTMLButtonElement>(null);
-  const botaoRejeitar = useRef<HTMLButtonElement>(null);
-  const tituloResultado = useRef<HTMLHeadingElement>(null);
+  const envio = useRef(false);
+  const versaoConsulta = useRef(0);
+  const tituloFicha = useRef<HTMLHeadingElement>(null);
+  const tratarErro = useErroApi();
 
-  const tratarSessao = useErroApi();
-
-  // A API filtra por um status por vez; as três consultas correm em paralelo para manter contagens e "Todos".
   const carregar = useCallback(() => {
-    consultarSolicitacoes()
-      .then(lista => { setSolicitacoes(lista); setErroCarga(""); })
-      .catch(erro => setErroCarga(tratarSessao(erro)));
-  }, [tratarSessao]);
-
-  useEffect(carregar, [carregar]);
+    const versao = ++versaoConsulta.current;
+    return consultarSolicitacoes().then(lista => {
+      if (versao !== versaoConsulta.current) return;
+      setSolicitacoes(lista);
+      setErroCarga("");
+    }).catch(erro => {
+      if (versao === versaoConsulta.current) setErroCarga(tratarErro(erro));
+    }).finally(() => {
+      if (versao === versaoConsulta.current) setAtualizando(false);
+    });
+  }, [tratarErro]);
+  const invalidarConsulta = useCallback(() => { versaoConsulta.current++; }, []);
+  useEffect(() => { void carregar(); return invalidarConsulta; }, [carregar, invalidarConsulta]);
 
   function atualizar() {
-    setSolicitacoes(null);
-    setErroCarga("");
-    setAviso("");
-    carregar();
+    if (envio.current) return;
+    setAtualizando(true);
+    void carregar();
   }
 
   const termo = normalizar(busca);
-  const doPerfil = (solicitacoes ?? []).filter(s => filtroPerfil === "todos" || s.perfil === filtroPerfil);
-  const contagem = { pendente: 0, aprovado: 0, rejeitado: 0, todos: doPerfil.length };
-  for (const s of doPerfil) contagem[s.statusVerificacao]++;
-  const visiveis = doPerfil.filter(s =>
-    (filtroStatus === "todos" || s.statusVerificacao === filtroStatus)
-    && (!termo || normalizar(s.nomeCompleto).includes(termo) || normalizar(s.clube?.nome ?? "sem clube").includes(termo)));
-  const aberta = solicitacoes?.find(s => s.usuarioId === abertaId) ?? null;
+  const visiveis = (solicitacoes ?? []).filter(s => (perfil === "todos" || s.perfil === perfil)
+    && (filtro === "todos" || s.statusVerificacao === filtro)
+    && (!termo || normalizar(`${s.nomeCompleto} ${s.clube?.nome ?? "sem clube"}`).includes(termo)));
+  const aberta = visiveis.find(s => s.usuarioId === selecionada) ?? visiveis[0] ?? null;
+  const pendentes = (solicitacoes ?? []).filter(s => s.statusVerificacao === "pendente").length;
 
-  function abrir(id: string) {
-    setAbertaId(id);
-    setConfirmando(null);
+  function escolher(s: Solicitacao) {
+    if (envio.current) return;
+    setSelecionada(s.usuarioId);
     setErroDecisao("");
+    setFilaAberta(false);
+    requestAnimationFrame(() => tituloFicha.current?.focus());
   }
 
-  function fechar() {
-    setAbertaId(null);
-    setConfirmando(null);
-    setErroDecisao("");
-  }
-
-  function voltar() {
-    const decisao = confirmando;
-    flushSync(() => { setConfirmando(null); setErroDecisao(""); });
-    (decisao === "rejeitar" ? botaoRejeitar : botaoAprovar).current?.focus();
-  }
-
-  async function recuperar(usuarioId: string, mensagem: string) {
-    try {
-      const lista = await consultarSolicitacoes();
-      setSolicitacoes(lista);
-      const atual = lista.find(s => s.usuarioId === usuarioId);
-      if (!atual) return;
-      setErroDecisao(`${mensagem} A ficha acima mostra a situação atual.`);
-      if (atual.statusVerificacao !== "pendente" || !atual.ativo) {
-        flushSync(() => setConfirmando(null));
-        botaoFechar.current?.focus();
-      }
-    } catch (erro) {
-      setErroDecisao(`${mensagem} Não foi possível consultar a situação atual: ${tratarSessao(erro)}`);
-    }
-  }
-
-  async function decidir(solicitacao: Solicitacao, decisao: Decisao) {
+  async function decidir(solicitacao: Solicitacao, decisao: "aprovar" | "rejeitar") {
+    if (envio.current) return;
+    envio.current = true;
+    versaoConsulta.current++;
+    setAtualizando(false);
     setEnviando(true);
     setErroDecisao("");
+    setAviso("");
     try {
-      const { solicitacao: atualizada } = await api<DecisaoVerificacao>(
-        `/verificacoes/${solicitacao.usuarioId}/${ROTA_DECISAO[decisao]}`, {});
-      setSolicitacoes(atual => (atual ?? []).map(s => (s.usuarioId === atualizada.usuarioId ? atualizada : s)));
-      setAviso(`Cadastro de ${atualizada.nomeCompleto} ${atualizada.statusVerificacao === "aprovado" ? "aprovado" : "rejeitado"}.`);
-      fechar();
+      const { solicitacao: atual } = await api<DecisaoVerificacao>(
+        `/verificacoes/${solicitacao.usuarioId}/${decisao === "aprovar" ? "aprovacao" : "rejeicao"}`, {});
+      setSolicitacoes(lista => (lista ?? []).map(s => s.usuarioId === atual.usuarioId ? atual : s));
+      setAviso(`Cadastro de ${atual.nomeCompleto} ${atual.statusVerificacao === "aprovado" ? "aprovado" : "rejeitado"}.${atual.perfil === "atleta" && atual.carteirinha ? ` Carteirinha ${atual.carteirinha.codigo} emitida.` : ""}`);
+      setSelecionada(visiveis.find(s => s.usuarioId !== atual.usuarioId && s.statusVerificacao === "pendente")?.usuarioId ?? atual.usuarioId);
+      setRejeitando(null);
+      requestAnimationFrame(() => tituloFicha.current?.focus());
     } catch (erro) {
-      const mensagem = tratarSessao(erro);
+      const mensagem = tratarErro(erro);
       setErroDecisao(mensagem);
-      // 409/404: outra decisão ou alteração chegou antes. Relê o estado real sem esvaziar a lista; a
-      // confirmação só continua se a solicitação ainda puder ser decidida. Nada é reenviado.
-      if (conflito(erro) || status(erro) === 404) await recuperar(solicitacao.usuarioId, mensagem);
+      if (conflito(erro) || status(erro) === 404) {
+        await carregar();
+        setErroDecisao(`${mensagem} Confira a situação atual antes de decidir novamente.`);
+        setRejeitando(null);
+      }
     } finally {
+      envio.current = false;
       setEnviando(false);
     }
   }
 
-  return (
-    <>
-      <div className={styles.topo}>
-        <div>
-          <h1 className={styles.titulo}>Solicitações de cadastro</h1>
-          <p className={styles.texto}>Confira nome e clube antes de aprovar ou rejeitar.</p>
+  return <>
+    <div className={pagina.topo}>
+      <div><h1 className={pagina.titulo}>Cadastros para aprovar</h1><p className={pagina.texto}>Confira a ficha; a decisão fica no mesmo lugar.</p></div>
+      <button type="button" className={`${controles.secundario} ${styles.atualizarDesktop}`} onClick={atualizar} disabled={enviando || atualizando}>{atualizando ? "Atualizando…" : "Atualizar fila"}</button>
+    </div>
+    <div className={styles.barraMobile}>
+      <span>{pendentes} {pendentes === 1 ? "pendente" : "pendentes"}</span>
+      <button type="button" className={controles.secundario} onClick={() => setFilaAberta(!filaAberta)} aria-expanded={filaAberta} aria-controls="fila-cadastros" disabled={enviando}>{filaAberta ? "Ver ficha" : "Ver fila"}</button>
+      <button type="button" className={controles.secundario} onClick={atualizar} disabled={enviando || atualizando}>{atualizando ? "Atualizando…" : "Atualizar"}</button>
+    </div>
+    {aviso && <p className={pagina.aviso} role="status">{aviso}</p>}
+    {erroCarga && <p className={controles.erro} role="alert">{erroCarga}{solicitacoes ? " A lista anterior foi mantida." : ""}</p>}
+    {erroDecisao && !aberta && !rejeitando && <p className={controles.erro} role="alert">{erroDecisao}</p>}
+    {solicitacoes === null && !erroCarga && <p role="status" className={pagina.carregando}>Carregando solicitações…</p>}
+    {solicitacoes === null && erroCarga && <button type="button" className={controles.secundario} onClick={atualizar}>Tentar novamente</button>}
+    {solicitacoes !== null && <div className={styles.composicao}>
+      <section id="fila-cadastros" aria-label="Fila de solicitações" className={`${styles.fila} ${filaAberta ? styles.filaAberta : ""}`}>
+        <div className={styles.seletor} role="group" aria-label="Solicitações">
+          <button type="button" className={controles.opcao} aria-pressed={filtro === "pendente"} onClick={() => setFiltro("pendente")} disabled={enviando}>Pendentes ({pendentes})</button>
+          <button type="button" className={controles.opcao} aria-pressed={filtro !== "pendente"} onClick={() => setFiltro("todos")} disabled={enviando}>Consultar todos</button>
         </div>
-        <button type="button" className={controles.secundario} onClick={atualizar} disabled={solicitacoes === null && !erroCarga}>
-          Atualizar lista
-        </button>
-      </div>
-
-      <div className={styles.controles}>
-        <div className={controles.campo}>
-          <label className={controles.rotulo} htmlFor="busca-solicitacoes">Buscar por nome ou clube</label>
-          <input id="busca-solicitacoes" className={controles.entrada} type="search" value={busca} onChange={e => setBusca(e.target.value)} autoComplete="off" />
-        </div>
-        <div className={styles.filtros}>
-          <div className={controles.grupo} role="group" aria-label="Perfil">
-            {OPCOES_PERFIL.map(o => (
-              <button key={o.valor} type="button" className={controles.opcao} aria-pressed={filtroPerfil === o.valor} onClick={() => setFiltroPerfil(o.valor)}>
-                {o.rotulo}
-              </button>
-            ))}
-          </div>
-          <div className={controles.grupo} role="group" aria-label="Status">
-            {OPCOES_STATUS.map(o => (
-              <button key={o.valor} type="button" className={controles.opcao} aria-pressed={filtroStatus === o.valor} onClick={() => setFiltroStatus(o.valor)}>
-                {o.rotulo} {solicitacoes && <span className={controles.contagem}>{contagem[o.valor]}</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <p className={styles.aviso} role="status" aria-live="polite">{aviso}</p>
-
-      {erroCarga ? (
-        <div className={styles.vazio}>
-          <p className={controles.erro} role="alert">{erroCarga}</p>
-          <button type="button" className={`${controles.secundario} ${styles.acaoVazio}`} onClick={atualizar}>Tentar novamente</button>
-        </div>
-      ) : solicitacoes === null ? (
-        <p className={styles.carregando} role="status">Carregando solicitações…</p>
-      ) : (
-        <>
-          <h2 ref={tituloResultado} className={styles.resultado} tabIndex={-1}>
-            {visiveis.length === 1 ? "1 solicitação" : `${visiveis.length} solicitações`}
-          </h2>
-          {visiveis.length === 0 ? (
-            <div className={styles.vazio}>
-              {solicitacoes.length === 0 ? (
-                <p className={styles.vazioTexto}>Nenhuma solicitação de atleta ou técnico até agora.</p>
-              ) : (
-                <>
-                  <p className={styles.vazioTexto}>Nenhuma solicitação corresponde à busca e aos filtros escolhidos.</p>
-                  <button type="button" className={controles.secundario} onClick={() => { setBusca(""); setFiltroPerfil("todos"); setFiltroStatus("todos"); }}>
-                    Mostrar todas as solicitações
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <ul className={styles.lista}>
-              {visiveis.map(s => (
-                <li key={s.usuarioId}>
-                  <button type="button" className={styles.linha} onClick={() => abrir(s.usuarioId)} aria-haspopup="dialog">
-                    <span className={styles.linhaNome}>{s.nomeCompleto}</span>
-                    <span className={styles.linhaMeta}>{NOME_PERFIL[s.perfil]}, {s.clube?.nome ?? "sem clube"}{s.ativo ? "" : ", conta desativada"}</span>
-                    <span className={styles.linhaData}>
-                      Solicitado em {s.verificacaoSolicitadaEm ? <time dateTime={s.verificacaoSolicitadaEm}>{data(s.verificacaoSolicitadaEm)}</time> : "data não registrada"}
-                    </span>
-                    <span className={`${controles.status} ${styles.linhaStatus} ${CLASSE_STATUS[s.statusVerificacao]}`}>{NOME_STATUS[s.statusVerificacao]}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-
-      <Dialogo aberto={aberta !== null} aoFechar={fechar} tituloId="detalhe-titulo" focoInicial={botaoFechar} focoAlternativo={tituloResultado} bloqueado={enviando}>
-        {aberta && (
-          <div className={styles.detalhe}>
-            <div className={styles.detalheTopo}>
-              <span className={`${controles.status} ${CLASSE_STATUS[aberta.statusVerificacao]}`}>{NOME_STATUS[aberta.statusVerificacao]}</span>
-              <button ref={botaoFechar} type="button" className={styles.fechar} onClick={fechar} disabled={enviando}>Fechar</button>
-            </div>
-            <h2 id="detalhe-titulo" className={styles.detalheNome}>{aberta.nomeCompleto}</h2>
-            <dl className={styles.ficha}>
-              <div><dt>Perfil</dt><dd>{NOME_PERFIL[aberta.perfil]}</dd></div>
-              <div><dt>Clube</dt><dd>{aberta.clube?.nome ?? "Sem clube"}</dd></div>
-              <div><dt>Solicitação</dt><dd>{data(aberta.verificacaoSolicitadaEm)}</dd></div>
-              {aberta.statusVerificacao !== "pendente" && <div><dt>Decisão</dt><dd>{data(aberta.verificadoEm)}</dd></div>}
-              {aberta.carteirinha && <div><dt>Carteirinha</dt><dd>{aberta.carteirinha.codigo}</dd></div>}
-            </dl>
-
-            {erroDecisao && <p className={`${controles.erro} ${styles.erroDecisao}`} role="alert">{erroDecisao}</p>}
-
-            {!aberta.ativo ? (
-              <p className={controles.nota}>Conta desativada. A solicitação não pode ser decidida enquanto a conta estiver desativada.</p>
-            ) : aberta.statusVerificacao === "pendente" ? (
-              confirmando ? (
-                <div className={styles.confirmacao}>
-                  <p className={styles.confirmacaoTexto}>
-                    {confirmando === "aprovar"
-                      ? `Aprovar o cadastro de ${primeiroNome(aberta.nomeCompleto)}? Depois de aprovado, o cadastro não pode ser rejeitado.`
-                      : `Rejeitar o cadastro de ${primeiroNome(aberta.nomeCompleto)}? Uma nova análise só acontece se a pessoa pedir novamente.`}
-                  </p>
-                  {confirmando === "aprovar" && aberta.perfil === "atleta" && (
-                    <p className={controles.nota}>A aprovação confirma o vínculo com o clube e emite a carteirinha do atleta.</p>
-                  )}
-                  <div className={styles.acoes}>
-                    <button
-                      type="button"
-                      className={confirmando === "aprovar" ? controles.aprovar : controles.rejeitar}
-                      onClick={() => decidir(aberta, confirmando)}
-                      disabled={enviando}
-                      autoFocus
-                    >
-                      {enviando ? "Enviando…" : confirmando === "aprovar" ? "Confirmar aprovação" : "Confirmar rejeição"}
-                    </button>
-                    <button type="button" className={controles.secundario} onClick={voltar} disabled={enviando}>Voltar</button>
-                  </div>
-                </div>
-              ) : (
-                <div className={styles.acoes}>
-                  <button ref={botaoAprovar} type="button" className={controles.aprovar} onClick={() => setConfirmando("aprovar")}>Aprovar</button>
-                  <button ref={botaoRejeitar} type="button" className={controles.rejeitar} onClick={() => setConfirmando("rejeitar")}>Rejeitar</button>
-                </div>
-              )
-            ) : (
-              <p className={controles.nota}>
-                {aberta.statusVerificacao === "aprovado"
-                  ? "Cadastro aprovado. Uma aprovação não pode ser desfeita."
-                  : "Cadastro rejeitado. Ele volta para análise somente se a pessoa solicitar nova verificação."}
-              </p>
-            )}
-          </div>
-        )}
-      </Dialogo>
-    </>
-  );
+        <div className={controles.campo}><label className={controles.rotulo} htmlFor="busca-solicitacoes">Buscar solicitação</label><input id="busca-solicitacoes" className={controles.entrada} type="search" placeholder="Nome ou clube" value={busca} onChange={e => setBusca(e.target.value)} disabled={enviando} /></div>
+        <details className={styles.filtros}><summary>Mais filtros</summary><div className={controles.campo}><label htmlFor="cadastros-perfil" className={controles.rotulo}>Perfil</label><select id="cadastros-perfil" className={controles.entrada} value={perfil} onChange={e => setPerfil(e.target.value as Perfil)} disabled={enviando}><option value="todos">Todos os perfis</option><option value="atleta">Atletas</option><option value="tecnico">Técnicos</option></select></div><div className={controles.campo}><label htmlFor="cadastros-status" className={controles.rotulo}>Verificação</label><select id="cadastros-status" className={controles.entrada} value={filtro} onChange={e => setFiltro(e.target.value as FiltroStatus)} disabled={enviando}><option value="todos">Todos os estados</option><option value="pendente">Pendentes</option><option value="aprovado">Aprovados</option><option value="rejeitado">Rejeitados</option></select></div></details>
+        <ul className={styles.lista}>{visiveis.map(s => <li key={s.usuarioId}><button type="button" className={styles.linha} aria-pressed={aberta?.usuarioId === s.usuarioId} onClick={() => escolher(s)} disabled={enviando}>
+          <Iniciais nome={s.nomeCompleto} /><span className={styles.identidade}><strong>{s.nomeCompleto}</strong><span>{PERFIS[s.perfil]} · {s.clube?.nome ?? "Sem clube"}{!s.ativo ? " · Conta desativada" : ""}</span></span><span className={styles.acaoLinha}>{aberta?.usuarioId === s.usuarioId ? "Em análise" : "Conferir"}</span>
+        </button></li>)}</ul>
+        {!visiveis.length && <p className={pagina.vazioTexto}>Nenhuma solicitação corresponde aos filtros.</p>}
+        <p className={controles.ajuda}>Mais antigas primeiro.</p>
+      </section>
+      <section className={`${styles.ficha} ${filaAberta ? styles.fichaOculta : ""}`} aria-label="Ficha para decisão">
+        {aberta ? <>
+          <div className={styles.cabecalhoFicha}><Iniciais nome={aberta.nomeCompleto} grande /><div><h2 ref={tituloFicha} tabIndex={-1} className={styles.nome}>{aberta.nomeCompleto}</h2><p className={pagina.texto}>{PERFIS[aberta.perfil]}</p></div></div>
+          <span className={`${controles.status} ${CLASSE_STATUS[aberta.statusVerificacao]}`}>{SITUACOES[aberta.statusVerificacao]}</span>
+          <dl className={styles.dados}>
+            <div><dt>Clube informado</dt><dd>{aberta.clube?.nome ?? "Sem clube"}</dd></div>
+            <div><dt>Solicitado em</dt><dd>{data(aberta.verificacaoSolicitadaEm)}</dd></div>
+            <div><dt>Conta</dt><dd>{aberta.ativo ? "Ativa" : "Desativada"}</dd></div>
+            {aberta.verificadoEm && <div><dt>Decisão</dt><dd>{data(aberta.verificadoEm)}</dd></div>}
+            {aberta.carteirinha && <div><dt>Carteirinha</dt><dd>{aberta.carteirinha.codigo}</dd></div>}
+          </dl>
+          {erroDecisao && !rejeitando && <p className={controles.erro} role="alert">{erroDecisao}</p>}
+          {!aberta.ativo ? <p className={controles.nota}>Conta desativada. A solicitação não pode ser decidida enquanto a conta estiver desativada.</p>
+            : aberta.statusVerificacao === "pendente" ? <>
+              <p className={pagina.texto}>{aberta.perfil === "atleta" ? "A aprovação confirma o vínculo e emite a carteirinha." : "A aprovação permite a atribuição a um clube pelo presidente."}</p>
+              <button type="button" className={controles.primario} onClick={() => void decidir(aberta, "aprovar")} disabled={enviando}>{enviando ? "Enviando…" : aberta.perfil === "atleta" ? "Aprovar e emitir carteirinha" : "Aprovar cadastro"}</button>
+              <button type="button" className={styles.rejeitar} onClick={() => { setErroDecisao(""); setRejeitando(aberta); }} disabled={enviando}>Rejeitar cadastro</button>
+            </> : <p className={pagina.texto}>{aberta.statusVerificacao === "aprovado" ? "Cadastro aprovado. A aprovação não pode ser desfeita." : "Cadastro rejeitado. Uma nova análise depende de solicitação da própria pessoa."}</p>}
+        </> : <><h2 className={styles.nome}>Nenhuma ficha para analisar</h2><p className={pagina.texto}>{pendentes ? "Ajuste a busca ou os filtros para consultar outra solicitação." : "Não há cadastros pendentes. Você pode consultar os cadastros já decididos."}</p></>}
+      </section>
+    </div>}
+    <Confirmacao aberto={rejeitando !== null} titulo={`Rejeitar o cadastro de ${rejeitando ? primeiroNome(rejeitando.nomeCompleto) : ""}?`} rotulo="Confirmar rejeição" tom="perigo" enviando={enviando} erro={erroDecisao} aoConfirmar={() => { if (rejeitando) void decidir(rejeitando, "rejeitar"); }} aoFechar={() => setRejeitando(null)} focoAlternativo={tituloFicha}>
+      <p className={pagina.confirmacaoTexto}>{rejeitando?.nomeCompleto} · {rejeitando?.clube?.nome ?? "Sem clube"}</p><p className={pagina.texto}>Uma nova análise só acontece se a pessoa pedir novamente.</p>
+    </Confirmacao>
+  </>;
 }

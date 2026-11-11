@@ -1,7 +1,7 @@
 "use client";
 
 import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../../lib/api";
 import type { AlteracaoCarteirinha, DetalheCarteirinha, EventoCarteirinha } from "../../../lib/presidente";
 import { Confirmacao } from "../../ui/confirmacao";
@@ -47,17 +47,25 @@ export function Carteirinha({ atletaId, revisao }: { atletaId: string; revisao: 
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
+  const [erroLeitura, setErroLeitura] = useState("");
+  const consulta = useRef(0);
+  const envio = useRef(false);
 
   const carregar = useCallback(() => {
+    const versao = ++consulta.current;
     api<DetalheCarteirinha>(`/carteirinhas/atleta/${atletaId}`)
-      .then(carteirinha => setEstado({ tipo: "pronta", carteirinha }))
-      .catch(falha => setEstado(status(falha) === 404 ? { tipo: "ausente" } : { tipo: "falha", mensagem: tratarErro(falha) }));
+      .then(carteirinha => { if (versao === consulta.current) { setEstado({ tipo: "pronta", carteirinha }); setErroLeitura(""); } })
+      .catch(falha => { if (versao === consulta.current) { setErroLeitura(tratarErro(falha)); setEstado(atual => atual.tipo === "pronta" ? atual : status(falha) === 404 ? { tipo: "ausente" } : { tipo: "falha", mensagem: tratarErro(falha) }); } });
   }, [atletaId, tratarErro]);
 
   // `revisao` muda após transferência: o clube atual exibido precisa ser relido.
-  useEffect(carregar, [carregar, revisao]);
+  const invalidarConsulta = useCallback(() => { consulta.current++; }, []);
+  useEffect(() => { carregar(); return invalidarConsulta; }, [carregar, revisao, invalidarConsulta]);
 
   async function confirmar(carteirinha: DetalheCarteirinha, op: Operacao) {
+    if (envio.current) return;
+    envio.current = true;
+    consulta.current++;
     setEnviando(true);
     setErro("");
     try {
@@ -76,6 +84,7 @@ export function Carteirinha({ atletaId, revisao }: { atletaId: string; revisao: 
       setErro(tratarErro(falha));
       if (conflito(falha) || status(falha) === 404) carregar();
     } finally {
+      envio.current = false;
       setEnviando(false);
     }
   }
@@ -94,6 +103,8 @@ export function Carteirinha({ atletaId, revisao }: { atletaId: string; revisao: 
           <span className={`${controles.status} ${CLASSE_CARTEIRINHA[estado.carteirinha.status]}`}>{NOME_CARTEIRINHA[estado.carteirinha.status]}</span>
         )}
       </div>
+
+      {estado.tipo === "pronta" && erroLeitura && <p className={controles.erro} role="alert">{erroLeitura} A última carteirinha confirmada foi mantida. <button type="button" className={controles.secundario} onClick={carregar}>Atualizar carteirinha</button></p>}
 
       {estado.tipo === "carregando" && <p className={pagina.carregando} role="status">Carregando carteirinha…</p>}
       {estado.tipo === "ausente" && <p className={pagina.secaoTexto}>Carteirinha ainda não emitida. Ela é emitida na aprovação do cadastro.</p>}

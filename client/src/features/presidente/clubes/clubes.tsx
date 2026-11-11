@@ -10,6 +10,8 @@ import { useErroApi } from "../../ui/use-erro-api";
 import controles from "../../ui/controles.module.css";
 import pagina from "../../ui/pagina.module.css";
 import { CamposClube, lerCamposClube, type ValoresClube } from "./campos-clube";
+import { EmblemaClube } from "../visual";
+import visual from "../visual.module.css";
 
 type Dados = { clubes: Clube[]; pessoas: SolicitacaoVerificacao[] };
 const VAZIO: ValoresClube = { nome: "", cidade: "" };
@@ -27,17 +29,20 @@ export function Clubes() {
   const [enviando, setEnviando] = useState(false);
   const botaoNovo = useRef<HTMLButtonElement>(null);
   const campoNome = useRef<HTMLInputElement>(null);
+  const consulta = useRef(0);
+  const envio = useRef(false);
 
   const carregar = useCallback(() => {
+    const versao = ++consulta.current;
     Promise.all([api<Clube[]>("/clubes/visao-geral"), consultarSolicitacoes()])
-      .then(([clubes, pessoas]) => { setDados({ clubes, pessoas }); setErroCarga(""); })
-      .catch(erro => setErroCarga(tratarErro(erro)));
+      .then(([clubes, pessoas]) => { if (versao === consulta.current) { setDados({ clubes, pessoas }); setErroCarga(""); } })
+      .catch(erro => { if (versao === consulta.current) setErroCarga(tratarErro(erro)); });
   }, [tratarErro]);
 
-  useEffect(carregar, [carregar]);
+  const invalidarConsulta = useCallback(() => { consulta.current++; }, []);
+  useEffect(() => { carregar(); return invalidarConsulta; }, [carregar, invalidarConsulta]);
 
   function atualizar() {
-    setDados(null);
     setErroCarga("");
     carregar();
   }
@@ -58,8 +63,10 @@ export function Clubes() {
 
   async function criar(evento: FormEvent) {
     evento.preventDefault();
+    if (envio.current) return;
     const lido = lerCamposClube(valores);
     if ("erro" in lido) { setErroCriacao(lido.erro); return; }
+    envio.current = true;
     setEnviando(true);
     setErroCriacao("");
     try {
@@ -68,6 +75,7 @@ export function Clubes() {
     } catch (erro) {
       setErroCriacao(tratarErro(erro));
       setEnviando(false);
+      envio.current = false;
     }
   }
 
@@ -84,7 +92,7 @@ export function Clubes() {
       <div className={pagina.topo}>
         <div>
           <h1 className={pagina.titulo}>Clubes</h1>
-          <p className={pagina.texto}>Abra um clube para editar nome e cidade, cuidar do técnico e ver o elenco.</p>
+          <p className={pagina.texto}>Elencos e técnicos responsáveis.</p>
         </div>
         <div className={pagina.acoes}>
           {!criando && <button ref={botaoNovo} type="button" className={controles.primario} onClick={abrirCriacao}>Novo clube</button>}
@@ -111,7 +119,8 @@ export function Clubes() {
         <input id="busca-clubes" className={controles.entrada} type="search" value={busca} onChange={e => setBusca(e.target.value)} autoComplete="off" />
       </div>
 
-      {erroCarga ? (
+      {erroCarga && dados !== null && <p className={controles.erro} role="alert">{erroCarga} A lista anterior foi mantida.</p>}
+      {erroCarga && dados === null ? (
         <div className={`${pagina.vazio} ${pagina.bloco}`}>
           <p className={controles.erro} role="alert">{erroCarga}</p>
           <button type="button" className={`${controles.secundario} ${pagina.acaoVazio}`} onClick={atualizar}>Tentar novamente</button>
@@ -133,21 +142,19 @@ export function Clubes() {
               )}
             </div>
           ) : (
-            <ul className={pagina.lista}>
+            <ul className={visual.lista}>
               {visiveis.map(c => {
                 const atletas = elenco.get(c.id) ?? 0;
                 return (
                   <li key={c.id}>
-                    <Link href={`/presidente/clubes/${c.id}`} className={pagina.linha}>
-                      <span className={pagina.linhaNome}>{c.nome}</span>
-                      <span className={pagina.linhaMeta}>
+                    <Link href={`/presidente/clubes/${c.id}`} className={visual.linha}>
+                      <EmblemaClube nome={c.nome} />
+                      <span><span className={visual.nome}>{c.nome}</span>
+                      <span className={visual.meta}>
                         {c.cidade ?? "Cidade não informada"}, {c.tecnico ? `técnico ${c.tecnico.nomeCompleto}` : "sem técnico"}
                         {c.tecnico && !c.tecnico.ativo && <strong className={controles.textoAlerta}> (conta desativada)</strong>}
                       </span>
-                      <span className={pagina.linhaData}>{contar(atletas, "atleta aprovado", "atletas aprovados")}</span>
-                      <span className={`${controles.status} ${pagina.linhaStatus} ${c.tecnico ? controles.statusAprovado : controles.statusPendente}`}>
-                        {c.tecnico ? "Com técnico" : "Sem técnico"}
-                      </span>
+                      <span className={visual.meta}>{contar(atletas, "atleta aprovado", "atletas aprovados")}</span></span><span className={visual.abrir}>{c.tecnico ? "Abrir clube" : "Atribuir técnico"}</span>
                     </Link>
                   </li>
                 );

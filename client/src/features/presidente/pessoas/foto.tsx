@@ -32,14 +32,18 @@ export function Foto({ atletaId, nome }: { atletaId: string; nome: string }) {
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState("");
   const entrada = useRef<HTMLInputElement>(null);
+  const consulta = useRef(0);
+  const envio = useRef(false);
 
   const carregar = useCallback(() => {
+    const versao = ++consulta.current;
     lerFoto(atletaId)
-      .then(blob => { setFoto(blob); setEstado("pronto"); })
-      .catch(falha => setEstado({ falha: tratarErro(falha) }));
+      .then(blob => { if (versao === consulta.current) { setFoto(blob); setEstado("pronto"); } })
+      .catch(falha => { if (versao === consulta.current) setEstado({ falha: tratarErro(falha) }); });
   }, [atletaId, tratarErro]);
 
-  useEffect(carregar, [carregar]);
+  const invalidarConsulta = useCallback(() => { consulta.current++; }, []);
+  useEffect(() => { carregar(); return invalidarConsulta; }, [carregar, invalidarConsulta]);
 
   const vista: Estado = estado === "carregando" ? { tipo: "carregando" }
     : typeof estado === "object" ? { tipo: "falha", mensagem: estado.falha }
@@ -62,7 +66,9 @@ export function Foto({ atletaId, nome }: { atletaId: string; nome: string }) {
   }
 
   async function enviar() {
-    if (!arquivo) return;
+    if (!arquivo || envio.current) return;
+    envio.current = true;
+    consulta.current++;
     setEnviando(true);
     setErroArquivo("");
     try {
@@ -76,6 +82,7 @@ export function Foto({ atletaId, nome }: { atletaId: string; nome: string }) {
     } catch (falha) {
       setErroArquivo(tratarErro(falha));
     } finally {
+      envio.current = false;
       setEnviando(false);
     }
   }

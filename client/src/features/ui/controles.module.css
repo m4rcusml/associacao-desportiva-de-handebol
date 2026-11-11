@@ -1,216 +1,32 @@
-/* Controles reutilizáveis: campos, botões, filtros em pílula, status e mensagens. Ver `tema.module.css`. */
-
-.campo {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.rotulo {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.ajuda {
-  margin: 0;
-  max-width: none;
-  color: var(--suave);
-  font-size: 0.85rem;
-  line-height: 1.4;
-}
-
-.entrada {
-  width: 100%;
-  min-height: 2.9rem;
-  box-sizing: border-box;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid #7c8899;
-  border-radius: 0.3rem;
-  background: var(--superficie);
-  color: var(--tinta);
-  font: inherit;
-}
-
-.primario,
-.aprovar,
-.rejeitar,
-.secundario {
-  min-height: 2.9rem;
-  padding: 0.55rem 1.1rem;
-  border: 2px solid transparent;
-  border-radius: 0.3rem;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.primario:disabled,
-.aprovar:disabled,
-.rejeitar:disabled,
-.secundario:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
-
-.primario {
-  background: var(--quadra);
-  border-color: var(--quadra);
-  color: #ffffff;
-}
-
-.primario:hover:not(:disabled) {
-  background: var(--quadra-escura);
-  border-color: var(--quadra-escura);
-}
-
-.aprovar {
-  background: var(--aprovado);
-  border-color: var(--aprovado);
-  color: #ffffff;
-}
-
-.aprovar:hover:not(:disabled) {
-  background: #155636;
-  border-color: #155636;
-}
-
-.rejeitar {
-  background: var(--superficie);
-  border-color: var(--rejeitado);
-  color: var(--rejeitado);
-}
-
-.rejeitar:hover:not(:disabled) {
-  background: var(--rejeitado);
-  color: #ffffff;
-}
-
-.secundario {
-  background: transparent;
-  border-color: #7c8899;
-  color: var(--tinta);
-}
-
-.secundario:hover:not(:disabled) {
-  background: #e4eaf1;
-}
-
-.grupo {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.opcao {
-  min-height: 2.6rem;
-  padding: 0.35rem 0.85rem;
-  border: 1px solid var(--divisa);
-  border-radius: 999px;
-  background: var(--superficie);
-  color: var(--tinta);
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.opcao:hover {
-  background: #dfe7f1;
-  border-color: #9fb0c6;
-}
-
-.opcao[aria-pressed="true"],
-.opcao[aria-pressed="true"]:hover {
-  background: var(--quadra);
-  border-color: var(--quadra);
-  color: #ffffff;
-}
-
-.contagem {
-  font-family: var(--display);
-  font-variant-numeric: tabular-nums;
-  opacity: 0.75;
-}
-
-.status {
-  display: inline-block;
-  padding: 0.15rem 0.55rem;
-  border-radius: 0.25rem;
-  font-family: var(--display);
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.statusPendente {
-  background: var(--pendente-fundo);
-  color: var(--pendente);
-}
-
-.statusAprovado {
-  background: var(--aprovado-fundo);
-  color: var(--aprovado);
-}
-
-.statusRejeitado {
-  background: var(--rejeitado-fundo);
-  color: var(--rejeitado);
-}
-
-.erro {
-  margin: 0;
-  max-width: none;
-  padding: 0.6rem 0.75rem;
-  border-left: 4px solid var(--rejeitado);
-  background: var(--rejeitado-fundo);
-  color: #7f1d17;
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-.nota {
-  margin: 0;
-  max-width: none;
-  padding: 0.6rem 0.75rem;
-  border-left: 4px solid var(--sinal);
-  background: #fff8e6;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-/* Trecho de alerta dentro de um texto (ex.: "conta desativada" numa linha da lista). */
-.textoAlerta {
-  color: var(--rejeitado);
-  font-weight: 600;
-}
-
-/* Seletor de arquivo: o botão nativo segue o estilo secundário. */
-.arquivo {
-  max-width: 100%;
-  font: inherit;
-  font-size: 0.92rem;
-}
-
-.arquivo::file-selector-button {
-  min-height: 2.6rem;
-  margin-right: 0.75rem;
-  padding: 0.4rem 0.9rem;
-  border: 2px solid #7c8899;
-  border-radius: 0.3rem;
-  background: transparent;
-  color: var(--tinta);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.arquivo::file-selector-button:hover {
-  background: #e4eaf1;
-}
-
-.nota a,
-.erro a {
-  color: inherit;
-  font-weight: 600;
-  text-underline-offset: 0.2em;
-}
+.campo { display: grid; gap: 6px; min-width: 0; }
+.rotulo { margin: 0; font-size: 13px; font-weight: 500; }
+.ajuda { margin: 0; max-width: none; color: var(--suave); font-size: 13px; line-height: 1.4; }
+.entrada { width: 100%; min-height: 50px; padding: 12px 14px; border: 1px solid var(--divisa); border-radius: 10px; background: var(--superficie); color: var(--tinta); font: inherit; font-size: 16px; }
+.entrada::placeholder { color: var(--suave); opacity: 1; }
+.entrada[aria-invalid='true'] { border-color: var(--rejeitado); }
+.primario, .aprovar, .rejeitar, .secundario, .discreto { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 50px; padding: 12px; border: 1px solid transparent; border-radius: 8px; font: inherit; font-weight: 600; line-height: 18px; text-align: center; text-decoration: none; overflow-wrap: anywhere; cursor: pointer; }
+.primario, .aprovar { background: var(--quadra); border-color: var(--quadra); color: white; }
+.primario:hover:not(:disabled), .aprovar:hover:not(:disabled) { background: var(--quadra-escura); border-color: var(--quadra-escura); }
+.rejeitar { background: var(--superficie); border-color: var(--rejeitado); color: var(--rejeitado); }
+.rejeitar:hover:not(:disabled) { background: var(--rejeitado-fundo); }
+.secundario { background: var(--superficie); border-color: var(--divisa); color: var(--tinta); }
+.secundario:hover:not(:disabled), .discreto:hover:not(:disabled) { background: var(--aprovado-fundo); }
+.discreto { background: var(--superficie); color: var(--tinta); }
+.primario:disabled, .aprovar:disabled, .rejeitar:disabled, .secundario:disabled, .discreto:disabled { background: #dde3de; border-color: #dde3de; color: #67766f; cursor: not-allowed; }
+.grupo { display: flex; flex-wrap: wrap; gap: 4px; }
+.opcao { min-height: 44px; padding: 10px 12px; border: 1px solid var(--divisa); border-radius: 8px; background: var(--superficie); color: var(--tinta); font: inherit; font-weight: 500; cursor: pointer; }
+.opcao:hover { background: var(--aprovado-fundo); }
+.opcao[aria-pressed='true'] { background: var(--quadra); border-color: var(--quadra); color: white; }
+.contagem { font-variant-numeric: tabular-nums; }
+.status { display: inline-block; padding: 5px 6px; border-radius: 5px; font-size: 12px; font-weight: 500; white-space: normal; }
+.statusPendente { background: var(--pendente-fundo); color: var(--pendente); }
+.statusAprovado { background: var(--aprovado-fundo); color: var(--aprovado); }
+.statusRejeitado { background: var(--rejeitado-fundo); color: var(--rejeitado); }
+.erro, .nota { margin: 0; max-width: none; padding: 12px; border: 1px solid var(--divisa); border-radius: 8px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.erro { background: var(--rejeitado-fundo); border-color: var(--rejeitado); color: var(--rejeitado); }
+.nota { background: var(--pendente-fundo); color: var(--pendente); }
+.textoAlerta { color: var(--rejeitado); font-weight: 600; }
+.arquivo { width: 100%; font: inherit; }
+.arquivo::file-selector-button { min-height: 44px; margin-right: 8px; padding: 10px 12px; border: 1px solid var(--divisa); border-radius: 8px; background: var(--superficie); color: var(--tinta); font: inherit; cursor: pointer; }
+.arquivo::file-selector-button:hover { background: var(--aprovado-fundo); }
+.nota a, .erro a { color: inherit; font-weight: 600; }

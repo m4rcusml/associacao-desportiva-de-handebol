@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../../../lib/api";
 import { consultarSolicitacoes, type Clube as DadosClube, type SolicitacaoVerificacao } from "../../../lib/presidente";
 import { Confirmacao } from "../../ui/confirmacao";
@@ -10,6 +10,9 @@ import { conflito, status, useErroApi } from "../../ui/use-erro-api";
 import controles from "../../ui/controles.module.css";
 import pagina from "../../ui/pagina.module.css";
 import { CamposClube, lerCamposClube, type ValoresClube } from "./campos-clube";
+import { Iniciais } from "../../ui/identificacao";
+import { EmblemaClube } from "../visual";
+import visual from "../visual.module.css";
 
 type Estado = { tipo: "carregando" } | { tipo: "falha"; mensagem: string } | { tipo: "ausente" }
   /** `erroReleitura`: a releitura falhou com dados já exibidos (ex.: após operação confirmada); os dados ficam. */
@@ -31,15 +34,21 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
   const [enviando, setEnviando] = useState(false);
   const [erroTecnico, setErroTecnico] = useState("");
   const [avisoTecnico, setAvisoTecnico] = useState("");
+  const [area, setArea] = useState<"dados" | "tecnico" | null>(null);
+  const consulta = useRef(0);
+  const escrita = useRef(false);
 
   /** Relê clube e pessoas. Não toca no formulário de edição se ele já foi iniciado. */
   const carregar = useCallback(() => {
+    const versao = ++consulta.current;
     return Promise.all([api<DadosClube>(`/clubes/${clubeId}`), consultarSolicitacoes()])
       .then(([clube, pessoas]) => {
+        if (versao !== consulta.current) return;
         setEstado({ tipo: "pronto", clube, pessoas });
         setValores(atual => atual ?? valoresDe(clube));
       })
       .catch(erro => {
+        if (versao !== consulta.current) return;
         if (status(erro) === 404 || status(erro) === 400) { setEstado({ tipo: "ausente" }); return; }
         const mensagem = tratarErro(erro);
         // Com dados já exibidos, a falha da releitura não esconde o clube nem o aviso da operação confirmada.
@@ -52,7 +61,8 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
     carregar();
   }
 
-  useEffect(() => { carregar(); }, [carregar]);
+  const invalidarConsulta = useCallback(() => { consulta.current++; }, []);
+  useEffect(() => { carregar(); return invalidarConsulta; }, [carregar, invalidarConsulta]);
 
   const voltar = <Link href="/presidente/clubes" className={pagina.voltar}>Voltar para Clubes</Link>;
 
@@ -92,6 +102,7 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
 
   async function salvar(evento: FormEvent) {
     evento.preventDefault();
+    if (escrita.current) return;
     setAvisoEdicao("");
     const lido = lerCamposClube(form);
     if ("erro" in lido) { setErroEdicao(lido.erro); return; }
@@ -101,6 +112,8 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
       ...(lido.cidade !== clube.cidade ? { cidade: lido.cidade } : {}),
     };
     if (Object.keys(mudancas).length === 0) { setErroEdicao(""); setAvisoEdicao("Nada mudou: nome e cidade já estão assim."); return; }
+    escrita.current = true;
+    consulta.current++;
     setSalvando(true);
     setErroEdicao("");
     try {
@@ -113,6 +126,7 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
       setErroEdicao(tratarErro(erro));
       if (status(erro) === 404) carregar();
     } finally {
+      escrita.current = false;
       setSalvando(false);
     }
   }
@@ -124,7 +138,9 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
   }
 
   async function confirmarTecnico() {
-    if (!operacao) return;
+    if (!operacao || escrita.current) return;
+    escrita.current = true;
+    consulta.current++;
     setEnviando(true);
     setErroTecnico("");
     try {
@@ -150,6 +166,7 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
       setErroTecnico(tratarErro(erro));
       if (conflito(erro) || status(erro) === 404) carregar();
     } finally {
+      escrita.current = false;
       setEnviando(false);
     }
   }
@@ -163,10 +180,11 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
     <>
       {voltar}
       <div className={pagina.topo}>
-        <div>
+        <div className={visual.identificacao}>
+          <EmblemaClube nome={clube.nome} /><div>
           <h1 className={pagina.titulo}>{clube.nome}</h1>
-          <p className={pagina.texto}>{clube.cidade ?? "Cidade não informada"}</p>
-        </div>
+          <p className={pagina.texto}>{clube.cidade ?? "Cidade não informada"} · {contar(aprovados.length, "atleta aprovado", "atletas aprovados")}</p>
+        </div></div>
         <span className={`${controles.status} ${tecnico ? controles.statusAprovado : controles.statusPendente}`}>{tecnico ? "Com técnico" : "Sem técnico"}</span>
       </div>
 
@@ -183,8 +201,10 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
         </div>
       )}
 
-      <div className={pagina.secoes}>
-        <section className={pagina.secao} aria-labelledby="secao-dados">
+      <div className={visual.linha}>{tecnico ? <><Iniciais nome={tecnico.nomeCompleto} /><span><strong className={visual.nome}>{tecnico.nomeCompleto}</strong><span className={visual.meta}>Técnico responsável{!tecnico.ativo ? " · Conta desativada" : ""}</span></span></> : <><EmblemaClube nome={clube.nome} /><span><strong className={visual.nome}>Sem técnico</strong><span className={visual.meta}>Atribua um técnico aprovado ao clube.</span></span></>}<button type="button" className={controles.secundario} onClick={() => setArea("tecnico")} disabled={salvando || enviando}>{tecnico ? "Trocar" : "Atribuir técnico"}</button></div>
+      <div className={`${pagina.acoes} ${visual.conteudo}`}><button type="button" className={controles.secundario} onClick={() => setArea(area === "dados" ? null : "dados")} disabled={salvando || enviando}>Editar nome e cidade</button><button type="button" className={controles.secundario} onClick={() => setArea(area === "tecnico" ? null : "tecnico")} disabled={salvando || enviando}>Gerir técnico</button>{area && <button type="button" className={controles.secundario} onClick={() => setArea(null)} disabled={salvando || enviando}>Fechar edição</button>}</div>
+      <div className={`${pagina.secoes} ${visual.conteudo}`}>
+        <section hidden={area !== "dados"} className={pagina.secao} aria-labelledby="secao-dados">
           <h2 id="secao-dados" className={`${pagina.secaoTitulo} ${pagina.erroDecisao}`}>Dados do clube</h2>
           <form className={pagina.formulario} onSubmit={salvar} noValidate>
             <CamposClube valores={form} aoMudar={v => { setValores(v); setAvisoEdicao(""); }} prefixo="clube" desativado={salvando} />
@@ -197,8 +217,8 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
           <p className={controles.ajuda}>Alterar o nome não muda vínculos nem o histórico. Clubes não são excluídos.</p>
         </section>
 
-        <section className={pagina.secao} aria-labelledby="secao-tecnico">
-          <h2 id="secao-tecnico" className={`${pagina.secaoTitulo} ${pagina.erroDecisao}`}>Técnico</h2>
+        <section hidden={area !== "tecnico"} className={pagina.secao} aria-labelledby="secao-tecnico">
+          <h2 id="secao-tecnico" className={`${pagina.secaoTitulo} ${pagina.erroDecisao}`}>Gerir técnico</h2>
           {tecnico ? (
             <dl className={pagina.ficha}>
               <div><dt>Técnico atual</dt><dd><Link href={`/presidente/pessoas/${tecnico.id}`}>{tecnico.nomeCompleto}</Link></dd></div>
@@ -229,7 +249,7 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
 
         <section className={pagina.secao} aria-labelledby="secao-elenco">
           <div className={pagina.secaoTopo}>
-            <h2 id="secao-elenco" className={pagina.secaoTitulo}>Elenco</h2>
+            <h2 id="secao-elenco" className={pagina.secaoTitulo}>Atletas do clube</h2>
             <span className={pagina.linhaMeta}>{contar(aprovados.length, "atleta aprovado", "atletas aprovados")}</span>
           </div>
           <p className={pagina.secaoTexto}>
@@ -239,15 +259,15 @@ export function Clube({ clubeId, criado }: { clubeId: string; criado: boolean })
           {aprovados.length === 0 ? (
             <p className={pagina.secaoTexto}>Nenhum atleta aprovado no clube.</p>
           ) : (
-            <ul className={pagina.lista}>
+            <ul className={visual.lista}>
               {aprovados.map(a => (
                 <li key={a.usuarioId}>
-                  <Link href={`/presidente/pessoas/${a.usuarioId}`} className={pagina.linha}>
-                    <span className={pagina.linhaNome}>{a.nomeCompleto}</span>
-                    <span className={pagina.linhaMeta}>
+                  <Link href={`/presidente/pessoas/${a.usuarioId}`} className={visual.linha}>
+                    <Iniciais nome={a.nomeCompleto} /><span><span className={visual.nome}>{a.nomeCompleto}</span>
+                    <span className={visual.meta}>
                       {a.carteirinha ? `Carteirinha ${a.carteirinha.codigo}${a.carteirinha.status === "invalidada" ? ", invalidada" : ""}` : "Sem carteirinha"}
                       {!a.ativo && <strong className={controles.textoAlerta}>, conta desativada</strong>}
-                    </span>
+                    </span></span><span className={visual.abrir}>Abrir ficha</span>
                     <span className={`${controles.status} ${pagina.linhaStatus} ${a.ativo ? controles.statusAprovado : controles.statusRejeitado}`}>{a.ativo ? "Ativo" : "Desativado"}</span>
                   </Link>
                 </li>

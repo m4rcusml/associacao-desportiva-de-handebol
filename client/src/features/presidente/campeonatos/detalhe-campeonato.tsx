@@ -11,6 +11,7 @@ import controles from "../../ui/controles.module.css";
 import styles from "../../ui/pagina.module.css";
 import { dataCivil, horaLocal, NOME_STATUS_CAMPEONATO, NOME_STATUS_JOGO } from "./formatos";
 import { SuspensoesCampeonato } from "./suspensoes-campeonato";
+import visual from "../visual.module.css";
 
 type Dados = { campeonato: Campeonato; clubes: Clube[]; jogos: Jogo[]; suspensoes: Suspensao[] };
 type Transicao = "iniciar" | "encerrar" | "cancelar";
@@ -28,19 +29,27 @@ export function DetalheCampeonato({ campeonatoId }: { campeonatoId: string }) {
   const envio = useRef(false);
   const fechar = useRef<HTMLButtonElement>(null);
   const titulo = useRef<HTMLHeadingElement>(null);
+  const [aba, setAba] = useState<"jogos" | "clubes" | "suspensoes">("jogos");
+  const consulta = useRef(0);
 
-  const carregar = useCallback(() => Promise.all([
+  const carregar = useCallback(() => {
+    const versao = ++consulta.current;
+    return Promise.all([
     api<Campeonato>(`/campeonatos/${campeonatoId}`), api<Clube[]>("/clubes/visao-geral"),
     api<Jogo[]>(`/campeonatos/${campeonatoId}/jogos`), api<Suspensao[]>(`/campeonatos/${campeonatoId}/suspensoes`),
   ]).then(([campeonato, clubes, jogos, suspensoes]) => {
+      if (versao !== consulta.current) return;
       setDados({ campeonato, clubes, jogos, suspensoes });
       setErro("");
-    }).catch(falha => setErro(tratarErro(falha))), [campeonatoId, tratarErro]);
-  useEffect(() => { void carregar(); }, [carregar]);
+    }).catch(falha => { if (versao === consulta.current) setErro(tratarErro(falha)); });
+  }, [campeonatoId, tratarErro]);
+  const invalidarConsulta = useCallback(() => { consulta.current++; }, []);
+  useEffect(() => { void carregar(); return invalidarConsulta; }, [carregar, invalidarConsulta]);
 
   const recarregarSuspensoes = useCallback(async () => {
+    const versao = ++consulta.current;
     const suspensoes = await api<Suspensao[]>(`/campeonatos/${campeonatoId}/suspensoes`);
-    setDados(atual => atual ? { ...atual, suspensoes } : atual);
+    if (versao === consulta.current) setDados(atual => atual ? { ...atual, suspensoes } : atual);
   }, [campeonatoId]);
 
   function abrir(proxima: Acao) { setErroAcao(""); setAcao(proxima); }
@@ -48,6 +57,7 @@ export function DetalheCampeonato({ campeonatoId }: { campeonatoId: string }) {
   async function executar(caminho: string, corpo: unknown, metodo: ApiMethod, mensagem: string) {
     if (envio.current) return;
     envio.current = true;
+    consulta.current++;
     setEnviando(true);
     setErroAcao("");
     try {
@@ -106,9 +116,11 @@ export function DetalheCampeonato({ campeonatoId }: { campeonatoId: string }) {
 
   return <>
     <Link className={styles.voltar} href="/presidente/campeonatos">Voltar aos campeonatos</Link>
-    <div className={styles.topo}><div><h1 ref={titulo} tabIndex={-1} className={styles.titulo}>{campeonato.nome}</h1><p className={styles.texto}>{campeonato.edicao} · {campeonato.categoria}</p></div><button className={controles.secundario} type="button" onClick={() => void carregar()} disabled={enviando}>Atualizar campeonato</button></div>
+    <div className={styles.topo}><div><h1 ref={titulo} tabIndex={-1} className={styles.titulo}>{campeonato.nome}</h1><p className={styles.texto}>Edição {campeonato.edicao} · {campeonato.categoria}</p></div>{recebeJogos && <button className={controles.primario} type="button" disabled={enviando || campeonato.inscricoes.length < 2} onClick={() => abrir({ tipo: "agendar" })}>Agendar jogo</button>}</div>
     {erro && <p className={controles.erro} role="alert">{erro}</p>}
-    <dl className={styles.ficha}><div><dt>Situação</dt><dd>{NOME_STATUS_CAMPEONATO[campeonato.status]}</dd></div><div><dt>Início previsto</dt><dd>{dataCivil(campeonato.inicio)}</dd></div><div><dt>Fim previsto</dt><dd>{dataCivil(campeonato.fim)}</dd></div></dl>
+    <span className={`${controles.status} ${campeonato.status === "planejado" ? controles.statusPendente : campeonato.status === "cancelado" ? controles.statusRejeitado : controles.statusAprovado}`}>{NOME_STATUS_CAMPEONATO[campeonato.status]}</span>
+    <details className={visual.maisFiltros}><summary>Opções do campeonato</summary>
+    <dl className={styles.ficha}><div><dt>Início previsto</dt><dd>{dataCivil(campeonato.inicio)}</dd></div><div><dt>Fim previsto</dt><dd>{dataCivil(campeonato.fim)}</dd></div></dl>
     <div className={styles.acoes}>
       {planejado && <button type="button" className={controles.aprovar} disabled={enviando || campeonato.inscricoes.length < 2} onClick={() => abrir({ tipo: "transicao", transicao: "iniciar" })}>Iniciar campeonato</button>}
       {campeonato.status === "em_andamento" && <button type="button" className={controles.primario} disabled={enviando || jogosPendentes} onClick={() => abrir({ tipo: "transicao", transicao: "encerrar" })}>Encerrar campeonato</button>}
@@ -117,10 +129,12 @@ export function DetalheCampeonato({ campeonatoId }: { campeonatoId: string }) {
     {planejado && campeonato.inscricoes.length < 2 && <p className={controles.ajuda}>Inscreva ao menos dois clubes para iniciar o campeonato.</p>}
     {campeonato.status === "em_andamento" && jogosPendentes && <p className={controles.ajuda}>O encerramento exige todos os jogos finalizados ou cancelados.</p>}
     {jogoEmAndamento && <p className={controles.ajuda}>Não é possível cancelar um campeonato com jogo em andamento.</p>}
+    <button className={controles.secundario} type="button" onClick={() => void carregar()} disabled={enviando}>Atualizar campeonato</button>
+    </details>
     <p className={styles.aviso} role="status">{aviso}</p>
-    <nav className={styles.acoes} aria-label="Seções do campeonato"><a href="#clubes-inscritos">Clubes inscritos</a><a href="#jogos">Jogos</a><a href="#suspensoes">Suspensões</a></nav>
+    <div className={visual.seletor} role="group" aria-label="Seções do campeonato"><button type="button" className={controles.opcao} aria-pressed={aba === "jogos"} onClick={() => setAba("jogos")}>Jogos</button><button type="button" className={controles.opcao} aria-pressed={aba === "clubes"} onClick={() => setAba("clubes")}>Clubes inscritos</button><button type="button" className={controles.opcao} aria-pressed={aba === "suspensoes"} onClick={() => setAba("suspensoes")}>Suspensões</button></div>
     <div className={styles.secoes}>
-      <section id="clubes-inscritos" className={styles.secao} aria-labelledby="clubes-inscritos-titulo">
+      <section hidden={aba !== "clubes"} id="clubes-inscritos" className={styles.secao} aria-labelledby="clubes-inscritos-titulo">
         <div className={styles.secaoTopo}><h2 id="clubes-inscritos-titulo" className={styles.secaoTitulo}>Clubes inscritos</h2>{planejado && <button className={controles.primario} type="button" disabled={enviando || disponiveis.length === 0} onClick={() => abrir({ tipo: "inscrever" })}>Inscrever clube</button>}</div>
         <p className={styles.secaoTexto}>As inscrições só podem mudar enquanto o campeonato estiver planejado. Clubes com jogos permanecem inscritos.</p>
         {campeonato.inscricoes.length ? <ul className={styles.lista}>{campeonato.inscricoes.map(i => {
@@ -129,12 +143,12 @@ export function DetalheCampeonato({ campeonatoId }: { campeonatoId: string }) {
         })}</ul> : <p className={styles.texto}>Nenhum clube inscrito. Inclua os participantes para agendar jogos.</p>}
         {planejado && disponiveis.length === 0 && <p className={controles.ajuda}>Todos os clubes cadastrados já estão inscritos. Novos clubes podem ser cadastrados na área de clubes.</p>}
       </section>
-      <section id="jogos" className={styles.secao} aria-labelledby="jogos-titulo">
+      <section hidden={aba !== "jogos"} id="jogos" className={styles.secao} aria-labelledby="jogos-titulo">
         <div className={styles.secaoTopo}><h2 id="jogos-titulo" className={styles.secaoTitulo}>Jogos</h2>{recebeJogos && <button className={controles.primario} type="button" disabled={enviando || campeonato.inscricoes.length < 2} onClick={() => abrir({ tipo: "agendar" })}>Agendar jogo</button>}</div>
         <p className={styles.secaoTexto}>Agende os confrontos entre clubes inscritos. O início e o encerramento da partida são feitos pela arbitragem.</p>
         {jogos.length ? <ul className={styles.lista}>{jogos.map(j => <li key={j.id}><Link className={styles.linha} href={`/presidente/campeonatos/${campeonatoId}/jogos/${j.id}`}><span className={styles.linhaNome}>{j.clubeA.clube.nome} × {j.clubeB.clube.nome}</span><span className={styles.linhaMeta}>{j.local ?? "Local não informado"}</span><span className={styles.linhaData}>{horaLocal(j.inicioPrevistoLocal)} · {j.fusoHorario}</span><span className={`${styles.linhaStatus} ${controles.status} ${j.status === "agendado" ? controles.statusPendente : j.status === "cancelado" ? controles.statusRejeitado : controles.statusAprovado}`}>{j.interrompidoEm ? "Interrompido" : NOME_STATUS_JOGO[j.status]}</span></Link></li>)}</ul> : <p className={styles.texto}>Nenhum jogo agendado neste campeonato.</p>}
       </section>
-      <SuspensoesCampeonato campeonatoId={campeonatoId} statusCampeonato={campeonato.status} suspensoes={suspensoes} aoAtualizar={recarregarSuspensoes} />
+      <div hidden={aba !== "suspensoes"}><SuspensoesCampeonato campeonatoId={campeonatoId} statusCampeonato={campeonato.status} suspensoes={suspensoes} aoAtualizar={recarregarSuspensoes} /></div>
     </div>
 
     <Dialogo aberto={formularioAberto} bloqueado={enviando} aoFechar={() => setAcao(null)} tituloId="campeonato-formulario-titulo" focoInicial={fechar} focoAlternativo={titulo}>

@@ -1,0 +1,58 @@
+.cabecalho { display: flex; flex-wrap: wrap; align-items: center; gap: 0 24px; padding: 12px 24px; background: var(--quadra-escura); color: white; }
+.barra { display: contents; }
+.marca { margin-right: auto; color: white; font-size: 22px; font-weight: 600; text-decoration: none; }
+.conta { order: 2; display: flex; align-items: center; justify-content: center; min-height: 48px; max-width: 220px; padding: 10px 16px; border-radius: 8px; background: white; color: var(--tinta); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.nav { display: flex; flex: 1; justify-content: center; gap: 4px; }
+.nav a { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 16px; border-radius: 8px; color: white; text-decoration: none; }
+.nav a:hover, .nav a[aria-current='page'] { background: var(--quadra); }
+.nav a[aria-current='page'] { font-weight: 600; }
+.cabecalho :focus-visible { outline-color: white; }
+.pular { position: fixed; left: 12px; top: -100px; z-index: 30; padding: 12px; background: white; color: var(--tinta); border: 2px solid var(--quadra); }
+.pular:focus { top: 12px; }
+.iconeMobile, .marcaMobile, .contaIcone { display: none; }
+@media (max-width: 70rem) {
+  .cabecalho { padding: 12px 16px 8px; gap: 8px 16px; }
+  .barra { display: flex; flex: 1 1 100%; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; }
+  .marca { font-size: 20px; }
+  .conta { order: initial; min-height: 44px; max-width: 60%; font-size: 13px; }
+  .nav { justify-content: stretch; width: 100%; }
+  .nav a { flex: 1; min-width: 0; padding: 8px 4px; gap: 5px; font-size: 12px; flex-direction: column; text-align: center; overflow-wrap: anywhere; }
+}
+@media (max-width: 22rem) { .cabecalho { padding-inline: 8px; } .nav { gap: 2px; } .nav a { font-size: 11px; } }
+@media (max-width: 47.99rem) {
+  .inferior { min-height: 64px; padding-block: 0; }
+  .inferior .marca { font-size: 18px; }
+  .inferior .barra { min-height: 64px; }
+  .inferior .conta { min-width: 44px; padding: 0; color: white; background: transparent; }
+  .compacto, .compacto .barra { min-height: 56px; }
+  .inferior .nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; gap: 0; padding: 4px 0 max(4px, env(safe-area-inset-bottom)); background: var(--superficie); border-top: 1px solid var(--divisa); }
+  .inferior .nav a { min-height: 60px; padding: 4px; border-radius: 0; color: var(--suave); }
+  .contaVisivel .nav a { min-height: 56px; gap: 2px; line-height: 16px; }
+  .contaVisivel .nav a span { white-space: nowrap; }
+  .inferior .nav a:hover, .inferior .nav a[aria-current='page'] { background: var(--aprovado-fundo); color: var(--quadra); }
+  .inferior .nav :focus-visible { outline-color: var(--clube-a); outline-offset: -3px; }
+  .iconeMobile, .marcaMobile { display: block; }
+  .compacto .contaIcone { display: block; }
+  .compacto .contaNome { display: none; }
+  .iconeDesktop, .marcaDesktop { display: none; }
+}
+@media (min-width: 48rem) {
+  .inferior { flex-wrap: nowrap; min-height: 72px; }
+  .inferior .barra { display: contents; }
+  .inferior .conta { display: none; }
+  .inferior .nav { justify-content: flex-end; width: auto; }
+  .inferior .nav a { flex: 0 1 180px; flex-direction: row; font-size: 14px; padding: 12px; gap: 8px; }
+  .contaVisivel .conta { display: flex; margin-left: auto; }
+}
+@media (min-width: 80rem) {
+  .contaVisivel { gap: 12px; }
+  .contaVisivel .marca { flex: 0 1 190px; margin-right: 0; }
+  .contaVisivel .nav { flex: 0 1 748px; justify-content: start; gap: 12px; }
+  .contaVisivel .nav a { flex: 0 1 140px; min-width: 120px; }
+  .contaVisivel .conta { width: 220px; margin-left: 0; }
+}
+@media (min-width: 48rem) and (max-width: 79.99rem) {
+  .contaVisivel { flex-wrap: wrap; }
+  .contaVisivel .barra { display: flex; flex: 1 1 100%; }
+  .contaVisivel .nav { flex: 1 1 100%; }
+}

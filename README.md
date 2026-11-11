@@ -3,19 +3,42 @@
 Projeto de uma aplicação para organizar clubes, atletas, campeonatos e jogos de handebol. A proposta
 reúne aprovação de cadastros, carteirinhas, credenciamento, arbitragem e histórico esportivo,
 apoiando o trabalho cotidiano da associação. O backend implementa os fluxos de contas, clubes,
-competições, participação, arbitragem, disciplina e histórico descritos abaixo. A interface atual
-é experimental; a UX final permanece fora desta entrega.
+competições, participação, arbitragem, disciplina e histórico descritos abaixo. O frontend de acesso,
+presidente, atleta, técnico e arbitragem segue a experiência atual do Figma e consome a API real.
+Integração na `main`, publicação no teste e aceite do cliente são marcos separados, com os critérios
+e as evidências em [docs/frontend.md](docs/frontend.md).
 
 ## Documentação
 
+- [Novo frontend: especificação, Figma, implementação e critérios de entrega](docs/frontend.md)
 - [Requisitos funcionais, não funcionais e regras de negócio](docs/requisitos.md)
 - [Arquitetura e tecnologias aprovadas](docs/arquitetura.md)
 - [Modelagem do banco e suas regras](docs/modelo-banco-dados.md)
 - [Diagrama com atributos e relações](docs/modelo-banco-dados.mmd)
 - [Pendências e confirmações com o cliente](docs/pendencias.md)
 - [Glossário](docs/GLOSSARY.md)
+- [Proto-personas para orientar UX e UI](docs/personas.md)
+- [Proto-persona operacional da arbitragem](docs/persona-arbitragem.md)
+- [Plano do frontend de arbitragem](docs/plano-frontend-arbitragem.md)
+- [Insights de UX e limites do backend](docs/insights.md)
 - [Planejamento do backend no Linear](https://linear.app/marcusml/project/handebol-backend-7b366946f85f)
 - [Diagrama no Miro](https://miro.com/app/board/uXjVEU3V9rY=/?moveToWidget=3458764688860471326)
+
+## Novo frontend
+
+O redesenho cobre acesso, presidente, atleta, técnico e arbitragem. A referência é a
+[experiência atual no Figma](https://www.figma.com/design/gwHYKm5u7V8uP1lXBmxPPG?node-id=17-2),
+com direção de ginásio, leitura visual e ações frequentes próximas da informação.
+[docs/frontend.md](docs/frontend.md) define o escopo e como traduzir os cenários para componentes
+e operações reais, preservando contratos e permissões do backend. O código experimental serve
+como base de integração; seu tema anterior não define a nova apresentação.
+
+A implementação em `client/` substitui a apresentação experimental, com ficha e aprovação direta,
+QR vigente aberto, escalação individual e registro por camisa. Mantém as capacidades e os contratos
+existentes, incluindo ações administrativas contextuais. Os testes novos estão em `client/tests/`
+e no check `Frontend checks`; a revisão independente e o resultado da publicação devem ser conferidos
+na PR e no deploy correspondente. O aceite do cliente permanece dependente de retorno real.
+As validações históricas da interface experimental abaixo não aprovam esta experiência.
 
 ## Desenvolvimento local
 
@@ -407,19 +430,21 @@ O endpoint de saúde confirma apenas que o processo HTTP está ativo; ainda não
 
 #### Área do presidente (interface)
 
-`http://localhost:3000` leva a `/presidente`, que exige sessão de presidente: sem sessão, a interface envia
-para `/login`; atleta ou técnico autenticado vê apenas um aviso de acesso restrito e pode sair. A antiga
-`/amostra` redireciona para `/presidente`. Todas as áreas consomem a API REST real (`credentials: include`,
+`http://localhost:3000` consulta a sessão e abre `/presidente`, `/tecnico` ou `/atleta`, conforme o perfil.
+Sem sessão, a interface envia para `/login`; o login também abre a área do perfil autenticado. Um link
+de jogo do técnico preserva seu destino durante o login; atleta e técnico também podem retornar ao
+acesso de arbitragem de um jogo conhecido, cuja autorização continua sendo conferida pelo servidor.
+A antiga `/amostra` redireciona para `/presidente`. Todas as áreas consomem a API REST real (`credentials: include`,
 `cache: no-store`); a área do presidente não usa Socket.IO e não se atualiza sozinha: cada tela relê os
 dados ao abrir, após cada operação confirmada ou quando o presidente pede atualização.
 
 | Área | Rotas | O que cobre |
 | --- | --- | --- |
-| Cadastros | `/presidente` | Solicitações de verificação por status, filtros e busca; aprovar ou rejeitar com confirmação. |
+| Cadastros | `/presidente` | Solicitações de verificação por status, filtros e busca; aprovar ou rejeitar com confirmação e foco na próxima solicitação pendente visível. Falha na atualização preserva a lista anterior. |
 | Pessoas | `/presidente/pessoas`, `/presidente/pessoas/{usuarioId}` | Atletas e técnicos conhecidos pelas verificações; ficha com desativação e reativação da conta, carteirinha (invalidar, reativar, substituir QR), foto, vínculos e transferência, e histórico esportivo. |
 | Clubes | `/presidente/clubes`, `/presidente/clubes/{clubeId}` | Criação e edição de clube; atribuir, substituir e desvincular técnico; elenco atual. |
 | Campeonatos | `/presidente/campeonatos`, `/presidente/campeonatos/{id}` | Criação, inscrições, transições de status, jogos e suspensões. |
-| Jogos | `/presidente/campeonatos/{id}/jogos/{jogoId}` | Administração do jogo e da arbitragem (incluindo a senha), consulta de escalações, credenciamentos, registros e resultado, e correções do presidente. |
+| Jogos | `/presidente/campeonatos/{id}/jogos/{jogoId}` | Administração do jogo e da arbitragem (incluindo a senha), links compartilháveis para técnico e arbitragem, consultas e correções pós-jogo com orientação da sequência de estorno e pendências por atleta. |
 | Conta | `/presidente/conta` | Própria identificação, edição do nome (`PATCH /api/conta`), saída, criação de outro presidente (`POST /api/presidentes`) e desativação ou reativação de presidentes. |
 
 Sem alteração de e-mail, senha ou perfil e sem recuperação de senha, que continuam pendentes.
@@ -431,10 +456,75 @@ ID completo e avisa que a operação vale para a conta correspondente: `POST /ap
 não confere o perfil antes, e o perfil e a situação exibidos depois vêm da resposta do servidor. A interface
 recusa a própria conta e os IDs de atletas e técnicos conhecidos pelas verificações, que são geridos em Pessoas.
 
-Atletas, técnicos e arbitragem ainda não têm suas áreas operacionais completas: a área do presidente mostra o que eles fazem
-(escalação, credenciamento, entrada em quadra, lançamentos e encerramento) somente quando esses dados
-existem no banco. Para desenvolver localmente, `server/scripts/seed-frontend.ts` prepara essa massa
-simulando os demais atores pela própria API local. Em `server/`, com build feito e a API local iniciada:
+#### Áreas do atleta e do técnico (interface)
+
+As áreas seguem as [proto-personas](docs/personas.md), com interface para celular e os mesmos componentes
+visuais da área do presidente. As ações usam a API existente, sem alterar o backend, sem Socket.IO e sem
+modo offline. O cadastro de atleta pede confirmação do clube escolhido antes de enviar; mudar o clube
+depois depende das operações administrativas disponíveis.
+
+| Perfil e área | Rotas | O que cobre |
+| --- | --- | --- |
+| Atleta, identificação | `/atleta` | Própria carteirinha, situação ativa/invalidada, clube atual, foto e QR vigente com ampliação; cadastro pendente ou rejeitado orienta o acompanhamento e a nova solicitação de análise. |
+| Atleta, histórico | `/atleta/historico` | Participações próprias e métricas, distinguindo escalação, credenciamento, entrada e anulação; clube representado na época, fuso do jogo e invalidação. Exige aprovação. |
+| Técnico, jogos | `/tecnico`, `/tecnico/jogos/{id}` | Acesso por link ou UUID, atalhos locais por técnico/clube, escalação do próprio clube enquanto agendado, alertas de suspensão/vínculo e leitura do desempenho dos dois clubes. |
+| Técnico, clube e atletas | `/tecnico/clube`, `/tecnico/atletas/{id}` | Clube atual e consulta de histórico/foto de atletas atuais por ID conhecido, inclusive pelas listas de um jogo. Não apresenta candidatos como elenco completo. |
+| Conta e clubes | `/{atleta,tecnico}/conta`, `/{atleta,tecnico}/clubes`, `/{atleta,tecnico}/clubes/{id}` | Nome próprio, situação cadastral, nova análise após rejeição, saída e consultas de clubes; somente o atleta envia a própria foto. |
+
+O backend não oferece agenda de jogos ao técnico: o presidente compartilha o link e o técnico entra na
+própria conta. O link não concede autorização. Antes do início, a escalação não informa o adversário e o
+desempenho pode retornar `placar: null`; a tela declara essa ausência em vez de inventar o confronto.
+Os atalhos do navegador não substituem uma agenda oficial. A lista de candidatos contém somente atletas
+aptos para escolha; o alerta de suspensão não impede a escalação, pois o credenciamento verifica o saldo
+na hora do jogo. Não há extrato disciplinar para atleta/técnico nem consulta completa dos vínculos pelo
+atleta. Limites e alternativas estão em [insights](docs/insights.md).
+
+Validação local em 10/11/2026: lint, tipos e build do client passaram. No Portal do Maestri, com API real,
+foram conferidos login e retorno ao jogo por perfil, QR e foco do diálogo, foto privada, nome, histórico,
+reapresentação de cadastro, técnico sem clube, inclusão/retirada de escalação, conflito após cancelamento
+concorrente e preservação de sucesso quando a consulta posterior falha. A triagem também foi testada com
+respostas anteriores chegando depois da decisão confirmada. As telas foram conferidas em 320/390 px e em
+desktop; a leitura do QR por câmera física não foi validada. Os helpers de links, fusos e atalhos têm
+asserts locais executáveis em `client/` com `node src/features/tecnico/contratos.test.mjs`.
+
+#### Arbitragem operacional (interface)
+
+A [persona](docs/persona-arbitragem.md) e o [plano](docs/plano-frontend-arbitragem.md) orientam a interface
+temporária em `/arbitragem/jogos/{id}`. `/arbitragem` aceita um link ou UUID recebido; não oferece agenda.
+O presidente pode copiar o link na administração do jogo. Atleta e técnico encontram o acesso na própria
+Conta; entrar por designação exige a conta autorizada. A alternativa por nome e senha não exige conta.
+O cookie de cada jogo é isolado da sessão pessoal e dos demais jogos.
+
+- Antes do início: credenciamento por lista ou QR, conferência de impedimentos, correção de camisa,
+  estorno elegível, início e encerramento por W.O.
+- Durante a partida: credenciamento atrasado, entrada em quadra, gols e penalidades, correção/anulação,
+  interrupção, retomada e encerramento. Linha e banco mantêm as mesmas ações.
+- Após encerrar: somente o recibo recebido pelo próprio POST; os outros dispositivos perdem acesso.
+  Não há consulta final com sessão revogada. Correções posteriores cabem ao presidente.
+
+O Socket.IO usa long-polling com cookie do jogo apenas para sinalizar releitura REST. Reconexão relê os
+dados; revogação limpa dados privados e invalida consultas antigas. Uma operação incerta permanece em
+memória para reenvio explícito com o mesmo conteúdo e `operacaoId`, sem repetir automaticamente escritas.
+Senhas, QR e fotos não são persistidos no navegador. O leitor usa câmera quando autorizada e mantém a
+lista manual disponível; decodifica localmente com `BarcodeDetector` ou `jsqr` sob demanda.
+
+QA local no Portal do Maestri em 10/11/2026, com API real e dados fictícios: entrada por senha e por
+designação, retorno após login, recusa fora do dia, QR com vídeo simulado e permissão negada, camisa
+repetida, credenciamento atrasado/estorno, entrada em quadra, quatro tipos de ocorrência, correção e
+anulação durante interrupção, retomada, atualização de placar por outro dispositivo e revogação por
+troca de senha e encerramento. Resposta de gol perdida foi reenviada com o mesmo UUID sem duplicar;
+W.O. com resposta perdida foi confirmado mesmo após revogação. Uma consulta retida antes da troca de
+senha não restaurou dados depois. Foram conferidos foco, bloqueio durante envio e largura em 320/390 px.
+A câmera física e esta interface na hospedagem não foram testadas. Asserts dos contratos:
+`node src/features/arbitragem/teste.mjs`, em `client/`.
+Lint, typecheck (incluindo geração de tipos do Next), build global e asserts de arbitragem e técnico
+passaram. O smoke no build de produção local confirmou a sessão designada, o modo banco salvo e a
+conexão ao jogo. A revisão estática independente terminou sem bloqueadores P1/P2; a auditoria das
+dependências de produção do client não encontrou vulnerabilidades.
+
+Para desenvolver localmente, `server/scripts/seed-frontend.ts` prepara uma massa simulando os atores
+pela própria API local.
+Em `server/`, com build feito e a API local iniciada:
 
 ```sh
 node --env-file-if-exists=.env scripts/seed-frontend.ts
@@ -453,11 +543,44 @@ em `server/.env` antes de iniciar a API. O diretório de arquivos e o `.env` sã
 | Lint | `npm run lint` | `npm run lint` |
 | Tipos | `npm run typecheck` | `npm run typecheck` |
 | Build | `npm run build` | `npm run build` |
+| Regressões de contratos do frontend | `npm test` | — |
+| Navegador com API real local | `npm run test:ui` | — |
 | Executar build | `npm start` | `npm run start:prod` |
 
 `typecheck` do backend também verifica seed, configuração Prisma e testes, usando as declarações
 geradas pelo build. `build` gera o cliente Prisma antes de compilar. Um único `PrismaService`
 é compartilhado por toda a aplicação Nest; seed e testes rodam em processos próprios.
+
+### QA do novo frontend
+
+O workflow [Frontend](.github/workflows/frontend.yml) acrescenta `Frontend checks` sem alterar
+o workflow do backend: instalação pelo lockfile, lint, tipos, build, asserts e Playwright 1.65.0
+com Chromium e uma API real sobre PostgreSQL descartável exclusivo do job. Não usa segredos
+da hospedagem. As capturas são novas e sanitizadas; trace, vídeo, armazenamento de sessão e
+capturas automáticas ficam desabilitados para evitar gravar credenciais, QR e fotos privadas.
+
+Localmente, inicie a API e prepare os dados fictícios pelo procedimento existente
+`node --env-file-if-exists=.env scripts/seed-frontend.ts` em `server/`, sem reset.
+Em `client/`, execute `npm ci`, `npm run lint`, `npm run typecheck`, `npm run build` e `npm test`.
+Para a suíte integrada no PowerShell:
+
+```powershell
+$env:HANDEBOL_QA_ACESSO = (Resolve-Path ../output/playwright/acesso-local.json).Path
+$env:PLAYWRIGHT_CHANNEL = 'msedge'
+npm run test:ui
+```
+
+O Edge instalado evita um download adicional no Windows. Para Chromium, omita
+`PLAYWRIGHT_CHANNEL` e execute antes `npx playwright install chromium`. O runner inicia o Next
+se necessário; a API local deve estar disponível em `http://localhost:3001`. Os testes usam um
+worker e não repetem automaticamente escritas. Sem `HANDEBOL_QA_ACESSO`, os grupos integrados
+ficam explicitamente não executados; isso não equivale ao aceite completo. A validação de clube
+no cadastro ainda precisa da API. A massa local recusa hospedagem e produção.
+
+Os cenários de teste criam registros fictícios isolados e preservam os existentes. Cadastros reais
+consomem o limite de cinco solicitações por 15 minutos; não repetir a suíte indiscriminadamente.
+Os resultados e limites da entrega ficam em [docs/frontend.md](docs/frontend.md), separados das
+evidências históricas da interface experimental abaixo.
 
 ### Fluxo de contas disponível
 
@@ -476,8 +599,8 @@ geradas pelo build. `build` gera o cliente Prisma antes de compilar. Um único `
    invalida ou reativa (`POST .../invalidacao` ou `.../reativacao`, corpo vazio) e substitui o QR
    (`POST .../substituicao-qr` com `versaoQr`, a versão a invalidar). `POST /api/carteirinhas/leitura`
    (`tokenQr` no corpo) devolve só carteirinha, código, status e nome; QR substituído responde 404.
-3. Entre em `/login`. A área `/presidente` consulta `/api/sessao` e apresenta os controles do presidente
-   autenticado; atletas e técnicos veem o aviso de área restrita enquanto suas interfaces não estão prontas.
+3. Entre em `/login`. A interface consulta `/api/sessao` e abre a área do perfil autenticado:
+   `/presidente`, `/tecnico` ou `/atleta`. Visitar uma área de outro perfil encaminha à própria área.
 4. Recarregue para confirmar a sessão persistida. “Sair da conta” revoga somente a sessão atual
    no PostgreSQL e remove o cookie; outros dispositivos continuam autenticados.
 

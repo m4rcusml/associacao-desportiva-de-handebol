@@ -13,10 +13,11 @@
   margin: 0;
   max-width: none;
   padding: 0.6rem 0.75rem;
-  border-left: 4px solid var(--quadra);
+  border: 1px solid var(--divisa);
+  border-radius: 8px;
   background: var(--fundo);
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 

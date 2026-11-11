@@ -6,7 +6,7 @@
   margin: auto 0 0;
   padding: 0;
   border: 0;
-  border-top: 6px solid var(--quadra);
+  border: 1px solid var(--divisa);
   border-radius: 0.75rem 0.75rem 0 0;
   background: var(--superficie);
   color: var(--tinta);
@@ -14,14 +14,14 @@
 }
 
 .dialogo::backdrop {
-  background: rgb(18 55 100 / 0.55);
+  background: rgb(16 61 51 / 0.55);
 }
 
 @media (min-width: 48rem) {
   .dialogo {
     max-width: 32rem;
     margin: auto;
-    border-radius: 0.5rem;
+    border-radius: 12px;
   }
 }
 

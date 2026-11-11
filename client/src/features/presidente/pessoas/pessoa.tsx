@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { consultarSolicitacoes, type ReferenciaClube, type SolicitacaoVerificacao } from "../../../lib/presidente";
 import { data } from "../../ui/formatos";
 import { useErroApi } from "../../ui/use-erro-api";
+import { Iniciais } from "../../ui/identificacao";
 import controles from "../../ui/controles.module.css";
 import pagina from "../../ui/pagina.module.css";
 import { Carteirinha } from "./carteirinha";
@@ -13,6 +14,8 @@ import { Foto } from "./foto";
 import { Historico } from "./historico";
 import { CLASSE_STATUS, NOME_PERFIL, NOME_STATUS } from "./nomes";
 import { Vinculos } from "./vinculos";
+import { AtalhoPresidente, IconePresidente } from "../visual";
+import visual from "../visual.module.css";
 
 /** `erroReleitura`: a releitura falhou depois de a página já ter dados (ex.: após um POST confirmado); os dados ficam. */
 type Estado = { tipo: "carregando" } | { tipo: "falha"; mensagem: string } | { tipo: "ausente" }
@@ -26,14 +29,19 @@ export function Pessoa({ usuarioId }: { usuarioId: string }) {
   const tratarErro = useErroApi();
   const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
   const [revisao, setRevisao] = useState(0);
+  const [area, setArea] = useState<"cadastro" | "conta" | "carteirinha" | "foto" | "vinculos" | "historico" | null>(null);
+  const consulta = useRef(0);
 
   const carregar = useCallback(() => {
+    const versao = ++consulta.current;
     consultarSolicitacoes()
       .then(lista => {
+        if (versao !== consulta.current) return;
         const pessoa = lista.find(p => p.usuarioId === usuarioId.toLowerCase());
         setEstado(pessoa ? { tipo: "pronto", pessoa } : { tipo: "ausente" });
       })
       .catch(erro => {
+        if (versao !== consulta.current) return;
         const mensagem = tratarErro(erro);
         // Com dados já exibidos, a falha da releitura não esconde a ficha nem o aviso de sucesso das seções.
         setEstado(atual => atual.tipo === "pronto" ? { ...atual, erroReleitura: mensagem, relendo: false } : { tipo: "falha", mensagem });
@@ -42,6 +50,7 @@ export function Pessoa({ usuarioId }: { usuarioId: string }) {
 
   /** Aplica o resultado já confirmado pelo servidor e relê as listas. */
   const aplicar = useCallback((mudanca: Partial<Pick<SolicitacaoVerificacao, "ativo" | "clube">>) => {
+    consulta.current++;
     setEstado(atual => atual.tipo === "pronto" ? { ...atual, pessoa: { ...atual.pessoa, ...mudanca } as SolicitacaoVerificacao } : atual);
     carregar();
   }, [carregar]);
@@ -53,7 +62,8 @@ export function Pessoa({ usuarioId }: { usuarioId: string }) {
     carregar();
   }
 
-  useEffect(carregar, [carregar]);
+  const invalidarConsulta = useCallback(() => { consulta.current++; }, []);
+  useEffect(() => { carregar(); return invalidarConsulta; }, [carregar, invalidarConsulta]);
 
   const aoTransferir = useCallback((clube: ReferenciaClube | null) => {
     aplicar({ clube });
@@ -92,12 +102,15 @@ export function Pessoa({ usuarioId }: { usuarioId: string }) {
     <>
       {voltar}
       <div className={pagina.topo}>
-        <div>
+        <div className={visual.identificacao}>
+          <Iniciais nome={pessoa.nomeCompleto} grande />
+          <div>
           <h1 className={pagina.titulo}>{pessoa.nomeCompleto}</h1>
           <p className={pagina.texto}>
             {NOME_PERFIL[pessoa.perfil]}, {pessoa.clube?.nome ?? "sem clube"}
             {!pessoa.ativo && <strong className={controles.textoAlerta}>, conta desativada</strong>}
           </p>
+          </div>
         </div>
         <span className={`${controles.status} ${CLASSE_STATUS[pessoa.statusVerificacao]}`}>{NOME_STATUS[pessoa.statusVerificacao]}</span>
       </div>
@@ -115,8 +128,21 @@ export function Pessoa({ usuarioId }: { usuarioId: string }) {
         </div>
       )}
 
-      <div className={pagina.secoes}>
-        <section className={pagina.secao} aria-labelledby="secao-cadastro">
+      {!area && <>
+        {atleta && aprovado && <div className={visual.destaque}><IconePresidente tipo="carteirinha" /><div><h2>{pessoa.carteirinha?.status === "invalidada" ? "Carteirinha invalidada" : pessoa.carteirinha ? "Carteirinha ativa" : "Carteirinha"}</h2><p className={pagina.texto}>{pessoa.carteirinha?.codigo ?? "Consultar emissão"}</p></div><button type="button" className={controles.primario} onClick={() => setArea("carteirinha")}>Ver carteirinha</button></div>}
+        <div className={visual.atalhos}>
+          {atleta && <AtalhoPresidente titulo="Vínculo e transferência" detalhe={pessoa.clube?.nome ?? "Sem clube"} icone="clube" aoAbrir={() => setArea("vinculos")} />}
+          {atleta && aprovado && <AtalhoPresidente titulo="Histórico esportivo" detalhe="Participações, métricas e registros" icone="calendario" aoAbrir={() => setArea("historico")} />}
+          {atleta && <AtalhoPresidente titulo="Foto do atleta" detalhe="Consultar ou enviar foto opcional" icone="pessoa" aoAbrir={() => setArea("foto")} />}
+          <AtalhoPresidente titulo="Acesso da conta" detalhe={pessoa.ativo ? "Conta ativa" : "Conta desativada"} icone="pessoa" aoAbrir={() => setArea("conta")} />
+          <AtalhoPresidente titulo="Dados do cadastro" detalhe={`Solicitado em ${data(pessoa.verificacaoSolicitadaEm)}`} icone="pessoa" aoAbrir={() => setArea("cadastro")} />
+        </div>
+        {pessoa.statusVerificacao === "pendente" && <p className={controles.nota}>A verificação está pendente. Confira e decida em <Link href="/presidente">Cadastros</Link>.</p>}
+        {!atleta && <p className={controles.nota}>A atribuição do técnico é feita em <Link href={pessoa.clube ? `/presidente/clubes/${pessoa.clube.id}` : "/presidente/clubes"}>Clubes</Link>.</p>}
+      </>}
+      {area && <div className={visual.contexto}>
+        <button type="button" className={controles.secundario} onClick={() => { setArea(null); reler(); }}>Voltar à ficha</button>
+        {area === "cadastro" && <section className={pagina.secao} aria-labelledby="secao-cadastro">
           <h2 id="secao-cadastro" className={pagina.secaoTitulo}>Cadastro</h2>
           <dl className={`${pagina.ficha} ${pagina.bloco}`}>
             <div><dt>Perfil</dt><dd>{NOME_PERFIL[pessoa.perfil]}</dd></div>
@@ -134,14 +160,14 @@ export function Pessoa({ usuarioId }: { usuarioId: string }) {
               <Link href={pessoa.clube ? `/presidente/clubes/${pessoa.clube.id}` : "/presidente/clubes"}>Clubes</Link>.
             </p>
           )}
-        </section>
+        </section>}
 
-        <ContaPessoa pessoa={pessoa} aoAlterar={aoAlterarConta} />
-        {atleta && aprovado && <Carteirinha atletaId={pessoa.usuarioId} revisao={revisao} />}
-        {atleta && <Foto atletaId={pessoa.usuarioId} nome={pessoa.nomeCompleto} />}
-        {atleta && <Vinculos atletaId={pessoa.usuarioId} aprovado={aprovado} aoTransferir={aoTransferir} />}
-        {atleta && aprovado && <Historico atletaId={pessoa.usuarioId} revisao={revisao} />}
-      </div>
+        {area === "conta" && <ContaPessoa pessoa={pessoa} aoAlterar={aoAlterarConta} />}
+        {area === "carteirinha" && atleta && aprovado && <Carteirinha atletaId={pessoa.usuarioId} revisao={revisao} />}
+        {area === "foto" && atleta && <Foto atletaId={pessoa.usuarioId} nome={pessoa.nomeCompleto} />}
+        {area === "vinculos" && atleta && <Vinculos atletaId={pessoa.usuarioId} aprovado={aprovado} aoTransferir={aoTransferir} />}
+        {area === "historico" && atleta && aprovado && <Historico atletaId={pessoa.usuarioId} revisao={revisao} />}
+      </div>}
     </>
   );
 }
