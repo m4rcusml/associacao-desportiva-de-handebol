@@ -1,21 +1,21 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { loginQA } from './login-qa';
+import { loginQA, transporteQA } from './login-qa';
 
 const fixture = process.env.HANDEBOL_QA_ACESSO;
-const acesso: { email: string; password: string } | null = fixture ? JSON.parse(readFileSync(fixture, 'utf8')) : null;
+const acesso: { email: string; password: string; clubes: Record<string, { id: string }>; usuarios: Record<string, { id: string }> } | null = fixture ? JSON.parse(readFileSync(fixture, 'utf8')) : null;
 const api = process.env.HANDEBOL_QA_API ?? 'http://localhost:3001/api';
 const origem = process.env.HANDEBOL_QA_URL ?? 'http://localhost:3000';
 
 async function chamar<T>(request: APIRequestContext, caminho: string, corpo?: unknown, esperado = 200): Promise<T> {
   const resposta = caminho === '/auth/sign-in/email'
     ? await loginQA(request, api, origem, corpo as { email: string; password: string })
-    : await request.fetch(`${api}${caminho}`, {
+    : await transporteQA(`${corpo === undefined ? 'GET' : 'POST'} ${caminho}`, () => request.fetch(`${api}${caminho}`, {
     method: corpo === undefined ? 'GET' : 'POST',
     headers: { Origin: origem },
     ...(corpo === undefined ? {} : { data: corpo }),
-  });
+  }));
   expect(resposta.status(), `API real: ${caminho}`).toBe(esperado);
   return resposta.json() as Promise<T>;
 }
@@ -161,4 +161,63 @@ test('presidente: ficha direta, concorrência, releitura e gestão com API real'
   await page.goto('/presidente/conta');
   await expect(page.getByRole('button', { name: 'Criar outro presidente' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Gerir outros presidentes' })).toBeVisible();
+});
+
+test('presidente: correção confirmada descarta credenciamentos de uma consulta anterior', async ({ page }) => {
+  test.skip(!acesso, 'Defina HANDEBOL_QA_ACESSO com a massa fictícia local.');
+  expect([api, origem].every(url => ['localhost', '127.0.0.1', '[::1]'].includes(new URL(url).hostname))).toBe(true);
+  expect((await loginQA(page.request, api, origem, acesso!)).status()).toBe(200);
+  const campeonato = await chamar<{ id: string }>(page.request, '/campeonatos', { nome: `QA correção concorrente ${randomUUID().slice(0, 8)}`, edicao: '2026', categoria: 'Fictícia' }, 201);
+  for (const clubeId of [acesso!.clubes.serra.id, acesso!.clubes.vale.id]) await chamar(page.request, `/campeonatos/${campeonato.id}/inscricoes`, { clubeId }, 201);
+  const hoje = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  const jogo = await chamar<{ id: string }>(page.request, `/campeonatos/${campeonato.id}/jogos`, { clubeAId: acesso!.clubes.serra.id, clubeBId: acesso!.clubes.vale.id, inicioPrevisto: `${hoje}T17:00`, fusoHorario: 'America/Sao_Paulo' }, 201);
+  const senha = await chamar<{ senha: string }>(page.request, `/jogos/${jogo.id}/arbitragem/senha`);
+  const arbitragem = `/arbitragem/jogos/${jogo.id}`;
+  await chamar(page.request, `${arbitragem}/entrada/senha`, { nomeCompleto: 'Mesa fictícia de QA', senha: senha.senha, visualizacao: 'banco' }, 201);
+  const credenciamento = await chamar<{ participacao: { atleta: { nomeCompleto: string } } }>(page.request, `${arbitragem}/credenciamentos`, { atletaId: acesso!.usuarios.ana.id, numeroCamisa: 7 });
+  await chamar(page.request, `${arbitragem}/inicio`, {});
+  await chamar(page.request, `${arbitragem}/encerramento`, { resultado: 'normal', vencedorInscricaoId: null });
+  await page.goto(`/presidente/campeonatos/${campeonato.id}/jogos/${jogo.id}`);
+  await page.getByRole('button', { name: 'Correções pós-jogo', exact: true }).click();
+  const corrigir = page.getByRole('button', { name: `Corrigir camisa de ${credenciamento.participacao.atleta.nomeCompleto}`, exact: true });
+  await expect(corrigir).toBeEnabled();
+  const item = page.getByRole('listitem').filter({ has: corrigir });
+  await expect(item).toContainText('camisa 7');
+  let liberar!: () => void;
+  let iniciou!: () => void;
+  let entregou!: () => void;
+  const retida = new Promise<void>(resolve => { liberar = resolve; });
+  const consultou = new Promise<void>(resolve => { iniciou = resolve; });
+  const antigaEntregue = new Promise<void>(resolve => { entregou = resolve; });
+  let consultas = 0;
+  let escritas = 0;
+  const caminho = `/jogos/${jogo.id}/credenciamentos`;
+  await page.route(`**/api${caminho}`, async route => {
+    consultas++;
+    if (consultas === 1) {
+      const response = await transporteQA(`GET ${caminho} anterior à correção`, () => route.fetch());
+      iniciou();
+      await retida;
+      await route.fulfill({ response });
+      entregou();
+    } else await route.continue();
+  });
+  page.on('request', request => { if (request.method() === 'POST' && request.url().endsWith(`${caminho}/${acesso!.usuarios.ana.id}/camisa`)) escritas++; });
+  try {
+    await page.getByRole('button', { name: 'Atualizar jogo', exact: true }).click();
+    await consultou;
+    await corrigir.click();
+    const dialogo = page.getByRole('dialog');
+    await dialogo.getByLabel('Número correto da camisa', { exact: true }).fill('17');
+    const escrita = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith(`${caminho}/${acesso!.usuarios.ana.id}/camisa`));
+    await dialogo.getByRole('button', { name: 'Corrigir camisa', exact: true }).click();
+    expect((await escrita).status()).toBe(200);
+    liberar();
+    await antigaEntregue;
+    await expect(dialogo).not.toBeVisible();
+    await expect(item).toContainText('camisa 17');
+    await expect(page.getByRole('status').filter({ hasText: 'Número da camisa corrigido.' })).toBeVisible();
+    expect(consultas).toBe(2);
+    expect(escritas).toBe(1);
+  } finally { liberar(); }
 });

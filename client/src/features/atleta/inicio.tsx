@@ -19,8 +19,8 @@ import pagina from "../ui/pagina.module.css";
 import pessoal from "../area-pessoal/pessoal.module.css";
 import styles from "./carteirinha.module.css";
 
-function Qr({ token }: { token: string }) {
-  return <div className={styles.qr}><QRCodeSVG value={token} size={288} marginSize={4} level="M" title="QR da carteirinha para leitura pela arbitragem" /></div>;
+function Qr({ token, ampliado = false }: { token: string; ampliado?: boolean }) {
+  return <div className={`${styles.qr} ${ampliado ? styles.qrAmpliado : ""}`}><QRCodeSVG value={token} size={288} marginSize={4} level="M" title="QR da carteirinha para leitura pela arbitragem" /></div>;
 }
 
 export function InicioAtleta() {
@@ -73,7 +73,7 @@ export function InicioAtleta() {
     <EstadoConsulta {...consulta} rotulo="Atualizar carteirinha" atualizar={() => { void consulta.carregar(); void registros.carregar(); }} />
     <Dialogo aberto={ampliado && !!card && card.status === "ativa"} aoFechar={() => setAmpliado(false)} tituloId={tituloId} focoInicial={fechar}>
       <div className={`${pagina.detalhe} ${pessoal.pilha}`}><h2 id={tituloId} className={pagina.secaoTitulo}>QR da minha carteirinha</h2>
-        {card && <><p className={pagina.texto}>{card.nomeCompleto}</p>{card.status === "ativa" && <Qr token={card.tokenQr} />}<p className={styles.codigo}>{card.codigo}</p></>}
+        {card && <><p className={pagina.texto}>{card.nomeCompleto}</p>{card.status === "ativa" && <Qr token={card.tokenQr} ampliado />}<p className={styles.codigo}>{card.codigo}</p></>}
         {offline && <p className={controles.nota}>Sem conexão. A validade precisa ser conferida online.</p>}
         {consulta.erro && <p className={controles.nota}>A última atualização falhou. Feche e atualize a carteirinha para conferir o QR vigente.</p>}
         <button ref={fechar} className={controles.secundario} onClick={() => setAmpliado(false)}>Fechar QR ampliado</button>

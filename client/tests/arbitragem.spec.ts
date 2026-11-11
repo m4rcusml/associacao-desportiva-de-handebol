@@ -1,7 +1,7 @@
 import { test, expect, request, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { loginQA } from "./login-qa";
+import { loginQA, transporteQA } from "./login-qa";
 
 const fixture = process.env.HANDEBOL_QA_ACESSO;
 const apiBase = process.env.HANDEBOL_QA_API ?? "http://localhost:3001/api";
@@ -18,16 +18,18 @@ test.describe("Arbitragem com API real", () => {
   let acesso: Acesso;
 
   async function pedir<T>(cliente: APIRequestContext, path: string, data?: unknown, method = data === undefined ? "GET" : "POST"): Promise<T> {
-    const resposta = await cliente.fetch(`${apiBase}${path}`, { method, ...(data === undefined ? {} : { data }), headers: { Origin: origem } });
-    expect(resposta.ok(), `${method} ${path}: ${resposta.status()}`).toBeTruthy();
-    return await resposta.json() as T;
+    return test.step(`API real: ${method} ${path}`, async () => {
+      const resposta = await transporteQA(`${method} ${path}`, () => cliente.fetch(`${apiBase}${path}`, { method, ...(data === undefined ? {} : { data }), headers: { Origin: origem }, timeout: 15_000 }));
+      expect(resposta.ok(), `${method} ${path}: ${resposta.status()}`).toBeTruthy();
+      return await resposta.json() as T;
+    });
   }
 
   test.beforeAll(async () => {
     if (!fixture) return;
     if ([apiBase, origem].some(url => !["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname))) throw new Error("QA da arbitragem aceita somente API e interface locais; não executa massa contra hospedagem.");
     acesso = JSON.parse((await readFile(fixture, "utf8")).replace(/^\uFEFF/, "")) as Acesso;
-    presidente = await request.newContext();
+    presidente = await request.newContext({ timeout: 15_000 });
     const login = await loginQA(presidente, apiBase, origem, { email: acesso.email, password: acesso.password });
     expect(login.ok(), `Login da fixture: ${login.status()}`).toBeTruthy();
   });
@@ -54,26 +56,39 @@ test.describe("Arbitragem com API real", () => {
   }
 
   test("gol em um toque, exclusão em modo+camisa, POST preservado após falha da releitura e reenvio idempotente", async ({ page, context }) => {
-    const jogo = await preparar(context);
-    await abrir(page, jogo);
-    await page.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
-    await expect(page.getByRole("status").filter({ hasText: /Gol: camisa 7/ })).toBeVisible();
-    await page.getByRole("button", { name: "Exclusão de 2 minutos", exact: true }).click();
-    await page.getByRole("button", { name: /^Exclusão de 2 minutos, camisa 9,/ }).click();
-    await expect(page.getByRole("status").filter({ hasText: /Exclusão de 2 minutos: camisa 9/ })).toBeVisible();
+    const jogo = await test.step("Preparar jogo para registro direto", () => preparar(context));
+    await test.step("Registrar gol inicial", async () => {
+      await abrir(page, jogo);
+      await page.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
+      await expect(page.getByRole("status").filter({ hasText: /Gol: camisa 7/ })).toBeVisible();
+    });
+    await test.step("Registrar exclusão por modo e camisa", async () => {
+      await page.getByRole("button", { name: "Exclusão de 2 minutos", exact: true }).click();
+      await page.getByRole("button", { name: /^Exclusão de 2 minutos, camisa 9,/ }).click();
+      await expect(page.getByRole("status").filter({ hasText: /Exclusão de 2 minutos: camisa 9/ })).toBeVisible();
+    });
     await expect(page.getByRole("button", { name: "Gol", exact: true })).toHaveAttribute("aria-pressed", "true");
     const antes = await pedir<{ lancamentos: unknown[] }>(context.request, `${jogo.base}/lancamentos`);
     expect(antes.lancamentos).toHaveLength(2);
 
     let falharGet = false;
+    let falharReleituraDoProximoPost = false;
     let perderResposta = false;
     const corpos: unknown[] = [];
     await page.route(`**/api${jogo.base}/lancamentos`, async route => {
       const requisicao = route.request();
       if (requisicao.method() === "GET" && falharGet) { await route.abort("failed"); return; }
+      if (requisicao.method() === "POST" && falharReleituraDoProximoPost) {
+        const resposta = await transporteQA(`POST ${jogo.base}/lancamentos antes da falha na releitura`, () => route.fetch({ timeout: 15_000 }));
+        expect(resposta.ok()).toBeTruthy();
+        // A falha pertence a este POST; não pode desabilitar a ação por uma releitura anterior.
+        falharReleituraDoProximoPost = false;
+        falharGet = true;
+        await route.fulfill({ response: resposta }); return;
+      }
       if (requisicao.method() === "POST" && perderResposta) {
         corpos.push(requisicao.postDataJSON());
-        const resposta = await route.fetch();
+        const resposta = await transporteQA(`POST ${jogo.base}/lancamentos antes da perda da resposta`, () => route.fetch({ timeout: 15_000 }));
         expect(resposta.ok()).toBeTruthy();
         perderResposta = false;
         await route.abort("failed"); return;
@@ -81,9 +96,11 @@ test.describe("Arbitragem com API real", () => {
       if (requisicao.method() === "POST" && corpos.length) corpos.push(requisicao.postDataJSON());
       await route.continue();
     });
-    falharGet = true;
-    await page.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "desatualizados" })).toBeVisible();
+    falharReleituraDoProximoPost = true;
+    await test.step("Confirmar gol e falhar somente sua releitura", async () => {
+      await page.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
+      await expect(page.getByRole("alert").filter({ hasText: "desatualizados" })).toBeVisible();
+    });
     await expect(page.getByRole("status").filter({ hasText: /Gol: camisa 7/ })).toBeVisible();
     await expect(page.getByLabel(/^Placar oficial\./)).toContainText("2");
     falharGet = false;
@@ -94,8 +111,10 @@ test.describe("Arbitragem com API real", () => {
     await expect(page.getByRole("button", { name: /^Gol, camisa 7,/ })).toBeEnabled();
 
     perderResposta = true;
-    await page.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
-    await expect(page.getByRole("heading", { name: "Envio não confirmado" })).toBeVisible();
+    await test.step("Perder somente a resposta do lançamento confirmado", async () => {
+      await page.getByRole("button", { name: /^Gol, camisa 7,/ }).click();
+      await expect(page.getByRole("heading", { name: "Envio não confirmado" })).toBeVisible();
+    });
     const reenviar = page.getByRole("button", { name: "Reenviar a mesma operação" });
     await expect(reenviar).toBeEnabled();
     await reenviar.click();

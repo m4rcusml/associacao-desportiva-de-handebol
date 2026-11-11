@@ -59,16 +59,23 @@ test("atleta usa QR vigente, amplia com foco e navega em quatro destinos sem ove
   const pathsReais = await svg.locator("path").evaluateAll(paths => paths.map(p => p.getAttribute("d")));
   // Compara o QR sem imprimir token ou geometria codificada em falhas de teste.
   expect(JSON.stringify(pathsReais) === JSON.stringify(pathsEsperados), "QR renderizado corresponde ao token vigente retornado pela API").toBe(true);
+  const ampliar = page.getByRole("button", { name: "Ampliar QR para leitura" });
   for (const width of [320, 390, 1024, 1440]) {
     await page.setViewportSize({ width, height: width < 600 ? 844 : 900 });
     await semOverflow(page);
     await capturaPrivada(page, info.outputPath(`atleta-${width}.png`));
+    const tamanhoInicial = (await svg.boundingBox())!.width;
+    await ampliar.click();
+    const qrAmpliado = page.getByRole("dialog").locator("svg");
+    await expect(page.getByRole("button", { name: "Fechar QR ampliado" })).toBeFocused();
+    await expect.poll(async () => (await qrAmpliado.boundingBox())!.width).toBeGreaterThan(tamanhoInicial);
+    const pathsAmpliados = await qrAmpliado.locator("path").evaluateAll(paths => paths.map(p => p.getAttribute("d")));
+    expect(JSON.stringify(pathsAmpliados) === JSON.stringify(pathsEsperados), "Ampliação conserva o QR vigente").toBe(true);
+    expect(await qrAmpliado.evaluate(elemento => { const caixa = elemento.getBoundingClientRect(); return caixa.left >= 0 && caixa.right <= innerWidth; })).toBe(true);
+    await semOverflow(page);
+    await page.keyboard.press("Escape");
+    await expect(ampliar).toBeFocused();
   }
-  const ampliar = page.getByRole("button", { name: "Ampliar QR para leitura" });
-  await ampliar.click();
-  await expect(page.getByRole("button", { name: "Fechar QR ampliado" })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(ampliar).toBeFocused();
   await page.setViewportSize({ width: 320, height: 844 });
   await page.route("**/api/carteirinhas/minha", async route => {
     const response = await route.fetch();

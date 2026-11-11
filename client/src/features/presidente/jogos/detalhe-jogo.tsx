@@ -32,7 +32,6 @@ export function DetalheJogo({ campeonatoId, jogoId }: { campeonatoId: string; jo
   const [erroComplementos, setErroComplementos] = useState("");
   const [aviso, setAviso] = useState("");
   const titulo = useRef<HTMLHeadingElement>(null);
-  const complementosEmCurso = useRef(false);
   const versaoBase = useRef(0);
   const versaoComplementos = useRef(0);
   const tratarErro = useErroApi();
@@ -53,8 +52,6 @@ export function DetalheJogo({ campeonatoId, jogoId }: { campeonatoId: string; jo
   }
 
   async function carregarComplementos() {
-    if (complementosEmCurso.current) return;
-    complementosEmCurso.current = true;
     const versao = ++versaoComplementos.current;
     setCarregandoComplementos(true);
     setErroComplementos("");
@@ -67,8 +64,7 @@ export function DetalheJogo({ campeonatoId, jogoId }: { campeonatoId: string; jo
     } catch (error) {
       if (versao === versaoComplementos.current) setErroComplementos(tratarErro(error));
     } finally {
-      complementosEmCurso.current = false;
-      setCarregandoComplementos(false);
+      if (versao === versaoComplementos.current) setCarregandoComplementos(false);
     }
   }
 
